@@ -1,0 +1,31 @@
+{
+  "name": "@rbxts/cmd-core",
+  "version": "0.0.1",
+  "description": "",
+  "main": "out/init.lua",
+  "scripts": {
+    "prepublishOnly": "rbxtsc-dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "out/index.d.ts",
+  "devDependencies": {
+    "@rbxts/types": "^1.0.375",
+    "@typescript-eslint/eslint-plugin": "^3.5.0",
+    "@typescript-eslint/parser": "^3.5.0",
+    "eslint": "^7.3.1",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-roblox-ts": "0.0.16",
+    "prettier": "^2.0.5",
+    "typescript": "^3.9.6"
+  },
+  "dependencies": {
+    "@rbxts/cmd-ast": "github:roblox-aurora/cmd-ast",
+    "@rbxts/net": "^1.3.0-beta"
+  }
+}
