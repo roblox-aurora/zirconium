@@ -4,7 +4,10 @@
   "description": "",
   "main": "out/init.lua",
   "scripts": {
-    "prepare": "rbxtsc-dev"
+    "prepare": "npm run build",
+    "build": "rbxtsc-dev -p .",
+    "build:example": "rbxtsc-dev -p ./core/example -i ./include",
+    "serve": "rojo serve ./core/example/default.project.json --port 34567"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +29,7 @@
   },
   "dependencies": {
     "@rbxts/cmd-ast": "github:roblox-aurora/cmd-ast",
-    "@rbxts/net": "^1.3.0-beta"
+    "@rbxts/net": "^1.3.0-beta",
+    "@rbxts/t": "^1.3.1"
   }
 }

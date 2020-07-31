@@ -3,24 +3,31 @@
 		// required
 		"allowSyntheticDefaultImports": true,
 		"downlevelIteration": true,
-		"jsx": "react",
-		"jsxFactory": "Roact.createElement",
-		"module": "commonjs",
-		"moduleResolution": "Node",
-		"noLib": true,
-		"resolveJsonModule": true,
+        "noLib": true,
 		"strict": true,
 		"target": "ESNext",
-		"stripInternal": true,
+		"moduleResolution": "Node",
 		"typeRoots": ["node_modules/@rbxts"],
+		"resolveJsonModule": true,
+		"module": "commonjs",
 
-		// configurable
-		"rootDir": "src",
+		// required, configurable
+		"rootDirs": ["core/lib"],
 		"outDir": "out",
-		"baseUrl": ".",
+
+		// optional
+		"baseUrl": "core/lib",
 		"declaration": true,
-		"paths": {
-			"@rbxts/cmd-core/*": ["src/*"]
-		}
-	}
+
+		// optional, non-configurable
+		"jsx": "react",
+		"jsxFactory": "Roact.createElement",
+	},
+	"include": [
+		"**/*"
+	],
+	"exclude": [
+        "example",
+        "out"
+	]
 }

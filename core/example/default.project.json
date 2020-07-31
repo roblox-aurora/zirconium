@@ -1,0 +1,24 @@
+{
+    "name": "cmd-core-test",
+    "tree": {
+        "$className": "DataModel",
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "Server": {
+                "$path": "build/example/server"
+            }
+        },
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "TS": {
+                "$path": "../../include",
+                "node_modules": {
+                    "$path": "../../node_modules/@rbxts",
+                    "cmd-core": {
+                        "$path": "build/lib"
+                    }
+                }
+            }
+        }
+    }
+}

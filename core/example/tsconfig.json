@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        // required
+        "allowSyntheticDefaultImports": true,
+        "downlevelIteration": true,
+        "noLib": true,
+        "strict": true,
+        "module": "CommonJS",
+        "target": "ESNext",
+        "moduleResolution": "Node",
+        "typeRoots": [
+            "../../node_modules/@rbxts"
+        ],
+        "removeComments": true,
+
+        "rootDirs": [
+            "server",
+            "../lib",
+        ],
+
+        "outDir": "build",
+        "baseUrl": ".",
+
+        "paths": {
+            "@rbxts/cmd-core": ["../lib"],
+            "@rbxts/cmd-core/*": ["../lib/*"]
+        }
+    },
+    "include": [
+        "**/*",
+        "../lib"
+    ]
+}

@@ -2,3 +2,4 @@
 /out
 /include
 *.tsbuildinfo
+/core/example/build
