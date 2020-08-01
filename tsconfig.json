@@ -27,7 +27,7 @@
 		"**/*"
 	],
 	"exclude": [
-        "example",
+        "core/example/**",
         "out"
 	]
 }

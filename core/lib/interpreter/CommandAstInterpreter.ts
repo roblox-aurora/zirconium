@@ -54,7 +54,7 @@ interface InterpreterOptions {
 	allowUndefinedCommands: boolean;
 }
 
-export interface CommandDeclaration {
+export interface CommandInterpreterDeclaration {
 	command: string;
 	options: CommandInterpreterOption[];
 	args: ValidationType[];
@@ -77,7 +77,7 @@ export default class CommandAstInterpreter {
 		return result.kind === ResultKind.SequentialCommands;
 	}
 
-	constructor(private commands: CommandDeclaration[]) {}
+	constructor(private commands: CommandInterpreterDeclaration[]) {}
 
 	private expectOptionTypes<K extends NodeKind>(
 		command: CommandName,

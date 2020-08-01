@@ -22,12 +22,12 @@
         "baseUrl": ".",
 
         "paths": {
-            "@rbxts/cmd-core": ["../lib"],
-            "@rbxts/cmd-core/*": ["../lib/*"]
+            "@cmd-core": ["../lib"],
+            "@cmd-core/*": ["../lib/*"]
         }
     },
     "include": [
         "**/*",
-        "../lib"
+        "../lib/**/*"
     ]
 }

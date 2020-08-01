@@ -5,7 +5,7 @@
   "main": "out/init.lua",
   "scripts": {
     "prepare": "npm run build",
-    "build": "rbxtsc-dev -p .",
+    "build": "rbxtsc-dev",
     "build:example": "rbxtsc-dev -p ./core/example -i ./include",
     "serve": "rojo serve ./core/example/default.project.json --port 34567"
   },
