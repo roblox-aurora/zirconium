@@ -19,7 +19,7 @@ Registry.RegisterCommand(testCommand);
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	player.Chatted.Connect((message) => {
 		if (message.sub(0, 0) === "/") {
-			Dispatch.Execute(message, player);
+			Dispatch.Execute(message.sub(1), player);
 		}
 	});
 });
