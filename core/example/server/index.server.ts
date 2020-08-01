@@ -1,6 +1,11 @@
 import { Command } from "@cmd-core/class/Command";
 import { Registry, Dispatch } from "@cmd-core";
 import { PlayerType } from "./types/PlayerType";
+import { CommandArgument } from "./types/Types";
+
+function createArgumentList<A extends CommandArgument[]>(...commandArgs: A) {
+	return commandArgs;
+}
 
 const testCommand = Command.create({
 	command: "test",
@@ -8,7 +13,7 @@ const testCommand = Command.create({
 		test: { type: "string", default: "test" },
 		test2: { type: PlayerType },
 	} as const,
-	args: [{ type: "string" }, { type: "number" }],
+	args: Command.args({ type: "string" }, { type: "boolean" }),
 	execute(context, args) {
 		// TODO
 	},

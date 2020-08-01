@@ -130,7 +130,7 @@ export class Command<O extends CommandOptions = defined, A extends CommandArgume
 			}),
 			{
 				Options: remapped as MappedOptions<O>,
-				Arguments: this.args,
+				Arguments: argMap as MappedArgs<A>,
 			},
 		);
 	}
@@ -139,5 +139,13 @@ export class Command<O extends CommandOptions = defined, A extends CommandArgume
 		declaration: CommandDeclaration<O, A, R>,
 	) {
 		return new Command(declaration);
+	}
+
+	/**
+	 * Function that correctly types arguments, unfortunately required atm.
+	 * @param commandArgs The argument types
+	 */
+	public static args<A extends CommandArgument[]>(...commandArgs: A) {
+		return commandArgs;
 	}
 }
