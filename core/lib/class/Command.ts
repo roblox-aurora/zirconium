@@ -22,7 +22,7 @@ export interface CommandDeclaration<O extends CommandOptions, A extends Readonly
 
 export interface ExecutionArgs<K extends CommandOptions, A> {
 	Options: MappedOptions<K>;
-	Arguments: MappedOptions<A>;
+	Arguments: MappedOptionsReadonly<A>;
 }
 
 export class Command<O extends CommandOptions = defined, A extends ReadonlyArray<CommandArgument> = [], R = unknown> {
@@ -125,23 +125,28 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 
 		const argMap = new Array<defined>();
 		for (const [index, val] of args.entries()) {
-			const { type: optionType } = this.args[index];
-			if (isCmdTypeDefinition(optionType)) {
-				if (!typeIs(val, "string")) {
-					throw `Invalid type for custom value`;
-				}
+			if (this.args.size() > 0) {
+				const { type: optionType } = this.args[index];
 
-				const value = optionType.transform?.(val, executor) ?? val;
-				if (value === undefined) {
-					throw `[CommandExcecutor] Failed to transform value`;
-				}
+				if (isCmdTypeDefinition(optionType)) {
+					if (!typeIs(val, "string")) {
+						throw `Invalid type for custom value`;
+					}
 
-				const valid = optionType.validate?.(value, executor) ?? { success: true };
-				if (valid.success === false) {
-					throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
+					const value = optionType.transform?.(val, executor) ?? val;
+					if (value === undefined) {
+						throw `[CommandExcecutor] Failed to transform value`;
+					}
+
+					const valid = optionType.validate?.(value, executor) ?? { success: true };
+					if (valid.success === false) {
+						throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
+					}
+					const result = optionType.parse(value);
+					argMap.push(result);
+				} else {
+					argMap.push(val);
 				}
-				const result = optionType.parse(value);
-				argMap.push(result);
 			} else {
 				argMap.push(val);
 			}

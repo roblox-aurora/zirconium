@@ -14,18 +14,14 @@ export interface CommandContextOptions<O extends CommandOptions> {
 export default class CommandContext<O extends CommandOptions> {
 	private readonly command: Command<O, any, any>;
 	private readonly executor: Player;
-	private readonly options: MappedOptions<O>;
+	public readonly Options: MappedOptions<O>;
 	private readonly rawOptions: Map<string, defined>;
 
 	constructor(options: CommandContextOptions<O>) {
 		this.command = options.Command;
 		this.executor = options.Executor;
-		this.options = options.Options;
+		this.Options = options.Options;
 		this.rawOptions = options.RawOptions;
-	}
-
-	public GetOption<K extends keyof O>(key: K): MappedOptions<O>[K] {
-		return this.options[key];
 	}
 
 	public GetCommand() {

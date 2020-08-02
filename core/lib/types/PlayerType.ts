@@ -3,6 +3,10 @@ import util from "../util";
 
 export const PlayerType: CustomCommandType<Player[], Player> = {
 	transform(value, executor) {
+		if (value === "me") {
+			return [executor];
+		}
+
 		return game
 			.GetService("Players")
 			.GetPlayers()

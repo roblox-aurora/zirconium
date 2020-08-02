@@ -66,7 +66,7 @@ export type CommandArgument =
 
 export type CommandOptionArgument = CommandArgument | SwitchCommandArgument;
 
-export type CommandOptions = Record<string, SwitchCommandArgument>;
+export type CommandOptions = Record<string, CommandOptionArgument>;
 
 const _isCmdTypeDefinition = t.interface({
 	parse: t.callback,
@@ -91,13 +91,13 @@ type InferType<T> = T extends { type: CommandType.String | "string" }
 	? GetResultingType<boolean, T>
 	: T extends { type: CustomCommandType<infer _, infer A> }
 	? GetResultingType<A, T>
-	: never;
+	: unknown;
 
-export type MappedOptionsReadonly<T> = { readonly [P in keyof T]: InferType<T[P]> };
+export type MappedOptionsReadonly<T> = T extends never[] ? unknown[] : { readonly [P in keyof T]: InferType<T[P]> };
 
 export type MappedOptions<T> = { [P in keyof T]: InferType<T[P]> };
 export type MappedArgs<T> = T extends [infer A]
 	? [InferType<A>]
 	: T extends [infer A, infer B]
 	? [InferType<A>, InferType<B>]
-	: never;
+	: unknown;

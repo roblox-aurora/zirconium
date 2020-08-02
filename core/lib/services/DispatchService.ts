@@ -1,12 +1,13 @@
 import { CmdCoreRegistryService } from "./RegistryService";
-import { CommandStatement, isNode, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
-import CommandAstParser from "@rbxts/cmd-ast";
+import { CommandStatement, isNode, CmdSyntaxKind, BinaryExpression } from "@rbxts/cmd-ast/out/Nodes";
+import CommandAstParser, { ast } from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
 
 export namespace CmdCoreDispatchService {
 	let Registry!: CmdCoreRegistryService;
 
 	export const dependencies = ["RegistryService"];
+	const variables: Record<string, defined> = {};
 
 	/** @internal */
 	export function LoadDependencies(registry: CmdCoreRegistryService) {
@@ -15,16 +16,50 @@ export namespace CmdCoreDispatchService {
 
 	function executeStatement(statement: CommandStatement, executor: Player) {
 		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
-		const result = interpreter.interpret(statement);
+		const result = interpreter.interpret(statement, variables);
 
-		for (const segment of result) {
-			if (CommandAstInterpreter.isCommand(segment)) {
-				const matchingCommand = Registry.GetCommands().find((c) => c.command === segment.command);
-				if (matchingCommand) {
-					matchingCommand.executeForPlayer(segment.options, segment.args, executor);
+		const cmd = result[0];
+		if (CommandAstInterpreter.isCommand(cmd)) {
+			const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
+			if (matchingCommand) {
+				return matchingCommand.executeForPlayer(cmd.options, cmd.args, executor);
+			}
+		}
+	}
+
+	function executeBinaryExpression(expression: BinaryExpression, executor: Player) {
+		const { left, right, op } = expression;
+		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
+			const result = executeStatement(left, executor) as defined | undefined;
+			const success = result !== undefined ? result : true;
+
+			if (success && op === "&&") {
+				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
+					return executeStatement(right, executor);
 				}
-			} else if (CommandAstInterpreter.isCommandSeqence(segment)) {
-				warn("Cannot do sequence yet!");
+			} else if (result && op === "|") {
+				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
+					if (typeIs(result, "number")) {
+						right.children.push(ast.createNumberNode(result));
+					} else if (typeIs(result, "string")) {
+						right.children.push(ast.createStringNode(result));
+					} else {
+						variables._ = result;
+						// TODO: Pass as raw?
+						right.children.push(ast.createInterpolatedString(ast.createIdentifier("_")));
+					}
+
+					return executeStatement(right, executor);
+				}
+			}
+		} else if (isNode(left, CmdSyntaxKind.BinaryExpression)) {
+			const result = executeBinaryExpression(left, executor);
+			const success = result !== undefined ? result : true;
+
+			if (success && op === "&&") {
+				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
+					return executeStatement(right, executor);
+				}
 			}
 		}
 	}
@@ -35,7 +70,7 @@ export namespace CmdCoreDispatchService {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
 				executeStatement(statement, executor);
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
-				warn("Cannot run BinaryExpression yet!");
+				executeBinaryExpression(statement, executor);
 			}
 		}
 	}
