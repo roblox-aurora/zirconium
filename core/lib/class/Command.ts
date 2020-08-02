@@ -6,7 +6,11 @@ import {
 	MappedArgs,
 	MappedOptionsReadonly,
 } from "../types/Types";
-import { CommandInterpreterOption, CommandInterpreterDeclaration } from "../interpreter/CommandAstInterpreter";
+import {
+	CommandInterpreterOption,
+	CommandInterpreterDeclaration,
+	CommandInterpreterArgument,
+} from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
@@ -35,6 +39,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		this.execute = execute;
 	}
 
+	/** @internal */
 	public getCommandDeclaration(): CommandInterpreterDeclaration {
 		return {
 			command: this.command,
@@ -46,11 +51,28 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 	/**
 	 * @internal
 	 */
-	public getInterpreterArguments(): ("string" | "number" | "boolean")[] {
-		return [];
+	public getInterpreterArguments(): ReadonlyArray<CommandInterpreterArgument> {
+		const args = new Array<CommandInterpreterArgument>();
+
+		for (const [_, arg] of Object.entries(this.args)) {
+			if (typeIs(arg.type, "table")) {
+				args.push({
+					type: "string",
+					default: arg.default,
+				});
+			} else {
+				args.push({
+					type: arg.type,
+					default: arg.default,
+				});
+			}
+		}
+
+		return args;
 	}
 
-	public getInterpreterOptions(): CommandInterpreterOption[] {
+	/** @internal */
+	public getInterpreterOptions(): readonly CommandInterpreterOption[] {
 		const options = new Array<CommandInterpreterOption>();
 		for (const [name, option] of Object.entries(this.options)) {
 			if (typeIs(option.type, "table")) {
@@ -93,7 +115,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 					if (valid.success === false) {
 						throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
 					}
-					const result = optionType.parse(value);
+					const result = optionType.parse(value) as defined;
 					remapped[name] = result;
 				} else {
 					remapped[name] = opt;
@@ -146,13 +168,5 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		declaration: CommandDeclaration<O, A, R>,
 	) {
 		return new Command(declaration);
-	}
-
-	/**
-	 * Function that correctly types arguments, unfortunately required atm.
-	 * @param commandArgs The argument types
-	 */
-	public static args<A extends CommandArgument[]>(...commandArgs: A) {
-		return commandArgs;
 	}
 }

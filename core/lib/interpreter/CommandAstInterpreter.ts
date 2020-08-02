@@ -17,6 +17,12 @@ import {
 } from "@rbxts/cmd-ast/out/Nodes";
 
 type ValidationType = "string" | "number" | "boolean";
+
+export interface CommandInterpreterArgument {
+	default?: defined;
+	type: ValidationType | "any" | "var";
+}
+
 export interface CommandInterpreterOption {
 	name: string;
 	alias?: string[];
@@ -56,8 +62,8 @@ interface InterpreterOptions {
 
 export interface CommandInterpreterDeclaration {
 	command: string;
-	options: CommandInterpreterOption[];
-	args: ValidationType[];
+	options: readonly CommandInterpreterOption[];
+	args: readonly CommandInterpreterArgument[];
 }
 
 /**
@@ -281,7 +287,7 @@ export default class CommandAstInterpreter {
 					}
 
 					const arg = matchingCommand.args[argIdx];
-					if (arg === "string") {
+					if (arg.type === "string") {
 						if (!isNode(node, CmdSyntaxKind.String) && !isNode(node, CmdSyntaxKind.InterpolatedString)) {
 							throw `[CommandInterpreter] Invalid argument, expected String got ${getNodeKindName(node)}`;
 						}
@@ -291,7 +297,7 @@ export default class CommandAstInterpreter {
 						} else {
 							args.push(flattenInterpolatedString(node, variables).text);
 						}
-					} else if (arg === "boolean") {
+					} else if (arg.type === "boolean") {
 						if (!isNode(node, CmdSyntaxKind.Boolean)) {
 							throw `[CommandInterpreter] Invalid argument, expected Boolean got ${getNodeKindName(
 								node,
@@ -299,7 +305,7 @@ export default class CommandAstInterpreter {
 						}
 
 						args.push(node.value);
-					} else if (arg === "number") {
+					} else if (arg.type === "number") {
 						if (!isNode(node, CmdSyntaxKind.Number)) {
 							throw `[CommandInterpreter] Invalid argument, expected Number got ${getNodeKindName(node)}`;
 						}

@@ -1,28 +1,25 @@
 import { Command } from "@cmd-core/class/Command";
 import { Registry, Dispatch } from "@cmd-core";
-import { PlayerType } from "./types/PlayerType";
-import { CommandArgument } from "./types/Types";
+import CommandTypes from "./types";
 
-function createArgumentList<A extends CommandArgument[]>(...commandArgs: A) {
-	return commandArgs;
-}
-
-const testCommand = Command.create({
-	command: "test",
+const killCommand = Command.create({
+	command: "kill",
 	options: {
-		test: { type: "string", default: "test" },
-		player: { type: PlayerType },
+		withExplosion: { type: "switch", alias: ["e"] },
 	},
-	args: [{ type: "string", required: true }, { type: "boolean" }] as const,
-	execute: (context, args) => {
-		const [first, second] = args.Arguments;
-		const { test, player } = args.Options;
-		print(first, second);
-		print(test, player);
+	args: [{ type: CommandTypes.Player, required: true }] as const,
+	execute: (_, { Arguments: [player], Options }) => {
+		if (Options.withExplosion) {
+			const explode = new Instance("Explosion");
+			explode.Position = player.Character?.GetPrimaryPartCFrame().Position ?? new Vector3();
+			explode.Parent = game.Workspace;
+		} else {
+			player.Character?.BreakJoints();
+		}
 	},
 });
 
-Registry.RegisterCommand(testCommand);
+Registry.RegisterCommand(killCommand);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	player.Chatted.Connect((message) => {

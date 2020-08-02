@@ -49,6 +49,10 @@ interface BooleanCommandArgument extends CommandArgumentType<"boolean" | Command
 	default?: boolean;
 }
 
+interface SwitchCommandArgument extends CommandArgumentType<"switch" | CommandType.Switch> {
+	default?: never;
+}
+
 export interface CustomTypeArgument<T, U> extends CommandArgumentType<CustomCommandType<T, U>> {
 	required?: boolean;
 	default?: defined;
@@ -60,7 +64,9 @@ export type CommandArgument =
 	| NumberCommandArgument
 	| CustomTypeArgument<defined, defined>;
 
-export type CommandOptions = Record<string, CommandArgument>;
+export type CommandOptionArgument = CommandArgument | SwitchCommandArgument;
+
+export type CommandOptions = Record<string, SwitchCommandArgument>;
 
 const _isCmdTypeDefinition = t.interface({
 	parse: t.callback,
