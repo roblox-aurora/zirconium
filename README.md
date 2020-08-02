@@ -8,7 +8,7 @@ Example script:
 
 ## Differences to other solutions
 - Uses AST for parsing
-- Commands can be executed sequentially and/or results of commands can be piped to other commands.
+- Commands can be executed sequentially and/or results of commands can be piped to other commands. More akin to writing a script for your game.
 - Option capabilities (e.g. `my-cmd --thing xyz`)
 - Variable usage - e.g. `my-cmd $value` and string interpolation with `my-cmd "A value is: $value"`
 
