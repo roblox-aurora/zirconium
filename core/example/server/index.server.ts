@@ -11,11 +11,14 @@ const testCommand = Command.create({
 	command: "test",
 	options: {
 		test: { type: "string", default: "test" },
-		test2: { type: PlayerType },
+		player: { type: PlayerType },
 	},
-	args: [{ type: "string" }, { type: "boolean" }] as const,
-	execute(context, args) {
-		// TODO
+	args: [{ type: "string", required: true }, { type: "boolean" }] as const,
+	execute: (context, args) => {
+		const [first, second] = args.Arguments;
+		const { test, player } = args.Options;
+		print(first, second);
+		print(test, player);
 	},
 });
 

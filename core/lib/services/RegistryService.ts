@@ -23,6 +23,14 @@ export namespace CmdCoreRegistryService {
 		};
 	}
 
+	export function GetCommands(): ReadonlyArray<Command> {
+		return commands;
+	}
+
+	export function GetCommandDeclarations() {
+		return commands.map((c) => c.getCommandDeclaration());
+	}
+
 	export function RegisterCommand<C extends Command<any, any, any>>(command: C) {
 		commands.push(command);
 	}

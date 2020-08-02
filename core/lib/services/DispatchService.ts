@@ -1,6 +1,7 @@
 import { CmdCoreRegistryService } from "./RegistryService";
 import { CommandStatement, isNode, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
 import CommandAstParser from "@rbxts/cmd-ast";
+import CommandAstInterpreter from "../interpreter";
 
 export namespace CmdCoreDispatchService {
 	let Registry!: CmdCoreRegistryService;
@@ -13,7 +14,19 @@ export namespace CmdCoreDispatchService {
 	}
 
 	function executeStatement(statement: CommandStatement, executor: Player) {
-		// TODO: FIX ME
+		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
+		const result = interpreter.interpret(statement);
+
+		for (const segment of result) {
+			if (CommandAstInterpreter.isCommand(segment)) {
+				const matchingCommand = Registry.GetCommands().find((c) => c.command === segment.command);
+				if (matchingCommand) {
+					matchingCommand.executeForPlayer(segment.options, segment.args, executor);
+				}
+			} else if (CommandAstInterpreter.isCommandSeqence(segment)) {
+				warn("Cannot do sequence yet!");
+			}
+		}
 	}
 
 	export function Execute(text: string, executor: Player) {

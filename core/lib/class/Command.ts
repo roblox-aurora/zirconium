@@ -22,9 +22,9 @@ export interface ExecutionArgs<K extends CommandOptions, A> {
 }
 
 export class Command<O extends CommandOptions = defined, A extends ReadonlyArray<CommandArgument> = [], R = unknown> {
-	private command: string;
-	private options: O;
-	private args: A;
+	public readonly command: string;
+	public readonly options: O;
+	public readonly args: A;
 	private execute: CommandDeclaration<O, A, R>["execute"];
 
 	constructor({ command, options, args, execute }: CommandDeclaration<O, A, R>) {
