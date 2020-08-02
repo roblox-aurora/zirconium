@@ -1,8 +1,15 @@
-import { CommandOptions, CommandArgument, isCmdTypeDefinition, MappedOptions, MappedArgs } from "../types/Types";
+import {
+	CommandOptions,
+	CommandArgument,
+	isCmdTypeDefinition,
+	MappedOptions,
+	MappedArgs,
+	MappedOptionsReadonly,
+} from "../types/Types";
 import { CommandInterpreterOption, CommandInterpreterDeclaration } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
 
-export interface CommandDeclaration<O extends CommandOptions, A extends CommandArgument[], R> {
+export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
 	options: O;
 	args: A;
@@ -11,10 +18,10 @@ export interface CommandDeclaration<O extends CommandOptions, A extends CommandA
 
 export interface ExecutionArgs<K extends CommandOptions, A> {
 	Options: MappedOptions<K>;
-	Arguments: MappedArgs<A>;
+	Arguments: MappedOptions<A>;
 }
 
-export class Command<O extends CommandOptions = defined, A extends CommandArgument[] = [], R = unknown> {
+export class Command<O extends CommandOptions = defined, A extends ReadonlyArray<CommandArgument> = [], R = unknown> {
 	private command: string;
 	private options: O;
 	private args: A;
@@ -130,12 +137,12 @@ export class Command<O extends CommandOptions = defined, A extends CommandArgume
 			}),
 			{
 				Options: remapped as MappedOptions<O>,
-				Arguments: argMap as MappedArgs<A>,
+				Arguments: (argMap as ReadonlyArray<defined>) as MappedOptionsReadonly<A>,
 			},
 		);
 	}
 
-	public static create<O extends CommandOptions, A extends CommandArgument[], R>(
+	public static create<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R>(
 		declaration: CommandDeclaration<O, A, R>,
 	) {
 		return new Command(declaration);

@@ -8,7 +8,7 @@ export interface CommandContextOptions<O extends CommandOptions> {
 	readonly Arguments: defined[];
 	readonly Options: MappedOptions<O>;
 	readonly RawOptions: Map<string, defined>;
-	readonly RawArguments: Array<defined>;
+	readonly RawArguments: ReadonlyArray<defined>;
 }
 
 export default class CommandContext<O extends CommandOptions> {

@@ -87,6 +87,8 @@ type InferType<T> = T extends { type: CommandType.String | "string" }
 	? GetResultingType<A, T>
 	: never;
 
+export type MappedOptionsReadonly<T> = { readonly [P in keyof T]: InferType<T[P]> };
+
 export type MappedOptions<T> = { [P in keyof T]: InferType<T[P]> };
 export type MappedArgs<T> = T extends [infer A]
 	? [InferType<A>]
