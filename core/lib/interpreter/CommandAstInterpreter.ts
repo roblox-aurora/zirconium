@@ -278,6 +278,8 @@ export default class CommandAstInterpreter {
 							args.push(flattenInterpolatedString(node, variables).text);
 						} else if (isNode(node, CmdSyntaxKind.Number) || isNode(node, CmdSyntaxKind.Boolean)) {
 							args.push(node.value);
+						} else if (isNode(node, CmdSyntaxKind.Identifier)) {
+							args.push(variables[node.name]);
 						}
 						continue;
 					}

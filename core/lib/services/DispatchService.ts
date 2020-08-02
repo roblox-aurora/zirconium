@@ -7,7 +7,9 @@ export namespace CmdCoreDispatchService {
 	let Registry!: CmdCoreRegistryService;
 
 	export const dependencies = ["RegistryService"];
-	const variables: Record<string, defined> = {};
+	const variables: Record<string, defined> = {
+		_VERSION: PKG_VERSION,
+	};
 
 	/** @internal */
 	export function LoadDependencies(registry: CmdCoreRegistryService) {
@@ -45,8 +47,7 @@ export namespace CmdCoreDispatchService {
 						right.children.push(ast.createStringNode(result));
 					} else {
 						variables._ = result;
-						// TODO: Pass as raw?
-						right.children.push(ast.createInterpolatedString(ast.createIdentifier("_")));
+						right.children.push(ast.createIdentifier("_"));
 					}
 
 					return executeStatement(right, executor);

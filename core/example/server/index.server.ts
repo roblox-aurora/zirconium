@@ -22,15 +22,14 @@ const killCommand = Command.create({
 });
 
 const echoCommand = Command.create({
-	command: "echo",
+	command: "print",
 	options: {
-		prefix: { type: "string", default: "[PRINT]", alias: ["p"] },
+		prefix: { type: "string", default: "*", alias: ["p"] },
 	},
 	args: [],
 	execute: (_, args) => {
 		print(args.Options.prefix, ...args.Arguments);
-
-		return (args.Arguments as defined[]).join(" ");
+		return (args.Arguments as defined[]).map(tostring).join(" ");
 	},
 });
 
