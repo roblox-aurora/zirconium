@@ -14,6 +14,7 @@ import {
 	CmdSyntaxKind,
 	flattenInterpolatedString,
 	createBooleanNode,
+	createInterpolatedString,
 } from "@rbxts/cmd-ast/out/Nodes";
 
 type ValidationType = "string" | "number" | "boolean";
@@ -285,11 +286,27 @@ export default class CommandAstInterpreter {
 					}
 
 					if (argIdx >= matchingCommand.args.size()) {
-						throw `[CommandInterpreter] Exceeding argument list: [ ${matchingCommand.args.join(", ")} ]`;
+						throw `[CommandInterpreter] Exceeding argument list: [ ${matchingCommand.args
+							.map((t) => t.type)
+							.join(", ")} ] with ${getNodeKindName(node)}`;
 					}
 
 					const arg = matchingCommand.args[argIdx];
 					if (arg.type === "string") {
+						if (isNode(node, CmdSyntaxKind.Identifier)) {
+							const value = variables[node.name];
+
+							if (typeIs(value, "string")) {
+								args.push(value);
+
+								ptr++;
+								argIdx++;
+								continue;
+							} else {
+								throw `[CommandInterpreter] Invalid argument, expected string got ${type(value)}`;
+							}
+						}
+
 						if (!isNode(node, CmdSyntaxKind.String) && !isNode(node, CmdSyntaxKind.InterpolatedString)) {
 							throw `[CommandInterpreter] Invalid argument, expected String got ${getNodeKindName(node)}`;
 						}

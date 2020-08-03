@@ -26,10 +26,10 @@ const echoCommand = Command.create({
 	options: {
 		prefix: { type: "string", default: "*", alias: ["p"] },
 	},
-	args: [],
-	execute: (_, args) => {
+	args: [{ type: "string" }] as const,
+	execute: (ctx, args) => {
 		print(args.Options.prefix, ...args.Arguments);
-		return (args.Arguments as defined[]).map(tostring).join(" ");
+		return (args.Arguments as readonly defined[]).map(tostring).join(" ");
 	},
 });
 
