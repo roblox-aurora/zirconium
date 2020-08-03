@@ -3,6 +3,15 @@ import { CommandStatement, isNode, CmdSyntaxKind, BinaryExpression } from "@rbxt
 import CommandAstParser, { ast } from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
 
+interface stdio {
+	stdout: Array<string>;
+	stdin: Array<string>;
+}
+
+interface ExecutionParams extends stdio {
+	pipedOutput: boolean;
+}
+
 export namespace CmdCoreDispatchService {
 	let Registry!: CmdCoreRegistryService;
 
@@ -16,7 +25,10 @@ export namespace CmdCoreDispatchService {
 		Registry = registry;
 	}
 
-	function executeStatement(statement: CommandStatement, executor: Player) {
+	function executeStatement(statement: CommandStatement, executor: Player, params: ExecutionParams) {
+		variables["player"] = executor;
+		variables["playerName"] = executor.Name;
+
 		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
 		const result = interpreter.interpret(statement, variables);
 
@@ -29,42 +41,40 @@ export namespace CmdCoreDispatchService {
 					mappedOptions: cmd.options,
 					args: cmd.args,
 					executor,
+					piped: params.pipedOutput,
+					stdin: params.stdin,
+					stdout: params.stdout,
 				});
 			}
 		}
 	}
 
-	function executeBinaryExpression(expression: BinaryExpression, executor: Player) {
+	function executeBinaryExpression(expression: BinaryExpression, executor: Player, stdout: stdio["stdout"] = []) {
 		const { left, right, op } = expression;
+		const stdin = new Array<string>();
+
 		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
-			const result = executeStatement(left, executor) as defined | undefined;
+			const result = executeStatement(left, executor, { stdin: [], stdout, pipedOutput: op === "|" }) as
+				| defined
+				| undefined;
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					return executeStatement(right, executor);
+					return executeStatement(right, executor, { stdin: [], stdout: [], pipedOutput: false });
 				}
 			} else if (result && op === "|") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					if (typeIs(result, "number")) {
-						right.children.push(ast.createNumberNode(result));
-					} else if (typeIs(result, "string")) {
-						right.children.push(ast.createStringNode(result));
-					} else {
-						variables._ = result;
-						right.children.push(ast.createIdentifier("_"));
-					}
-
-					return executeStatement(right, executor);
+					return executeStatement(right, executor, { stdin: stdout, stdout: [], pipedOutput: false });
 				}
 			}
 		} else if (isNode(left, CmdSyntaxKind.BinaryExpression)) {
-			const result = executeBinaryExpression(left, executor);
+			const result = executeBinaryExpression(left, executor, stdout);
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					return executeStatement(right, executor);
+					return executeStatement(right, executor, { stdin, stdout, pipedOutput: false });
 				}
 			}
 		}
@@ -72,13 +82,16 @@ export namespace CmdCoreDispatchService {
 
 	export function Execute(text: string, executor: Player) {
 		const commandAst = new CommandAstParser(text).Parse();
+
 		for (const statement of commandAst.children) {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
-				executeStatement(statement, executor);
+				executeStatement(statement, executor, { stdin: [], stdout: [], pipedOutput: false });
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
 				executeBinaryExpression(statement, executor);
 			}
 		}
+
+		variables["_last"] = text;
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;

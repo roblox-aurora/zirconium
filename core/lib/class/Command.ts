@@ -14,6 +14,7 @@ import {
 	CommandInterpreterArgument,
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
+import t from "@rbxts/t";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
@@ -57,12 +58,16 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		const args = new Array<CommandInterpreterArgument>();
 
 		for (const [_, arg] of Object.entries(this.args)) {
-			if (typeIs(arg.type, "table")) {
+			if (isCmdTypeDefinition(arg.type)) {
 				args.push({
 					type: "string",
 					default: arg.default,
 				});
+			} else if (typeIs(arg.type, "table")) {
+				// Unions
+				throw `[CommandInterpreter] Union types not yet supported!`;
 			} else {
+				// Primitives
 				args.push({
 					type: arg.type,
 					default: arg.default,
@@ -80,7 +85,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 			if (typeIs(option.type, "table")) {
 				options.push({
 					name,
-					default: option.default,
+					default: option.default as defined,
 					alias: option.alias,
 					type: "string",
 				});
@@ -88,7 +93,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 				options.push({
 					name,
 					alias: option.alias,
-					default: option.default,
+					default: option.default as defined,
 					type: option.type as "string",
 				});
 			}
@@ -121,7 +126,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 	}
 
 	/** @internal */
-	public executeForPlayer({ variables, mappedOptions, args, executor }: ExecutionOptions): R {
+	public executeForPlayer({ variables, mappedOptions, args, executor, stdin, stdout, piped }: ExecutionOptions): R {
 		const remapped: Record<string, defined> = {};
 		for (const [name, opt] of mappedOptions) {
 			const option = this.options[name];
@@ -148,6 +153,9 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 				RawOptions: mappedOptions,
 				Executor: executor,
 				Name: this.command,
+				Input: stdin,
+				Output: stdout,
+				IsPipedOutput: piped,
 				Variables: variables,
 			}),
 			{

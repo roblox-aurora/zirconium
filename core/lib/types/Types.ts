@@ -57,12 +57,27 @@ export interface CustomTypeArgument<T, U> extends CommandArgumentType<CustomComm
 	required?: boolean;
 	default?: defined;
 }
+interface CommandUnionType<T extends readonly CommandArgument[]> {
+	type: T;
+	alias?: string[];
+	default?: InferType<T[number]>;
+}
 
-export type CommandArgument =
+interface CommandUnionType2<T extends readonly CommandArgumentTypeId[]> {
+	type: T;
+	default?: InferTypeName<T[number]>;
+	alias?: string[];
+}
+
+type _CommandArgument =
 	| StringCommandArgument
 	| BooleanCommandArgument
 	| NumberCommandArgument
 	| CustomTypeArgument<defined, defined>;
+
+export type CommandArgument = _CommandArgument | CommandUnionType2<readonly CommandArgumentTypeId[]>;
+
+export type CommandArgumentTypeId = _CommandArgument["type"];
 
 export type CommandOptionArgument = CommandArgument | SwitchCommandArgument;
 
@@ -80,6 +95,14 @@ export function isCmdTypeDefinition(value: unknown): value is CustomCommandType<
 	return _isCmdTypeDefinition(value);
 }
 
+type InferTypeName<T> = T extends "string"
+	? string
+	: T extends "number"
+	? number
+	: T extends CustomCommandType<infer _, infer R>
+	? R
+	: never;
+
 type GetResultingType<T, U> = U extends { default: T } ? T : U extends { required: true } ? T : T | undefined;
 type InferType<T> = T extends { type: CommandType.String | "string" }
 	? GetResultingType<string, T>
@@ -93,9 +116,16 @@ type InferType<T> = T extends { type: CommandType.String | "string" }
 	? GetResultingType<A, T>
 	: unknown;
 
-export type MappedOptionsReadonly<T> = T extends never[] ? unknown[] : { readonly [P in keyof T]: InferType<T[P]> };
+// TODO: Think of implementation
+type InferTypeWithUnion<T> = T extends { type: readonly CommandArgumentTypeId[] }
+	? InferTypeName<T["type"][number]> | undefined
+	: InferType<T>;
 
-export type MappedOptions<T> = { [P in keyof T]: InferType<T[P]> };
+export type MappedOptionsReadonly<T> = T extends never[]
+	? unknown[]
+	: { readonly [P in keyof T]: InferTypeWithUnion<T[P]> };
+
+export type MappedOptions<T> = { [P in keyof T]: InferTypeWithUnion<T[P]> };
 export type MappedArgs<T> = T extends [infer A]
 	? [InferType<A>]
 	: T extends [infer A, infer B]
@@ -107,4 +137,7 @@ export type ExecutionOptions = {
 	mappedOptions: Map<string, defined>;
 	args: Array<defined>;
 	executor: Player;
+	stdin: string[];
+	stdout: string[];
+	piped: boolean;
 };

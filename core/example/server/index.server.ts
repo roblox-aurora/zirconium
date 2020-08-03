@@ -21,20 +21,47 @@ const killCommand = Command.create({
 	},
 });
 
+const jq = Command.create({
+	command: "json",
+	options: {},
+	args: [],
+	execute: (ctx, args) => {
+		const http = game.GetService("HttpService");
+
+		const input = ctx.GetInput();
+		if (input.size() > 0) {
+			for (const value of input) {
+				print(http.JSONEncode(http.JSONDecode(value)));
+			}
+		} else {
+			for (const value of args.Arguments) {
+				print(http.JSONEncode(http.JSONDecode(tostring(value))));
+			}
+		}
+	},
+});
+
 const echoCommand = Command.create({
 	command: "print",
 	options: {
-		prefix: { type: "string", default: "*", alias: ["p"] },
+		prefix: { type: Player, alias: ["p"], default: "*" },
 	},
-	args: [{ type: "string" }] as const,
+	args: [],
 	execute: (ctx, args) => {
-		print(args.Options.prefix, ...args.Arguments);
+		for (const arg of args.Arguments) {
+			ctx.PushOutput(tostring(arg));
+		}
+
+		if (!ctx.IsOutputPiped()) {
+			print(args.Options.prefix, ...args.Arguments);
+		}
 		return (args.Arguments as readonly defined[]).map(tostring).join(" ");
 	},
 });
 
 Registry.RegisterCommand(killCommand);
 Registry.RegisterCommand(echoCommand);
+Registry.RegisterCommand(jq);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	player.Chatted.Connect((message) => {
