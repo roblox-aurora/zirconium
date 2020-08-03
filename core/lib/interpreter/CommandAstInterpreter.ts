@@ -187,7 +187,7 @@ export default class CommandAstInterpreter {
 		}
 
 		const commandTypeHandler: Record<
-			CommandInterpreterOption["type"],
+			CommandInterpreterOption["type"] | "_",
 			(optionFullName: string, optionNode: Option, nextNode: Node) => boolean
 		> = {
 			string: (optionFullName, node, nextNode) => {
@@ -231,6 +231,11 @@ export default class CommandAstInterpreter {
 				options.set(node, createBooleanNode(true).value);
 				return false;
 			},
+			// default
+			_: (_optionFullName, node, _nextNode) => {
+				throw `[CommandInterpreter] Cannot handle option type for ${node.flag}`;
+				// return false;
+			},
 		};
 
 		// Set defaults
@@ -260,11 +265,12 @@ export default class CommandAstInterpreter {
 					}
 				} else {
 					const typeHandler = commandTypeHandler[option.type];
+					const nextNode = children[ptr + 1];
+
 					if (typeHandler) {
-						const nextNode = children[ptr + 1];
 						typeHandler(option.name, node, nextNode) && ptr++;
 					} else {
-						throw `[CommandInterpreter] Cannot handle option type: ${option.type}`;
+						commandTypeHandler._(option?.name, node, nextNode) && ptr++;
 					}
 				}
 			} else {
@@ -291,7 +297,61 @@ export default class CommandAstInterpreter {
 							.join(", ")} ] with ${getNodeKindName(node)}`;
 					}
 
+					type CmdSyntaxMap = {
+						[P in keyof NodeTypes]: (value: NodeTypes[P]) => defined;
+					};
+
+					const argMap: Partial<Record<CommandInterpreterArgument["type"], Partial<CmdSyntaxMap>>> = {
+						string: {
+							[CmdSyntaxKind.InterpolatedString]: (node) =>
+								flattenInterpolatedString(node, variables).text,
+							[CmdSyntaxKind.String]: (node) => node.text,
+							[CmdSyntaxKind.Identifier]: (node) => {
+								const value = variables[node.name];
+								if (typeIs(value, "string")) {
+									return value;
+								} else {
+									throw `[CommandInterpreter] expected string, got ${typeOf(value)}`;
+								}
+							},
+						},
+						number: {
+							[CmdSyntaxKind.Number]: (node) => node.value,
+						},
+						boolean: {
+							[CmdSyntaxKind.Boolean]: (node) => node.value,
+						},
+						any: {
+							[CmdSyntaxKind.Identifier]: (node) => variables[node.name],
+							[CmdSyntaxKind.InterpolatedString]: (node) =>
+								flattenInterpolatedString(node, variables).text,
+							[CmdSyntaxKind.String]: (node) => node.text,
+							[CmdSyntaxKind.Number]: (node) => node.value,
+							[CmdSyntaxKind.Boolean]: (node) => node.value,
+						},
+					};
+
 					const arg = matchingCommand.args[argIdx];
+
+					const typeNodeHandlers = argMap[arg.type];
+					if (typeNodeHandlers) {
+						if (node.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
+
+						const typeNodeHandler = typeNodeHandlers[node.kind] as (node: Node) => defined;
+						if (typeNodeHandler !== undefined) {
+							print("useTypeNodeKind", arg.type, getNodeKindName(node));
+							const value = typeNodeHandler(node);
+							args.push(value);
+							ptr++;
+							argIdx++;
+							continue;
+						} else {
+							throw `[CommandInterpreter] type ${arg.type} does not support ${getNodeKindName(node)}`;
+						}
+					} else {
+						print("no handler for", arg.type);
+					}
+
 					if (arg.type === "string") {
 						if (isNode(node, CmdSyntaxKind.Identifier)) {
 							const value = variables[node.name];
