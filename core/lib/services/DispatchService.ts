@@ -83,15 +83,19 @@ export namespace CmdCoreDispatchService {
 	export function Execute(text: string, executor: Player) {
 		const commandAst = new CommandAstParser(text).Parse();
 
+		const stdout = new Array<string>();
+
 		for (const statement of commandAst.children) {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
-				executeStatement(statement, executor, { stdin: [], stdout: [], pipedOutput: false });
+				executeStatement(statement, executor, { stdin: [], stdout, pipedOutput: false });
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
-				executeBinaryExpression(statement, executor);
+				executeBinaryExpression(statement, executor, stdout);
 			}
 		}
 
 		variables["_last"] = text;
+
+		return { stdout };
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;

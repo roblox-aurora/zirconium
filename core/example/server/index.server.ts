@@ -13,10 +13,10 @@ const killCommand = Command.create({
 			const explode = new Instance("Explosion");
 			explode.Position = player.Character?.GetPrimaryPartCFrame().Position ?? new Vector3();
 			explode.Parent = game.Workspace;
-			return player.Character;
+			// return player.Character;
 		} else {
 			player.Character?.BreakJoints();
-			return player.Character;
+			// return player.Character;
 		}
 	},
 });
@@ -44,18 +44,11 @@ const jq = Command.create({
 const echoCommand = Command.create({
 	command: "print",
 	options: {
-		prefix: { type: Player, alias: ["p"], default: "*" },
+		prefix: { type: "string", alias: ["p"], default: "*" },
 	},
 	args: [],
 	execute: (ctx, args) => {
-		for (const arg of args.Arguments) {
-			ctx.PushOutput(tostring(arg));
-		}
-
-		if (!ctx.IsOutputPiped()) {
-			print(args.Options.prefix, ...args.Arguments);
-		}
-		return (args.Arguments as readonly defined[]).map(tostring).join(" ");
+		ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
 	},
 });
 
@@ -66,7 +59,10 @@ Registry.RegisterCommand(jq);
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	player.Chatted.Connect((message) => {
 		if (message.sub(0, 0) === "/") {
-			Dispatch.Execute(message.sub(1), player);
+			const { stdout } = Dispatch.Execute(message.sub(1), player);
+			for (const message of stdout) {
+				print("[info]", message);
+			}
 		}
 	});
 });
