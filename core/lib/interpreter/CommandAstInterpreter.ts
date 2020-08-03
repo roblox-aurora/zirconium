@@ -15,7 +15,10 @@ import {
 	flattenInterpolatedString,
 	createBooleanNode,
 	createInterpolatedString,
+	BooleanLiteral,
+	NumberLiteral,
 } from "@rbxts/cmd-ast/out/Nodes";
+import { argumentTransformers, getFriendlyName } from "./InterpreterHelpers";
 
 type ValidationType = "string" | "number" | "boolean";
 
@@ -297,101 +300,23 @@ export default class CommandAstInterpreter {
 							.join(", ")} ] with ${getNodeKindName(node)}`;
 					}
 
-					type CmdSyntaxMap = {
-						[P in keyof NodeTypes]: (value: NodeTypes[P]) => defined;
-					};
-
-					const argMap: Partial<Record<CommandInterpreterArgument["type"], Partial<CmdSyntaxMap>>> = {
-						string: {
-							[CmdSyntaxKind.InterpolatedString]: (node) =>
-								flattenInterpolatedString(node, variables).text,
-							[CmdSyntaxKind.String]: (node) => node.text,
-							[CmdSyntaxKind.Identifier]: (node) => {
-								const value = variables[node.name];
-								if (typeIs(value, "string")) {
-									return value;
-								} else {
-									throw `[CommandInterpreter] expected string, got ${typeOf(value)}`;
-								}
-							},
-						},
-						number: {
-							[CmdSyntaxKind.Number]: (node) => node.value,
-						},
-						boolean: {
-							[CmdSyntaxKind.Boolean]: (node) => node.value,
-						},
-						any: {
-							[CmdSyntaxKind.Identifier]: (node) => variables[node.name],
-							[CmdSyntaxKind.InterpolatedString]: (node) =>
-								flattenInterpolatedString(node, variables).text,
-							[CmdSyntaxKind.String]: (node) => node.text,
-							[CmdSyntaxKind.Number]: (node) => node.value,
-							[CmdSyntaxKind.Boolean]: (node) => node.value,
-						},
-					};
-
 					const arg = matchingCommand.args[argIdx];
-
-					const typeNodeHandlers = argMap[arg.type];
+					const typeNodeHandlers = argumentTransformers[arg.type];
 					if (typeNodeHandlers) {
 						if (node.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
 
-						const typeNodeHandler = typeNodeHandlers[node.kind] as (node: Node) => defined;
+						const typeNodeHandler = typeNodeHandlers[node.kind] as (
+							node: Node,
+							vars: Record<string, defined>,
+						) => defined;
 						if (typeNodeHandler !== undefined) {
-							print("useTypeNodeKind", arg.type, getNodeKindName(node));
-							const value = typeNodeHandler(node);
+							const value = typeNodeHandler(node, variables);
 							args.push(value);
-							ptr++;
-							argIdx++;
-							continue;
 						} else {
-							throw `[CommandInterpreter] type ${arg.type} does not support ${getNodeKindName(node)}`;
+							throw `[CommandInterpreter] expected ${arg.type}, got ${getFriendlyName(node)}`;
 						}
 					} else {
-						print("no handler for", arg.type);
-					}
-
-					if (arg.type === "string") {
-						if (isNode(node, CmdSyntaxKind.Identifier)) {
-							const value = variables[node.name];
-
-							if (typeIs(value, "string")) {
-								args.push(value);
-
-								ptr++;
-								argIdx++;
-								continue;
-							} else {
-								throw `[CommandInterpreter] Invalid argument, expected string got ${type(value)}`;
-							}
-						}
-
-						if (!isNode(node, CmdSyntaxKind.String) && !isNode(node, CmdSyntaxKind.InterpolatedString)) {
-							throw `[CommandInterpreter] Invalid argument, expected String got ${getNodeKindName(node)}`;
-						}
-
-						if (isNode(node, CmdSyntaxKind.String)) {
-							args.push(node.text);
-						} else {
-							args.push(flattenInterpolatedString(node, variables).text);
-						}
-					} else if (arg.type === "boolean") {
-						if (!isNode(node, CmdSyntaxKind.Boolean)) {
-							throw `[CommandInterpreter] Invalid argument, expected Boolean got ${getNodeKindName(
-								node,
-							)}`;
-						}
-
-						args.push(node.value);
-					} else if (arg.type === "number") {
-						if (!isNode(node, CmdSyntaxKind.Number)) {
-							throw `[CommandInterpreter] Invalid argument, expected Number got ${getNodeKindName(node)}`;
-						}
-
-						args.push(node.value);
-					} else {
-						throw `[CommandInterpreter] Cannot handle type ${arg}`;
+						throw `[CommandInterpreter] No argument type handler for ${arg.type}`;
 					}
 
 					argIdx++;
