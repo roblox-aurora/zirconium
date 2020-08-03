@@ -101,3 +101,10 @@ export type MappedArgs<T> = T extends [infer A]
 	: T extends [infer A, infer B]
 	? [InferType<A>, InferType<B>]
 	: unknown;
+
+export type ExecutionOptions = {
+	variables: Record<string, defined>;
+	mappedOptions: Map<string, defined>;
+	args: Array<defined>;
+	executor: Player;
+};

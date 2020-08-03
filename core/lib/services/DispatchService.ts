@@ -24,7 +24,12 @@ export namespace CmdCoreDispatchService {
 		if (CommandAstInterpreter.isCommand(cmd)) {
 			const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
 			if (matchingCommand) {
-				return matchingCommand.executeForPlayer(cmd.options, cmd.args, executor);
+				return matchingCommand.executeForPlayer({
+					variables,
+					mappedOptions: cmd.options,
+					args: cmd.args,
+					executor,
+				});
 			}
 		}
 	}

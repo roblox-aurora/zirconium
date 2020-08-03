@@ -5,6 +5,8 @@ import {
 	MappedOptions,
 	MappedArgs,
 	MappedOptionsReadonly,
+	ExecutionOptions,
+	CommandOptionArgument,
 } from "../types/Types";
 import {
 	CommandInterpreterOption,
@@ -21,7 +23,7 @@ export interface CommandDeclaration<O extends CommandOptions, A extends Readonly
 }
 
 export interface ExecutionArgs<K extends CommandOptions, A> {
-	Options: MappedOptions<K>;
+	Options: MappedOptions<K> & { stdin?: defined };
 	Arguments: MappedOptionsReadonly<A>;
 }
 
@@ -94,59 +96,44 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		return options;
 	}
 
+	private argParse(arg: CommandOptionArgument | CommandArgument, opt: defined, executor: Player) {
+		if (isCmdTypeDefinition(arg.type)) {
+			const { type: optionType } = arg;
+
+			if (!typeIs(opt, "string")) {
+				throw `Invalid type for custom value`;
+			}
+
+			const value = optionType.transform?.(opt, executor) ?? opt;
+			if (value === undefined) {
+				throw `[CommandExcecutor] Failed to transform value`;
+			}
+
+			const valid = optionType.validate?.(value, executor) ?? { success: true };
+			if (valid.success === false) {
+				throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
+			}
+			const result = optionType.parse(value) as defined;
+			return result;
+		} else {
+			return opt;
+		}
+	}
+
 	/** @internal */
-	public executeForPlayer(mappedOptions: Map<string, defined>, args: Array<defined>, executor: Player): R {
+	public executeForPlayer({ variables, mappedOptions, args, executor }: ExecutionOptions): R {
 		const remapped: Record<string, defined> = {};
 		for (const [name, opt] of mappedOptions) {
 			const option = this.options[name];
 			if (option !== undefined) {
-				const { type: optionType } = option;
-				if (isCmdTypeDefinition(optionType)) {
-					if (!typeIs(opt, "string")) {
-						throw `Invalid type for custom value`;
-					}
-
-					const value = optionType.transform?.(opt, executor) ?? opt;
-					if (value === undefined) {
-						throw `[CommandExcecutor] Failed to transform value`;
-					}
-
-					const valid = optionType.validate?.(value, executor) ?? { success: true };
-					if (valid.success === false) {
-						throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
-					}
-					const result = optionType.parse(value) as defined;
-					remapped[name] = result;
-				} else {
-					remapped[name] = opt;
-				}
+				remapped[name] = this.argParse(option, opt, executor);
 			}
 		}
 
 		const argMap = new Array<defined>();
 		for (const [index, val] of args.entries()) {
 			if (this.args.size() > 0) {
-				const { type: optionType } = this.args[index];
-
-				if (isCmdTypeDefinition(optionType)) {
-					if (!typeIs(val, "string")) {
-						throw `Invalid type for custom value`;
-					}
-
-					const value = optionType.transform?.(val, executor) ?? val;
-					if (value === undefined) {
-						throw `[CommandExcecutor] Failed to transform value`;
-					}
-
-					const valid = optionType.validate?.(value, executor) ?? { success: true };
-					if (valid.success === false) {
-						throw `[CommandExecutor] Failed to execute command: ${valid.reason}`;
-					}
-					const result = optionType.parse(value);
-					argMap.push(result);
-				} else {
-					argMap.push(val);
-				}
+				argMap.push(this.argParse(this.args[index], val, executor));
 			} else {
 				argMap.push(val);
 			}
@@ -161,6 +148,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 				RawOptions: mappedOptions,
 				Executor: executor,
 				Name: this.command,
+				Variables: variables,
 			}),
 			{
 				Options: remapped as MappedOptions<O>,
