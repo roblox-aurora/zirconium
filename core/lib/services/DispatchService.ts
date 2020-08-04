@@ -1,5 +1,5 @@
 import { CmdCoreRegistryService } from "./RegistryService";
-import { CommandStatement, isNode, CmdSyntaxKind, BinaryExpression } from "@rbxts/cmd-ast/out/Nodes";
+import { CommandStatement, isNode, CmdSyntaxKind, BinaryExpression, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
 import CommandAstParser, { ast } from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
 
@@ -50,31 +50,45 @@ export namespace CmdCoreDispatchService {
 	}
 
 	function executeBinaryExpression(expression: BinaryExpression, executor: Player, stdout: stdio["stdout"] = []) {
-		const { left, right, op } = expression;
+		const {
+			left,
+			right,
+			operator: { operator: op },
+		} = expression;
 		const stdin = new Array<string>();
+		const tmpstdout = new Array<string>();
 
 		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
-			const result = executeStatement(left, executor, { stdin: [], stdout, pipedOutput: op === "|" }) as
-				| defined
-				| undefined;
+			print(getNodeKindName(left), op, getNodeKindName(right));
+			const result = executeStatement(left, executor, {
+				stdin: [],
+				stdout: tmpstdout,
+				pipedOutput: op === "|",
+			}) as defined | undefined;
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
 					return executeStatement(right, executor, { stdin: [], stdout: [], pipedOutput: false });
 				}
-			} else if (result && op === "|") {
+			} else if (op === "|") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					return executeStatement(right, executor, { stdin: stdout, stdout: [], pipedOutput: false });
+					print("ExecuteStatement", game.GetService("HttpService").JSONEncode(tmpstdout));
+					// somehow have to pipe stdout
+					return executeStatement(right, executor, { stdin: tmpstdout, stdout, pipedOutput: false });
 				}
 			}
 		} else if (isNode(left, CmdSyntaxKind.BinaryExpression)) {
-			const result = executeBinaryExpression(left, executor, stdout);
+			const result = executeBinaryExpression(left, executor, tmpstdout);
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
 					return executeStatement(right, executor, { stdin, stdout, pipedOutput: false });
+				}
+			} else if (op === "|") {
+				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
+					return executeStatement(right, executor, { stdin: tmpstdout, stdout, pipedOutput: true });
 				}
 			}
 		}
@@ -82,6 +96,8 @@ export namespace CmdCoreDispatchService {
 
 	export function Execute(text: string, executor: Player) {
 		const commandAst = new CommandAstParser(text).Parse();
+		CommandAstParser.prettyPrint([commandAst]);
+		print(CommandAstParser.render(commandAst));
 
 		const stdout = new Array<string>();
 
