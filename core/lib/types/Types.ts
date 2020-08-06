@@ -73,6 +73,7 @@ type _CommandArgument =
 	| StringCommandArgument
 	| BooleanCommandArgument
 	| NumberCommandArgument
+	| (CommandArgumentType<"player"> & { default?: Player })
 	| CustomTypeArgument<defined, defined>;
 
 export type CommandArgument = _CommandArgument | CommandUnionType2<readonly CommandArgumentTypeId[]>;
@@ -112,6 +113,10 @@ type InferType<T> = T extends { type: CommandType.String | "string" }
 	? boolean
 	: T extends { type: CommandType.Boolean | "boolean" }
 	? GetResultingType<boolean, T>
+	: T extends { type: "player" }
+	? GetResultingType<Player, T>
+	: T extends { type: "players" }
+	? GetResultingType<Player[], T>
 	: T extends { type: CustomCommandType<infer _, infer A> }
 	? GetResultingType<A, T>
 	: unknown;
@@ -141,3 +146,8 @@ export type ExecutionOptions = {
 	stdout: string[];
 	piped: boolean;
 };
+
+export interface ExecuteBinaryExpressionResult {
+	result: defined;
+	stdout: string[];
+}

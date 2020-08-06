@@ -24,7 +24,7 @@ type ValidationType = "string" | "number" | "boolean";
 
 export interface CommandInterpreterArgument {
 	default?: defined;
-	type: ValidationType | "any" | "var";
+	type: ValidationType | "player" | "any" | "var";
 }
 
 export interface CommandInterpreterOption {
@@ -121,7 +121,7 @@ export default class CommandAstInterpreter {
 
 	public interpret(
 		node: CommandStatement | CommandSource | BinaryExpression,
-		variables: Record<string, defined> = { _VERSION: PKG_VERSION },
+		variables: Record<string, defined>,
 		interpreterOptions: InterpreterOptions = { throwOnInvalidOption: true, allowUndefinedCommands: false },
 		results = new Array<CommandInterpreterResult | CommandInterpreterSequenceResult>(),
 	) {
@@ -155,7 +155,7 @@ export default class CommandAstInterpreter {
 	 */
 	public interpretCommandStatement(
 		statementNode: CommandStatement,
-		variables: Record<string, defined> = { _VERSION: PKG_VERSION },
+		variables: Record<string, defined>,
 		interpreterOptions: InterpreterOptions,
 	) {
 		const parsedResult: CommandInterpreterResult = {

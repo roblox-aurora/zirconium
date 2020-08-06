@@ -9,9 +9,10 @@ import {
 	getNodeKindName,
 } from "@rbxts/cmd-ast/out/Nodes";
 import { CommandInterpreterArgument } from "./CommandAstInterpreter";
+import util from "../util";
 
-type CmdSyntaxMap = {
-	[P in keyof NodeTypes]: (value: NodeTypes[P], variables: Record<string, defined>) => defined;
+export type CmdSyntaxMap<R = defined> = {
+	[P in keyof NodeTypes]: (value: NodeTypes[P], variables: Record<string, defined>) => R;
 };
 
 const numericHandler = (node: BooleanLiteral | NumberLiteral) => node.value;
@@ -28,6 +29,30 @@ export const argumentTransformers: Partial<Record<CommandInterpreterArgument["ty
 				throw `[CommandInterpreter] expected string, got ${getFriendlyName(node)}`;
 			}
 		},
+	},
+	player: {
+		[CmdSyntaxKind.String]: (node) => {
+			const players = game.GetService("Players").GetPlayers();
+			const player = players.find((p) => util.startsWithIgnoreCase(p.Name, node.text));
+			if (player) {
+				return player;
+			} else {
+				throw `[CommandInterpreter] Could not find player matching ${node.text}`;
+			}
+		},
+		// [CmdSyntaxKind.PrefixExpression]: (node, variables) => {
+		// 	const { prefix, expression } = node;
+		// 	if (prefix.value === "@") {
+		// 		const player = variables.player as Player;
+
+		// 		if (isNode(expression, CmdSyntaxKind.String)) {
+		// 			const { text } = expression;
+		// 			if (text === "me") {
+		// 			}
+		// 		}
+		// 	}
+		// 	return [];
+		// },
 	},
 	number: {
 		[CmdSyntaxKind.Number]: numericHandler,

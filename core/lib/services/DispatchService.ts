@@ -1,5 +1,13 @@
 import { CmdCoreRegistryService } from "./RegistryService";
-import { CommandStatement, isNode, CmdSyntaxKind, BinaryExpression, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
+import {
+	CommandStatement,
+	isNode,
+	CmdSyntaxKind,
+	BinaryExpression,
+	getNodeKindName,
+	VariableStatement,
+	flattenInterpolatedString,
+} from "@rbxts/cmd-ast/out/Nodes";
 import CommandAstParser, { ast } from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
 
@@ -16,9 +24,21 @@ export namespace CmdCoreDispatchService {
 	let Registry!: CmdCoreRegistryService;
 
 	export const dependencies = ["RegistryService"];
-	const variables: Record<string, defined> = {
+	const playerVariables = new WeakMap<Player, Record<string, defined>>();
+	const globalVariables: Record<string, defined> = {
 		_VERSION: PKG_VERSION,
 	};
+
+	function getVariablesForPlayer(player: Player): Record<string, defined> {
+		if (playerVariables.has(player)) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			return playerVariables.get(player)!;
+		} else {
+			const vars = { ...globalVariables, player, playerName: player.Name, userId: player.UserId };
+			playerVariables.set(player, vars);
+			return vars;
+		}
+	}
 
 	/** @internal */
 	export function LoadDependencies(registry: CmdCoreRegistryService) {
@@ -26,8 +46,8 @@ export namespace CmdCoreDispatchService {
 	}
 
 	function executeStatement(statement: CommandStatement, executor: Player, params: ExecutionParams) {
-		variables["player"] = executor;
-		variables["playerName"] = executor.Name;
+		const variables = getVariablesForPlayer(executor);
+		variables._cmd = statement.command.name;
 
 		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
 		const result = interpreter.interpret(statement, variables);
@@ -59,7 +79,6 @@ export namespace CmdCoreDispatchService {
 		const tmpstdout = new Array<string>();
 
 		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
-			print(getNodeKindName(left), op, getNodeKindName(right));
 			const result = executeStatement(left, executor, {
 				stdin: [],
 				stdout: tmpstdout,
@@ -73,8 +92,6 @@ export namespace CmdCoreDispatchService {
 				}
 			} else if (op === "|") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					print("ExecuteStatement", game.GetService("HttpService").JSONEncode(tmpstdout));
-					// somehow have to pipe stdout
 					return executeStatement(right, executor, { stdin: tmpstdout, stdout, pipedOutput: false });
 				}
 			}
@@ -94,22 +111,55 @@ export namespace CmdCoreDispatchService {
 		}
 	}
 
+	export function executeVariableStatement(statement: VariableStatement, executor: Player) {
+		const vars = getVariablesForPlayer(executor);
+
+		const {
+			declaration: {
+				expression,
+				identifier: { name },
+			},
+		} = statement;
+
+		if (isNode(expression, CmdSyntaxKind.Boolean) || isNode(expression, CmdSyntaxKind.Number)) {
+			vars[name] = expression.value;
+		} else if (isNode(expression, CmdSyntaxKind.String)) {
+			vars[name] = expression.text;
+		} else if (isNode(expression, CmdSyntaxKind.CommandStatement)) {
+			vars[name] = executeStatement(expression, executor, {
+				stdout: [],
+				stdin: [],
+				pipedOutput: false,
+			}) as defined;
+		} else if (isNode(expression, CmdSyntaxKind.InterpolatedString)) {
+			vars[name] = flattenInterpolatedString(expression, vars).text;
+		} else if (isNode(expression, CmdSyntaxKind.Identifier)) {
+			vars[name] = vars[expression.name];
+		} else {
+			throw `[CommandDispatch] Cannot declare ${name} as ${getNodeKindName(expression)}`;
+		}
+	}
+
 	export function Execute(text: string, executor: Player) {
-		const commandAst = new CommandAstParser(text).Parse();
-		CommandAstParser.prettyPrint([commandAst]);
-		print(CommandAstParser.render(commandAst));
+		const commandAst = new CommandAstParser(text, {
+			prefixExpressions: true,
+			variableDeclarations: true,
+		}).Parse();
+		const vars = getVariablesForPlayer(executor);
 
 		const stdout = new Array<string>();
 
 		for (const statement of commandAst.children) {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
-				executeStatement(statement, executor, { stdin: [], stdout, pipedOutput: false });
+				vars._ = executeStatement(statement, executor, { stdin: [], stdout, pipedOutput: false }) as defined;
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
-				executeBinaryExpression(statement, executor, stdout);
+				vars._ = executeBinaryExpression(statement, executor, stdout) as defined;
+			} else if (isNode(statement, CmdSyntaxKind.VariableStatement)) {
+				executeVariableStatement(statement, executor);
 			}
 		}
 
-		variables["_last"] = text;
+		vars._ = text;
 
 		return { stdout };
 	}

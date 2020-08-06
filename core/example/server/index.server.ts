@@ -7,23 +7,23 @@ const killCommand = Command.create({
 	options: {
 		withExplosion: { type: "switch", alias: ["e"] },
 	},
-	args: [{ type: CommandTypes.Player, required: true }] as const,
+	args: [{ type: "player", required: true }] as const,
 	execute: (_, { Arguments: [player], Options }) => {
 		if (Options.withExplosion) {
 			const explode = new Instance("Explosion");
 			explode.Position = player.Character?.GetPrimaryPartCFrame().Position ?? new Vector3();
 			explode.Parent = game.Workspace;
-			// return player.Character;
 		} else {
 			player.Character?.BreakJoints();
-			// return player.Character;
 		}
 	},
 });
 
 const jq = Command.create({
 	command: "json",
-	options: {},
+	options: {
+		wrap: { type: "string", default: "" },
+	},
 	args: [],
 	execute: (ctx, args) => {
 		const http = game.GetService("HttpService");
@@ -31,11 +31,33 @@ const jq = Command.create({
 		const input = ctx.GetInput();
 		if (input.size() > 0) {
 			for (const value of input) {
-				print(http.JSONEncode(http.JSONDecode(value)));
+				ctx.PushOutput(
+					`${args.Options.wrap}` + http.JSONEncode(http.JSONDecode(value)) + `${args.Options.wrap}`,
+				);
 			}
 		} else {
 			for (const value of args.Arguments) {
-				print(http.JSONEncode(http.JSONDecode(tostring(value))));
+				ctx.PushOutput(
+					`${args.Options.wrap}` + http.JSONEncode(http.JSONDecode(tostring(value))) + `${args.Options.wrap}`,
+				);
+			}
+		}
+	},
+});
+
+const upper = Command.create({
+	command: "caps",
+	options: {},
+	args: [],
+	execute: (ctx, args) => {
+		const input = ctx.GetInput();
+		if (input.size() > 0) {
+			for (const value of input) {
+				ctx.PushOutput(value.upper());
+			}
+		} else {
+			for (const value of args.Arguments) {
+				ctx.PushOutput(tostring(value).upper());
 			}
 		}
 	},
@@ -48,13 +70,38 @@ const echoCommand = Command.create({
 	},
 	args: [],
 	execute: (ctx, args) => {
-		ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
+		if (ctx.IsOutputPiped()) {
+			ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
+		} else {
+			ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
+		}
+	},
+});
+
+const listVars = Command.create({
+	command: "env",
+	options: {
+		name: { type: "string" },
+	},
+	args: [],
+	execute: (ctx, args) => {
+		const vars = ctx.GetVariables();
+
+		if (args.Options.name) {
+			ctx.PushOutput(tostring(vars[args.Options.name]));
+		} else {
+			for (const [name, value] of Object.entries(vars)) {
+				ctx.PushOutput(`$${name} = ${tostring(value)}`);
+			}
+		}
 	},
 });
 
 Registry.RegisterCommand(killCommand);
 Registry.RegisterCommand(echoCommand);
 Registry.RegisterCommand(jq);
+Registry.RegisterCommand(upper);
+Registry.RegisterCommand(listVars);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	player.Chatted.Connect((message) => {

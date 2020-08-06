@@ -40,6 +40,10 @@ export default class CommandContext<O extends CommandOptions> {
 		return this.variables[key];
 	}
 
+	public GetVariables(): Readonly<Record<string, defined>> {
+		return this.variables;
+	}
+
 	public GetNumberVariable(key: string): number | undefined {
 		const value = this.getVariable(key);
 		if (typeIs(value, "number")) {
