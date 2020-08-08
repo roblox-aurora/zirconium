@@ -1,6 +1,8 @@
 import { Command } from "@cmd-core/class/Command";
 import { Registry, Dispatch } from "@cmd-core";
 import CommandTypes, { Player } from "./types";
+import Net from "@rbxts/net";
+import t from "@rbxts/t";
 
 const killCommand = Command.create({
 	command: "kill",
@@ -103,13 +105,21 @@ Registry.RegisterCommand(jq);
 Registry.RegisterCommand(upper);
 Registry.RegisterCommand(listVars);
 
-game.GetService("Players").PlayerAdded.Connect((player) => {
-	player.Chatted.Connect((message) => {
-		if (message.sub(0, 0) === "/") {
-			const { stdout } = Dispatch.Execute(message.sub(1), player);
-			for (const message of stdout) {
-				print("[info]", message);
-			}
-		}
-	});
+// game.GetService("Players").PlayerAdded.Connect((player) => {
+// 	player.Chatted.Connect((message) => {
+// 		if (message.sub(0, 0) === "/") {
+// 			const { stdout } = Dispatch.Execute(message.sub(1), player);
+// 			for (const message of stdout) {
+// 				print("[info]", message);
+// 			}
+// 		}
+// 	});
+// });
+
+const testSend = new Net.ServerEvent("TestSendEvent", t.string);
+testSend.Connect((player, message) => {
+	const { stdout } = Dispatch.Execute(message, player);
+	for (const message of stdout) {
+		print("[info]", message);
+	}
 });

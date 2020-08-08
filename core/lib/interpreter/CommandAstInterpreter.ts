@@ -1,24 +1,16 @@
+import { isNodeIn, getKindName, getNodeKindName, isNode, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
+import { flattenInterpolatedString, createBooleanNode } from "@rbxts/cmd-ast/out/Nodes/Create";
+import { argumentTransformers, getFriendlyName } from "./InterpreterHelpers";
 import {
 	NodeKind,
 	CommandName,
 	Option,
 	Node,
 	NodeTypes,
-	isNodeIn,
-	getKindName,
-	getNodeKindName,
-	isNode,
 	CommandStatement,
 	CommandSource,
 	BinaryExpression,
-	CmdSyntaxKind,
-	flattenInterpolatedString,
-	createBooleanNode,
-	createInterpolatedString,
-	BooleanLiteral,
-	NumberLiteral,
-} from "@rbxts/cmd-ast/out/Nodes";
-import { argumentTransformers, getFriendlyName } from "./InterpreterHelpers";
+} from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 
 type ValidationType = "string" | "number" | "boolean";
 

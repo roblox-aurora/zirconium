@@ -19,6 +19,15 @@
                     }
                 }
             }
+        },
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "Client": {
+                    "$path": "build/example/client"
+                }
+            }
         }
     }
 }

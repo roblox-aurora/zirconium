@@ -24,7 +24,9 @@
         "paths": {
             "@cmd-core": ["../lib"],
             "@cmd-core/*": ["../lib/*"]
-        }
+        },
+        "jsx": "react",
+        "jsxFactory": "Roact.createElement"
     },
     "include": [
         "**/*",

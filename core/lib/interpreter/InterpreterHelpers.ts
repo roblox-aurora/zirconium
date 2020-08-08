@@ -1,15 +1,8 @@
-import {
-	NodeTypes,
-	BooleanLiteral,
-	NumberLiteral,
-	CmdSyntaxKind,
-	flattenInterpolatedString,
-	isNode,
-	Node,
-	getNodeKindName,
-} from "@rbxts/cmd-ast/out/Nodes";
 import { CommandInterpreterArgument } from "./CommandAstInterpreter";
 import util from "../util";
+import { NodeTypes, BooleanLiteral, NumberLiteral, Node } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
 
 export type CmdSyntaxMap<R = defined> = {
 	[P in keyof NodeTypes]: (value: NodeTypes[P], variables: Record<string, defined>) => R;

@@ -1,15 +1,9 @@
 import { CmdCoreRegistryService } from "./RegistryService";
-import {
-	CommandStatement,
-	isNode,
-	CmdSyntaxKind,
-	BinaryExpression,
-	getNodeKindName,
-	VariableStatement,
-	flattenInterpolatedString,
-} from "@rbxts/cmd-ast/out/Nodes";
-import CommandAstParser, { ast } from "@rbxts/cmd-ast";
+import CommandAstParser from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
+import { CommandStatement, BinaryExpression, VariableStatement, Node } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
 
 interface stdio {
 	stdout: Array<string>;
@@ -47,7 +41,7 @@ export namespace CmdCoreDispatchService {
 
 	function executeStatement(statement: CommandStatement, executor: Player, params: ExecutionParams) {
 		const variables = getVariablesForPlayer(executor);
-		variables._cmd = statement.command.name;
+		variables._cmd = statement.command.name.text;
 
 		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
 		const result = interpreter.interpret(statement, variables);
@@ -140,18 +134,13 @@ export namespace CmdCoreDispatchService {
 		}
 	}
 
-	export function Execute(text: string, executor: Player) {
-		const commandAst = new CommandAstParser(text, {
-			prefixExpressions: true,
-			variableDeclarations: true,
-		}).Parse();
+	function executeNodes(nodes: Node[], executor: Player, stdin = new Array<string>()) {
+		const stdout = new Array<string>();
 		const vars = getVariablesForPlayer(executor);
 
-		const stdout = new Array<string>();
-
-		for (const statement of commandAst.children) {
+		for (const statement of nodes) {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
-				vars._ = executeStatement(statement, executor, { stdin: [], stdout, pipedOutput: false }) as defined;
+				vars._ = executeStatement(statement, executor, { stdin, stdout, pipedOutput: false }) as defined;
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
 				vars._ = executeBinaryExpression(statement, executor, stdout) as defined;
 			} else if (isNode(statement, CmdSyntaxKind.VariableStatement)) {
@@ -159,9 +148,20 @@ export namespace CmdCoreDispatchService {
 			}
 		}
 
+		return { stdout };
+	}
+
+	export function Execute(text: string, executor: Player) {
+		const commandAst = new CommandAstParser(text, {
+			prefixExpressions: true,
+			variableDeclarations: true,
+			innerExpressions: true,
+		}).Parse();
+
+		const vars = getVariablesForPlayer(executor);
 		vars._ = text;
 
-		return { stdout };
+		return executeNodes(commandAst.children, executor);
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;
