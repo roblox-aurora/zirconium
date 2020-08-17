@@ -246,28 +246,29 @@ export default class CommandAstInterpreter {
 		while (ptr < children.size()) {
 			const node = children[ptr];
 
-			if (isNode(node, CmdSyntaxKind.Option)) {
+			if (isNode(node, CmdSyntaxKind.OptionExpression)) {
+				const optionNode = node.option;
 				// handle option
-				const option = matchingCommand.options.find(
-					(f) => f.name === node.flag || f.alias?.includes(node.flag),
+				const matchingOption = matchingCommand.options.find(
+					(f) => f.name === optionNode.flag || f.alias?.includes(optionNode.flag),
 				);
 
-				if (option === undefined) {
-					if (interpreterOptions.throwOnInvalidOption) {
-						throw `[CommandInterpreter] Invalid option for ${matchingCommand.command}: ${node.flag}`;
-					} else {
-						commandTypeHandler.switch(node.flag, node, children[ptr + 1]);
-					}
-				} else {
-					const typeHandler = commandTypeHandler[option.type];
-					const nextNode = children[ptr + 1];
+				// if (option === undefined) {
+				// 	if (interpreterOptions.throwOnInvalidOption) {
+				// 		throw `[CommandInterpreter] Invalid option for ${matchingCommand.command}: ${optionNode.flag}`;
+				// 	} else {
+				// 		commandTypeHandler.switch(optionNode.flag, optionNode, children[ptr + 1]);
+				// 	}
+				// } else {
+				// 	const typeHandler = commandTypeHandler[option.type];
+				// 	const nextNode = children[ptr + 1];
 
-					if (typeHandler) {
-						typeHandler(option.name, node, nextNode) && ptr++;
-					} else {
-						commandTypeHandler._(option?.name, node, nextNode) && ptr++;
-					}
-				}
+				// 	if (typeHandler) {
+				// 		typeHandler(option.name, optionNode, nextNode) && ptr++;
+				// 	} else {
+				// 		commandTypeHandler._(option?.name, optionNode, nextNode) && ptr++;
+				// 	}
+				// }
 			} else {
 				// Handle arguments
 				if (!isNodeIn(node, [CmdSyntaxKind.CommandName, CmdSyntaxKind.EndOfStatement])) {

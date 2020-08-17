@@ -21,27 +21,6 @@ const killCommand = Command.create({
 	},
 });
 
-// Command.createMultiCommand("test", {
-// 	one: {
-// 		command: "one",
-// 		options: {},
-// 		args: [],
-// 		execute: (ctx, args) => {
-// 			// TODO
-// 		},
-// 	},
-// 	two: {
-// 		command: "two",
-// 		options: {
-// 			test: { type: "string" },
-// 		},
-// 		args: [] as const,
-// 		execute: (ctx, args) => {
-// 			// TODO
-// 		},
-// 	},
-// });
-
 const jq = Command.create({
 	command: "json",
 	options: {

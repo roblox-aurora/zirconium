@@ -3,6 +3,7 @@ import CommandAstParser from "@rbxts/cmd-ast";
 import { NodeError } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import Net from "@rbxts/net";
 import SyntaxLexer from "@cmd-core/client/SyntaxHighlighter";
+import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
 
 const evt = new Net.ClientEvent("TestSendEvent");
 
@@ -15,15 +16,25 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 		};
 	}
 
+	private commands: AstCommandDefinitions = [
+		{ command: "print", options: { prefix: { type: ["string"] } } },
+		{ command: "caps" },
+		{ command: "json" },
+		{ command: "kill" },
+		{ command: "env", options: { name: { type: ["string"] } } },
+	];
+
 	public updateText = (text: string) => {
 		this.setState({ source: text });
 
-		const ast = new CommandAstParser(text, {
+		const ast = new CommandAstParser({
 			prefixExpressions: true,
 			variableDeclarations: true,
 			innerExpressions: false,
+			invalidCommandIsError: true,
 			nestingInnerExpressions: false,
-		}).Parse();
+			commands: this.commands,
+		}).Parse(text);
 		const validate = CommandAstParser.validate(ast) as { success: boolean; errorNodes: NodeError[] };
 		if (!validate.success) {
 			const errNode = validate.errorNodes[0];
@@ -92,7 +103,11 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 						TextSize={18}
 						BackgroundTransparency={1}
 						RichText
-						Text={SyntaxLexer.toRichText(new SyntaxLexer(this.state.source).Parse())}
+						Text={SyntaxLexer.toRichText(
+							new SyntaxLexer(this.state.source, {
+								commands: this.commands,
+							}).Parse(),
+						)}
 						Position={new UDim2(0, 30, 0, 0)}
 						Size={new UDim2(1, -30, 1, 0)}
 						TextColor3={Color3.fromRGB(204, 204, 204)}

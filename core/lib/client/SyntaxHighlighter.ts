@@ -1,4 +1,5 @@
 import { isValidPrefixCharacter } from "@rbxts/cmd-ast/out/Nodes";
+import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
 
 export enum TokenType {
 	Identifier,
@@ -92,17 +93,20 @@ const VARIABLE = "^%$[A-Za-z_][A-Za-z0-9_]*$";
 interface LexerOptions {
 	variables: boolean;
 	options: boolean;
+	commands: AstCommandDefinitions;
 }
 
 const DEFAULT_LEXER_OPTIONS: LexerOptions = {
 	variables: true,
 	options: true,
+	commands: [],
 };
 
 export default class SyntaxLexer {
 	private ptr = 0;
-	private tokens = "";
+	private curTokens = "";
 	private options: LexerOptions;
+	private tokens = new Array<Token>();
 
 	constructor(private source: string, options?: Partial<LexerOptions>) {
 		this.options = { ...DEFAULT_LEXER_OPTIONS, ...options };
@@ -118,6 +122,19 @@ export default class SyntaxLexer {
 		} else if ((str.match(KEY)[0] || str.match(KEYNAME)[0]) && this.options.options) {
 			return { Type: TokenType.Option, Value: str };
 		} else {
+			const lastToken = this.tokens[this.tokens.size() - 2];
+			const matchingCommand = this.options.commands.find((c) => c.command === str);
+			if (matchingCommand) {
+				return { Type: TokenType.Keyword, Value: str };
+			} else if (lastToken && lastToken.Type === TokenType.Keyword) {
+				const parentCommand = this.options.commands.find((c) => c.command === lastToken.Value);
+				if (parentCommand && parentCommand.children !== undefined) {
+					const matchingCommand = parentCommand.children.find((c) => c.command === str);
+					if (matchingCommand) {
+						return { Type: TokenType.Variable, Value: str };
+					}
+				}
+			}
 			return { Type: TokenType.String, Value: str, Quote: "" };
 		}
 	}
@@ -138,33 +155,32 @@ export default class SyntaxLexer {
 	}
 
 	public pushTokens(tokens: Array<Token>) {
-		if (this.tokens !== "") {
-			tokens.push(this.generateToken(this.tokens));
-			this.tokens = "";
+		if (this.curTokens !== "") {
+			tokens.push(this.generateToken(this.curTokens));
+			this.curTokens = "";
 		}
 	}
 
 	public Parse() {
-		const tokens = new Array<Token>();
 		let isComment = false;
 		while (this.ptr < this.source.size()) {
 			const char = this.source.sub(this.ptr, this.ptr);
 
 			if (char === " " || char === "\t" || char === "\n") {
-				this.pushTokens(tokens);
-				tokens.push({ Type: TokenType.Whitespace, Value: char });
+				this.pushTokens(this.tokens);
+				this.tokens.push({ Type: TokenType.Whitespace, Value: char });
 			} else if (char === "#") {
 				isComment = true;
 				while (this.ptr <= this.source.size()) {
 					const subChar = this.source.sub(this.ptr, this.ptr);
 					if (subChar === "\n") {
-						tokens.push({ Type: TokenType.Comment, Value: this.tokens });
-						tokens.push({ Type: TokenType.Whitespace, Value: subChar });
-						this.tokens = "";
+						this.tokens.push({ Type: TokenType.Comment, Value: this.curTokens });
+						this.tokens.push({ Type: TokenType.Whitespace, Value: subChar });
+						this.curTokens = "";
 						isComment = false;
 						break;
 					} else {
-						this.tokens += subChar;
+						this.curTokens += subChar;
 					}
 					this.ptr++;
 				}
@@ -175,9 +191,9 @@ export default class SyntaxLexer {
 					const subChar = this.source.sub(subPtr, subPtr);
 					if (subChar === " " || subChar === "\n" || subChar === ";" || subPtr === this.source.size()) {
 						if (prefix === "") {
-							tokens.push({ Type: TokenType.Error, Value: `${char}` });
+							this.tokens.push({ Type: TokenType.Error, Value: `${char}` });
 						} else {
-							tokens.push({ Type: TokenType.Prefix, Value: `${char}${prefix}` });
+							this.tokens.push({ Type: TokenType.Prefix, Value: `${char}${prefix}` });
 						}
 						break;
 					} else {
@@ -188,61 +204,61 @@ export default class SyntaxLexer {
 
 				this.ptr = subPtr - 1;
 			} else if (OPERATORS.includes(char)) {
-				this.pushTokens(tokens);
-				tokens.push({ Type: TokenType.Operator, Value: char });
+				this.pushTokens(this.tokens);
+				this.tokens.push({ Type: TokenType.Operator, Value: char });
 			} else if (char === `"` || char === "'") {
 				let subPtr = this.ptr + 1;
 				let completeString = false;
 				let isId = false;
 
-				tokens.push({ Type: TokenType.Operator, Value: char });
+				this.tokens.push({ Type: TokenType.Operator, Value: char });
 
 				while (subPtr < this.source.size()) {
 					const subChar = this.source.sub(subPtr, subPtr);
 					const nextSubChar = this.source.sub(subPtr + 1, subPtr + 1);
 					if (subChar === char) {
-						tokens.push({ Type: TokenType.String, Value: this.tokens, Quote: char });
-						tokens.push({ Type: TokenType.Operator, Value: char });
-						this.tokens = "";
+						this.tokens.push({ Type: TokenType.String, Value: this.curTokens, Quote: char });
+						this.tokens.push({ Type: TokenType.Operator, Value: char });
+						this.curTokens = "";
 						completeString = true;
 						break;
 					} else if (subChar === "$" && nextSubChar.match("[A-Za-z_]")[0] && this.options.variables) {
-						tokens.push({ Type: TokenType.String, Value: this.tokens, Quote: char });
-						this.tokens = "";
+						this.tokens.push({ Type: TokenType.String, Value: this.curTokens, Quote: char });
+						this.curTokens = "";
 
 						isId = true;
 						const { token, ptr } = this.parseVariable(subPtr + 1);
-						tokens.push(token);
+						this.tokens.push(token);
 						subPtr = ptr;
 						isId = false;
 					} else {
-						this.tokens += subChar;
+						this.curTokens += subChar;
 					}
 					subPtr++;
 				}
 
-				if (this.tokens !== "") {
-					tokens.push({ Type: TokenType.String, Value: this.tokens, Quote: char });
-					this.tokens = "";
+				if (this.curTokens !== "") {
+					this.tokens.push({ Type: TokenType.String, Value: this.curTokens, Quote: char });
+					this.curTokens = "";
 				}
 
 				this.ptr = subPtr;
 			} else {
-				this.tokens += char;
+				this.curTokens += char;
 			}
 			this.ptr++;
 		}
 
 		if (isComment) {
-			tokens.push({ Type: TokenType.Comment, Value: this.tokens });
+			this.tokens.push({ Type: TokenType.Comment, Value: this.curTokens });
 		} else {
-			if (this.tokens !== "") {
-				tokens.push(this.generateToken(this.tokens));
-				this.tokens = "";
+			if (this.curTokens !== "") {
+				this.tokens.push(this.generateToken(this.curTokens));
+				this.curTokens = "";
 			}
 		}
 
-		return tokens;
+		return this.tokens;
 	}
 
 	public static toRichText(tokens: Token[]) {

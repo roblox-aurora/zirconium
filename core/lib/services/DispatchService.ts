@@ -10,7 +10,7 @@ interface stdio {
 	stdin: Array<string>;
 }
 
-interface ExecutionParams extends stdio {
+export interface ExecutionParams extends stdio {
 	pipedOutput: boolean;
 }
 
@@ -23,7 +23,7 @@ export namespace CmdCoreDispatchService {
 		_VERSION: PKG_VERSION,
 	};
 
-	function getVariablesForPlayer(player: Player): Record<string, defined> {
+	export function getVariablesForPlayer(player: Player): Record<string, defined> {
 		if (playerVariables.has(player)) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			return playerVariables.get(player)!;
@@ -40,27 +40,29 @@ export namespace CmdCoreDispatchService {
 	}
 
 	function executeStatement(statement: CommandStatement, executor: Player, params: ExecutionParams) {
-		const variables = getVariablesForPlayer(executor);
-		variables._cmd = statement.command.name.text;
-
-		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
-		const result = interpreter.interpret(statement, variables);
-
-		const cmd = result[0];
-		if (CommandAstInterpreter.isCommand(cmd)) {
-			const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
-			if (matchingCommand) {
-				return matchingCommand.executeForPlayer({
-					variables,
-					mappedOptions: cmd.options,
-					args: cmd.args,
-					executor,
-					piped: params.pipedOutput,
-					stdin: params.stdin,
-					stdout: params.stdout,
-				});
-			}
+		const matchingCommand = Registry.GetCommands().find((c) => c.matchesCommand(statement));
+		if (matchingCommand) {
+			return matchingCommand.executeStatement(statement, CmdCoreDispatchService, executor, params);
 		}
+		// const variables = getVariablesForPlayer(executor);
+		// variables._cmd = statement.command.name.text;
+		// const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
+		// const result = interpreter.interpret(statement, variables);
+		// const cmd = result[0];
+		// if (CommandAstInterpreter.isCommand(cmd)) {
+		// 	const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
+		// 	if (matchingCommand) {
+		// 		return matchingCommand.executeForPlayer({
+		// 			variables,
+		// 			mappedOptions: cmd.options,
+		// 			args: cmd.args,
+		// 			executor,
+		// 			piped: params.pipedOutput,
+		// 			stdin: params.stdin,
+		// 			stdout: params.stdout,
+		// 		});
+		// 	}
+		// }
 	}
 
 	function executeBinaryExpression(expression: BinaryExpression, executor: Player, stdout: stdio["stdout"] = []) {
@@ -151,12 +153,16 @@ export namespace CmdCoreDispatchService {
 		return { stdout };
 	}
 
+	const parser = new CommandAstParser({
+		prefixExpressions: true,
+		variableDeclarations: true,
+		innerExpressions: true,
+		commands: [{ command: "print" }],
+	});
+
 	export function Execute(text: string, executor: Player) {
-		const commandAst = new CommandAstParser(text, {
-			prefixExpressions: true,
-			variableDeclarations: true,
-			innerExpressions: true,
-		}).Parse();
+		const commandAst = parser.Parse(text);
+		CommandAstParser.validate(commandAst);
 
 		const vars = getVariablesForPlayer(executor);
 		vars._ = text;

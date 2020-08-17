@@ -7,12 +7,15 @@ import {
 	ExecutionOptions,
 	CommandOptionArgument,
 } from "../types/Types";
-import {
+import CommandAstInterpreter, {
 	CommandInterpreterOption,
 	CommandInterpreterDeclaration,
 	CommandInterpreterArgument,
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
+import { CommandBase } from "./CommandBase";
+import { CommandStatement } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
@@ -26,14 +29,17 @@ export interface ExecutionArgs<K extends CommandOptions, A> {
 	Arguments: MappedOptionsReadonly<A>;
 }
 
-export class Command<O extends CommandOptions = defined, A extends ReadonlyArray<CommandArgument> = [], R = unknown> {
-	public readonly command: string;
+export class Command<
+	O extends CommandOptions = defined,
+	A extends ReadonlyArray<CommandArgument> = [],
+	R = unknown
+> extends CommandBase {
 	public readonly options: O;
 	public readonly args: A;
 	private execute: CommandDeclaration<O, A, R>["execute"];
 
 	private constructor({ command, options, args, execute }: CommandDeclaration<O, A, R>) {
-		this.command = command;
+		super(command);
 		this.options = options;
 		this.args = args;
 		this.execute = execute;
@@ -122,8 +128,33 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		}
 	}
 
+	public executeStatement(
+		statement: CommandStatement,
+		dispatch: CmdCoreDispatchService,
+		executor: Player,
+		params: ExecutionParams,
+	) {
+		assert(statement.command.name.text === this.command, "Invalid execution");
+		const variables = dispatch.getVariablesForPlayer(executor);
+		variables._cmd = statement.command.name.text;
+		const interpreter = new CommandAstInterpreter([this.getCommandDeclaration()]);
+		const result = interpreter.interpret(statement, variables);
+		const cmd = result[0];
+		if (CommandAstInterpreter.isCommand(cmd)) {
+			return this.executeForPlayer({
+				variables,
+				mappedOptions: cmd.options,
+				args: cmd.args,
+				executor,
+				piped: params.pipedOutput,
+				stdin: params.stdin,
+				stdout: params.stdout,
+			});
+		}
+	}
+
 	/** @internal */
-	public executeForPlayer({ variables, mappedOptions, args, executor, stdin, stdout, piped }: ExecutionOptions): R {
+	private executeForPlayer({ variables, mappedOptions, args, executor, stdin, stdout, piped }: ExecutionOptions): R {
 		const remapped: Record<string, defined> = {};
 		for (const [name, opt] of mappedOptions) {
 			const option = this.options[name];

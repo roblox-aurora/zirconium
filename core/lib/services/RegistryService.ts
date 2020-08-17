@@ -1,8 +1,9 @@
 import type { CustomCommandType } from "../types/Types";
 import { Command } from "../class/Command";
+import { CommandBase } from "../class/CommandBase";
 
 export namespace CmdCoreRegistryService {
-	const commands = new Array<Command>();
+	const commands = new Array<CommandBase>();
 	const types = new Map<string, CustomCommandType<defined>>();
 	function makeEnumType<T extends string>(name: string, values: T[]): CustomCommandType<T> {
 		return {
@@ -23,15 +24,15 @@ export namespace CmdCoreRegistryService {
 		};
 	}
 
-	export function GetCommands(): ReadonlyArray<Command> {
+	export function GetCommands(): ReadonlyArray<CommandBase> {
 		return commands;
 	}
 
-	export function GetCommandDeclarations() {
-		return commands.map((c) => c.getCommandDeclaration());
-	}
+	// export function GetCommandDeclarations() {
+	// 	return commands.map((c) => c.getCommandDeclaration());
+	// }
 
-	export function RegisterCommand<C extends Command<any, any, any>>(command: C) {
+	export function RegisterCommand<C extends CommandBase>(command: C) {
 		commands.push(command);
 	}
 
