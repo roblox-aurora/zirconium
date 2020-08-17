@@ -65,11 +65,6 @@ interface VariableToken extends TokenBase {
 	Value: string;
 }
 
-interface InnerExpressionToken extends TokenBase {
-	Type: TokenType.InnerExpression;
-	Value: string;
-}
-
 interface CommentToken extends TokenBase {
 	Type: TokenType.Comment;
 	Value: string;
@@ -89,7 +84,6 @@ export type Token =
 
 const OPERATORS = ["=", "|", "&", ";"];
 
-const INTEGER = "%d+";
 const DECIMAL = "^[0-9]+%.*[0-9]*$";
 const KEY = "^%-[A-Za-z]+$";
 const KEYNAME = "^%-%-[A-Za-z%-0-9]+$";
@@ -105,7 +99,7 @@ const DEFAULT_LEXER_OPTIONS: LexerOptions = {
 	options: true,
 };
 
-export default class SimpleLexer {
+export default class SyntaxLexer {
 	private ptr = 0;
 	private tokens = "";
 	private options: LexerOptions;
@@ -251,7 +245,7 @@ export default class SimpleLexer {
 		return tokens;
 	}
 
-	public static renderTokens(tokens: Token[]) {
+	public static toRichText(tokens: Token[]) {
 		let str = "";
 		for (const token of tokens) {
 			if (token.Type === TokenType.Variable) {

@@ -1,9 +1,8 @@
 import Roact from "@rbxts/roact";
 import CommandAstParser from "@rbxts/cmd-ast";
-import { highlight } from "./highlight";
-import SimpleLexer from "./highlight2";
 import { NodeError } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import Net from "@rbxts/net";
+import SyntaxLexer from "@cmd-core/client/SyntaxHighlighter";
 
 const evt = new Net.ClientEvent("TestSendEvent");
 
@@ -22,8 +21,8 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 		const ast = new CommandAstParser(text, {
 			prefixExpressions: true,
 			variableDeclarations: true,
-			innerExpressions: true,
-			nestingInnerExpressions: true,
+			innerExpressions: false,
+			nestingInnerExpressions: false,
 		}).Parse();
 		const validate = CommandAstParser.validate(ast) as { success: boolean; errorNodes: NodeError[] };
 		if (!validate.success) {
@@ -93,7 +92,7 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 						TextSize={18}
 						BackgroundTransparency={1}
 						RichText
-						Text={SimpleLexer.renderTokens(new SimpleLexer(this.state.source).Parse())}
+						Text={SyntaxLexer.toRichText(new SyntaxLexer(this.state.source).Parse())}
 						Position={new UDim2(0, 30, 0, 0)}
 						Size={new UDim2(1, -30, 1, 0)}
 						TextColor3={Color3.fromRGB(204, 204, 204)}
@@ -111,11 +110,11 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 					<textbutton
 						Text="Run"
 						Size={new UDim2(0, 100, 0, 20)}
-						Position={new UDim2(1, -100, 1, -20)}
+						Position={new UDim2(1, -100, 0, -20)}
 						TextSize={18}
 						BorderSizePixel={0}
-						BackgroundColor3={Color3.fromRGB(80, 80, 80)}
-						TextColor3={Color3.fromRGB(200, 100, 100)}
+						BackgroundColor3={Color3.fromRGB(40, 40, 40)}
+						TextColor3={Color3.fromRGB(100, 200, 100)}
 						Font="Code"
 						Event={{
 							MouseButton1Down: () => {
@@ -139,5 +138,3 @@ print "The statement is: $hello"`}
 	game.GetService("Players").LocalPlayer.FindFirstChildOfClass("PlayerGui")!,
 	"cmon",
 );
-
-print(game.GetService("HttpService").JSONEncode(new SimpleLexer(`$x = 10; cmd --testing yes`).Parse()));

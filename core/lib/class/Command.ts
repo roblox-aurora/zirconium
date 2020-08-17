@@ -3,7 +3,6 @@ import {
 	CommandArgument,
 	isCmdTypeDefinition,
 	MappedOptions,
-	MappedArgs,
 	MappedOptionsReadonly,
 	ExecutionOptions,
 	CommandOptionArgument,
@@ -14,7 +13,6 @@ import {
 	CommandInterpreterArgument,
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
-import t from "@rbxts/t";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
@@ -34,8 +32,7 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 	public readonly args: A;
 	private execute: CommandDeclaration<O, A, R>["execute"];
 
-	constructor({ command, options, args, execute }: CommandDeclaration<O, A, R>) {
-		// TODO:
+	private constructor({ command, options, args, execute }: CommandDeclaration<O, A, R>) {
 		this.command = command;
 		this.options = options;
 		this.args = args;
@@ -171,3 +168,5 @@ export class Command<O extends CommandOptions = defined, A extends ReadonlyArray
 		return new Command(declaration);
 	}
 }
+
+type CommandList = Record<string, CommandDeclaration<defined, readonly CommandArgument[], any>>;
