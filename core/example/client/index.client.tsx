@@ -20,7 +20,7 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 		{ command: "print", options: { prefix: { type: ["string"] } } },
 		{ command: "caps" },
 		{ command: "json" },
-		{ command: "kill" },
+		{ command: "kill", args: [{ type: ["string"] }] },
 		{ command: "env", options: { name: { type: ["string"] } } },
 	];
 

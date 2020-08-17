@@ -105,6 +105,8 @@ Registry.RegisterCommand(jq);
 Registry.RegisterCommand(upper);
 Registry.RegisterCommand(listVars);
 
+print(game.GetService("HttpService").JSONEncode(killCommand.getAstDefinition()));
+
 // game.GetService("Players").PlayerAdded.Connect((player) => {
 // 	player.Chatted.Connect((message) => {
 // 		if (message.sub(0, 0) === "/") {

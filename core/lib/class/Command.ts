@@ -16,6 +16,13 @@ import CommandContext from "./CommandContext";
 import { CommandBase } from "./CommandBase";
 import { CommandStatement } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
+import {
+	AstCommandDefinition,
+	AstOptionDefinition,
+	AstArgumentDefinition,
+	AstPrimitiveType,
+} from "@rbxts/cmd-ast/out/Definitions/Definitions";
+import t from "@rbxts/t";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
@@ -43,6 +50,65 @@ export class Command<
 		this.options = options;
 		this.args = args;
 		this.execute = execute;
+	}
+
+	private typeToAstType(typeName: CommandOptionArgument["type"]): AstPrimitiveType {
+		if (typeIs(typeName, "table")) {
+			return "string";
+		} else if (typeName === "player") {
+			return "string";
+		} else {
+			return typeName;
+		}
+	}
+
+	private getAstOptionDefinitions(): Readonly<Record<string, AstOptionDefinition>> {
+		const list: Record<string, AstOptionDefinition> = {};
+		for (const [key, { type: optionType }] of Object.entries(this.options)) {
+			if (typeIs(optionType, "table")) {
+				if (!isCmdTypeDefinition(optionType)) {
+					const argl = new Array<AstPrimitiveType>();
+					for (const subType of optionType) {
+						argl.push(this.typeToAstType(subType));
+					}
+					list[key] = { type: argl };
+				} else {
+					list[key] = { type: ["string"] };
+				}
+			} else {
+				list[key] = { type: [this.typeToAstType(optionType)] };
+			}
+		}
+		return list;
+	}
+
+	public getAstArgumentDefinitions(): readonly AstArgumentDefinition[] {
+		const list = new Array<AstArgumentDefinition>();
+		for (const arg of this.args) {
+			const { type: argType } = arg;
+			if (typeIs(argType, "table")) {
+				if (!isCmdTypeDefinition(argType)) {
+					const argl = new Array<AstPrimitiveType>();
+					for (const subType of argType) {
+						argl.push(this.typeToAstType(subType));
+					}
+					list.push({ type: argl });
+				} else {
+					list.push({ type: ["string"] });
+				}
+			} else {
+				list.push({ type: [this.typeToAstType(argType)] });
+			}
+		}
+		return list;
+	}
+
+	public getAstDefinition(): AstCommandDefinition {
+		return {
+			command: this.command,
+			options: this.getAstOptionDefinitions(),
+			args: this.getAstArgumentDefinitions(),
+		};
 	}
 
 	/** @internal */

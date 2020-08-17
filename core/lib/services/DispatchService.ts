@@ -162,12 +162,15 @@ export namespace CmdCoreDispatchService {
 
 	export function Execute(text: string, executor: Player) {
 		const commandAst = parser.Parse(text);
-		CommandAstParser.validate(commandAst);
+		const valid = CommandAstParser.validate(commandAst);
+		if (valid.success) {
+			const vars = getVariablesForPlayer(executor);
+			vars._ = text;
 
-		const vars = getVariablesForPlayer(executor);
-		vars._ = text;
-
-		return executeNodes(commandAst.children, executor);
+			return executeNodes(commandAst.children, executor);
+		} else {
+			return { stdout: [valid.errorNodes[0].message] };
+		}
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;
