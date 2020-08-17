@@ -150,7 +150,8 @@ class TestEditor extends Roact.Component<
 Roact.mount(
 	<screengui>
 		<TestEditor
-			source={`$hello = "Hello, $playerName!"
+			source={`# zirc-lang test
+$hello = "Hello, $playerName!"
 print "The statement is: $hello"`}
 		/>
 	</screengui>,

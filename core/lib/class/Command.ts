@@ -14,7 +14,7 @@ import CommandAstInterpreter, {
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
 import { CommandBase } from "./CommandBase";
-import { CommandStatement } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { CommandStatement, CommandName } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
 import {
 	AstCommandDefinition,
@@ -22,13 +22,15 @@ import {
 	AstArgumentDefinition,
 	AstPrimitiveType,
 } from "@rbxts/cmd-ast/out/Definitions/Definitions";
-import t from "@rbxts/t";
+import { typeGuards, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
+import { createCommandStatement } from "@rbxts/cmd-ast/out/Nodes/Create";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
 	options: O;
 	args: A;
-	execute(this: void, context: CommandContext<O>, args: ExecutionArgs<O, A>): R;
+	execute?: (this: void, context: CommandContext<O>, args: ExecutionArgs<O, A>) => R;
+	children?: readonly Command<any, any, any>[];
 }
 
 export interface ExecutionArgs<K extends CommandOptions, A> {
@@ -44,11 +46,13 @@ export class Command<
 	public readonly options: O;
 	public readonly args: A;
 	private execute: CommandDeclaration<O, A, R>["execute"];
+	private children: readonly Command[] | undefined;
 
-	private constructor({ command, options, args, execute }: CommandDeclaration<O, A, R>) {
+	private constructor({ command, options, args, execute, children }: CommandDeclaration<O, A, R>) {
 		super(command);
 		this.options = options;
 		this.args = args;
+		this.children = children;
 		this.execute = execute;
 	}
 
@@ -112,11 +116,25 @@ export class Command<
 	}
 
 	public getAstDefinition(): AstCommandDefinition {
-		return {
-			command: this.command,
-			options: this.getAstOptionDefinitions(),
-			args: this.getAstArgumentDefinitions(),
-		};
+		if (this.children) {
+			const defs = new Array<AstCommandDefinition>();
+			for (const child of this.children) {
+				defs.push(child.getAstDefinition());
+			}
+
+			return {
+				command: this.command,
+				options: this.getAstOptionDefinitions(),
+				args: this.getAstArgumentDefinitions(),
+				children: defs,
+			};
+		} else {
+			return {
+				command: this.command,
+				options: this.getAstOptionDefinitions(),
+				args: this.getAstArgumentDefinitions(),
+			};
+		}
 	}
 
 	/** @internal */
@@ -207,28 +225,72 @@ export class Command<
 		dispatch: CmdCoreDispatchService,
 		executor: Player,
 		params: ExecutionParams,
-	) {
-		assert(statement.command.name.text === this.command, "Invalid execution");
-		const variables = dispatch.getVariablesForPlayer(executor);
-		variables._cmd = statement.command.name.text;
-		const interpreter = new CommandAstInterpreter([this.getCommandDeclaration()]);
-		const result = interpreter.interpret(statement, variables);
-		const cmd = result[0];
-		if (CommandAstInterpreter.isCommand(cmd)) {
-			return this.executeForPlayer({
-				variables,
-				mappedOptions: cmd.options,
-				args: cmd.args,
-				executor,
-				piped: params.pipedOutput,
-				stdin: params.stdin,
-				stdout: params.stdout,
-			});
+	): R | undefined {
+		const command = statement.children.filter((c): c is CommandName =>
+			typeGuards.isNode(c, CmdSyntaxKind.CommandName),
+		);
+
+		if (command.size() > 1) {
+			const spliced = createCommandStatement(command[1], statement.children.slice(1));
+			if (this.children) {
+				const match: Command | undefined = this.children.find((c) => c.matchesCommand(spliced));
+				if (match) {
+					return match.executeStatement(spliced, dispatch, executor, params) as R | undefined;
+				} else {
+					throw `How did this happen`;
+				}
+			} else {
+				throw `Shouldn't happen`;
+			}
+		} else {
+			assert(statement.command.name.text === this.command, "Invalid execution");
+			const variables = dispatch.getVariablesForPlayer(executor);
+			variables._cmd = statement.command.name.text;
+			const interpreter = new CommandAstInterpreter([this.getCommandDeclaration()]);
+			const result = interpreter.interpret(statement, variables);
+			const cmd = result[0];
+			if (CommandAstInterpreter.isCommand(cmd)) {
+				return this.executeForPlayer({
+					variables,
+					mappedOptions: cmd.options,
+					args: cmd.args,
+					executor,
+					piped: params.pipedOutput,
+					stdin: params.stdin,
+					stdout: params.stdout,
+				});
+			}
 		}
+
+		// assert(statement.command.name.text === this.command, "Invalid execution");
+		// const variables = dispatch.getVariablesForPlayer(executor);
+		// variables._cmd = statement.command.name.text;
+		// const interpreter = new CommandAstInterpreter([this.getCommandDeclaration()]);
+		// const result = interpreter.interpret(statement, variables);
+		// const cmd = result[0];
+		// if (CommandAstInterpreter.isCommand(cmd)) {
+		// 	return this.executeForPlayer({
+		// 		variables,
+		// 		mappedOptions: cmd.options,
+		// 		args: cmd.args,
+		// 		executor,
+		// 		piped: params.pipedOutput,
+		// 		stdin: params.stdin,
+		// 		stdout: params.stdout,
+		// 	});
+		// }
 	}
 
 	/** @internal */
-	private executeForPlayer({ variables, mappedOptions, args, executor, stdin, stdout, piped }: ExecutionOptions): R {
+	private executeForPlayer({
+		variables,
+		mappedOptions,
+		args,
+		executor,
+		stdin,
+		stdout,
+		piped,
+	}: ExecutionOptions): R | undefined {
 		const remapped: Record<string, defined> = {};
 		for (const [name, opt] of mappedOptions) {
 			const option = this.options[name];
@@ -246,25 +308,29 @@ export class Command<
 			}
 		}
 
-		return this.execute(
-			new CommandContext({
-				Command: this,
-				Options: remapped as MappedOptions<O>,
-				Arguments: argMap,
-				RawArguments: this.args,
-				RawOptions: mappedOptions,
-				Executor: executor,
-				Name: this.command,
-				Input: stdin,
-				Output: stdout,
-				IsPipedOutput: piped,
-				Variables: variables,
-			}),
-			{
-				Options: remapped as MappedOptions<O>,
-				Arguments: (argMap as ReadonlyArray<defined>) as MappedOptionsReadonly<A>,
-			},
-		);
+		if (this.execute !== undefined) {
+			return this.execute(
+				new CommandContext({
+					Command: this,
+					Options: remapped as MappedOptions<O>,
+					Arguments: argMap,
+					RawArguments: this.args,
+					RawOptions: mappedOptions,
+					Executor: executor,
+					Name: this.command,
+					Input: stdin,
+					Output: stdout,
+					IsPipedOutput: piped,
+					Variables: variables,
+				}),
+				{
+					Options: remapped as MappedOptions<O>,
+					Arguments: (argMap as ReadonlyArray<defined>) as MappedOptionsReadonly<A>,
+				},
+			);
+		} else {
+			return undefined;
+		}
 	}
 
 	public static create<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R>(
@@ -273,5 +339,3 @@ export class Command<
 		return new Command(declaration);
 	}
 }
-
-type CommandList = Record<string, CommandDeclaration<defined, readonly CommandArgument[], any>>;

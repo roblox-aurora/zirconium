@@ -1,5 +1,5 @@
 import { Command } from "@cmd-core/class/Command";
-import { Registry, Dispatch } from "@cmd-core";
+import { CmdServer } from "@cmd-core";
 import CommandTypes, { Player } from "./types";
 import Net from "@rbxts/net";
 import t from "@rbxts/t";
@@ -71,6 +71,20 @@ const echoCommand = Command.create({
 		prefix: { type: "string", alias: ["p"], default: "*" },
 	},
 	args: [],
+	children: [
+		Command.create({
+			command: "workspace",
+			options: {},
+			args: [{ type: "string" }] as const,
+			execute: (ctx, args) => {
+				const [name] = args.Arguments;
+
+				if (name) {
+					ctx.PushOutput(tostring(game.Workspace.FindFirstChild(name)));
+				}
+			},
+		}),
+	],
 	execute: (ctx, args) => {
 		if (ctx.IsOutputPiped()) {
 			ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
@@ -99,19 +113,16 @@ const listVars = Command.create({
 	},
 });
 
-Registry.RegisterCommand(killCommand);
-Registry.RegisterCommand(echoCommand);
-Registry.RegisterCommand(jq);
-Registry.RegisterCommand(upper);
-Registry.RegisterCommand(listVars);
+CmdServer.Registry.RegisterCommand(echoCommand);
+CmdServer.Registry.RegisterCommand(listVars);
 
 const testSend = new Net.ServerEvent("TestSendEvent", t.string);
 testSend.Connect((player, message) => {
-	const { stdout } = Dispatch.Execute(message, player);
+	const { stdout } = CmdServer.Dispatch.Execute(message, player);
 	for (const message of stdout) {
 		print("[info]", message);
 	}
 });
 
 const GetCommands = new Net.ServerFunction("GetCommands");
-GetCommands.SetCallback((_) => Registry.GetCommandDeclarations());
+GetCommands.SetCallback((_) => CmdServer.Registry.GetCommandDeclarations());

@@ -4,6 +4,7 @@ import CommandAstInterpreter from "../interpreter";
 import { CommandStatement, BinaryExpression, VariableStatement, Node } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
 import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
+import { prettyPrintNodes } from "@rbxts/cmd-ast/out/Utility";
 
 interface stdio {
 	stdout: Array<string>;
@@ -77,14 +78,14 @@ export namespace CmdCoreDispatchService {
 		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
 			const result = executeStatement(left, executor, {
 				stdin: [],
-				stdout: tmpstdout,
+				stdout: op === "|" ? tmpstdout : stdout,
 				pipedOutput: op === "|",
 			}) as defined | undefined;
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					return executeStatement(right, executor, { stdin: [], stdout: [], pipedOutput: false });
+					return executeStatement(right, executor, { stdin: [], stdout: stdout, pipedOutput: false });
 				}
 			} else if (op === "|") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
@@ -154,14 +155,17 @@ export namespace CmdCoreDispatchService {
 	}
 
 	const parser = new CommandAstParser({
-		prefixExpressions: true,
+		prefixExpressions: false,
 		variableDeclarations: true,
-		innerExpressions: true,
+		innerExpressions: false,
+		nestingInnerExpressions: true,
 	});
 
 	export function Execute(text: string, executor: Player) {
 		parser.SetCommandDefinitions(Registry.GetCommandDeclarations());
+
 		const commandAst = parser.Parse(text);
+		print(text);
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {
 			const vars = getVariablesForPlayer(executor);

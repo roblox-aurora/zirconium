@@ -131,7 +131,7 @@ export default class SyntaxLexer {
 				if (parentCommand && parentCommand.children !== undefined) {
 					const matchingCommand = parentCommand.children.find((c) => c.command === str);
 					if (matchingCommand) {
-						return { Type: TokenType.Variable, Value: str };
+						return { Type: TokenType.Keyword, Value: str };
 					}
 				}
 			}

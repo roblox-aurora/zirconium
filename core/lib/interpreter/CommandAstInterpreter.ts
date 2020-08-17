@@ -274,7 +274,7 @@ export default class CommandAstInterpreter {
 				if (!isNodeIn(node, [CmdSyntaxKind.CommandName, CmdSyntaxKind.EndOfStatement])) {
 					if (matchingCommand.args.size() === 0) {
 						// Allow any number of arguments if not specified
-						ptr++;
+
 						if (isNode(node, CmdSyntaxKind.String)) {
 							args.push(node.text);
 						} else if (isNode(node, CmdSyntaxKind.InterpolatedString)) {
@@ -284,6 +284,7 @@ export default class CommandAstInterpreter {
 						} else if (isNode(node, CmdSyntaxKind.Identifier)) {
 							args.push(variables[node.name]);
 						}
+						ptr++;
 						continue;
 					}
 
