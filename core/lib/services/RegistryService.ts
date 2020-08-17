@@ -1,6 +1,7 @@
 import type { CustomCommandType } from "../types/Types";
 import { Command } from "../class/Command";
 import { CommandBase } from "../class/CommandBase";
+import Net from "@rbxts/net";
 
 export namespace CmdCoreRegistryService {
 	const commands = new Array<CommandBase>();
@@ -28,9 +29,15 @@ export namespace CmdCoreRegistryService {
 		return commands;
 	}
 
-	// export function GetCommandDeclarations() {
-	// 	return commands.map((c) => c.getCommandDeclaration());
-	// }
+	export function GetCommandDeclarations() {
+		return (
+			commands
+				// .filter((c): c is Command => c instanceof Command)
+				.map((c) => {
+					return c.getAstDefinition();
+				})
+		);
+	}
 
 	export function RegisterCommand<C extends CommandBase>(command: C) {
 		commands.push(command);

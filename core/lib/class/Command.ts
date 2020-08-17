@@ -62,7 +62,11 @@ export class Command<
 		}
 	}
 
-	private getAstOptionDefinitions(): Readonly<Record<string, AstOptionDefinition>> {
+	private getAstOptionDefinitions(): Readonly<Record<string, AstOptionDefinition>> | undefined {
+		if (Object.isEmpty(this.options)) {
+			return undefined;
+		}
+
 		const list: Record<string, AstOptionDefinition> = {};
 		for (const [key, { type: optionType }] of Object.entries(this.options)) {
 			if (typeIs(optionType, "table")) {
@@ -82,7 +86,11 @@ export class Command<
 		return list;
 	}
 
-	public getAstArgumentDefinitions(): readonly AstArgumentDefinition[] {
+	public getAstArgumentDefinitions(): readonly AstArgumentDefinition[] | undefined {
+		if (this.args.size() === 0) {
+			return undefined;
+		}
+
 		const list = new Array<AstArgumentDefinition>();
 		for (const arg of this.args) {
 			const { type: argType } = arg;

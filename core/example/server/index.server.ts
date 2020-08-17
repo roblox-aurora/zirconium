@@ -105,19 +105,6 @@ Registry.RegisterCommand(jq);
 Registry.RegisterCommand(upper);
 Registry.RegisterCommand(listVars);
 
-print(game.GetService("HttpService").JSONEncode(killCommand.getAstDefinition()));
-
-// game.GetService("Players").PlayerAdded.Connect((player) => {
-// 	player.Chatted.Connect((message) => {
-// 		if (message.sub(0, 0) === "/") {
-// 			const { stdout } = Dispatch.Execute(message.sub(1), player);
-// 			for (const message of stdout) {
-// 				print("[info]", message);
-// 			}
-// 		}
-// 	});
-// });
-
 const testSend = new Net.ServerEvent("TestSendEvent", t.string);
 testSend.Connect((player, message) => {
 	const { stdout } = Dispatch.Execute(message, player);
@@ -125,3 +112,6 @@ testSend.Connect((player, message) => {
 		print("[info]", message);
 	}
 });
+
+const GetCommands = new Net.ServerFunction("GetCommands");
+GetCommands.SetCallback((_) => Registry.GetCommandDeclarations());

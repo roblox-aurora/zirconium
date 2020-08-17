@@ -157,10 +157,10 @@ export namespace CmdCoreDispatchService {
 		prefixExpressions: true,
 		variableDeclarations: true,
 		innerExpressions: true,
-		commands: [{ command: "print" }],
 	});
 
 	export function Execute(text: string, executor: Player) {
+		parser.SetCommandDefinitions(Registry.GetCommandDeclarations());
 		const commandAst = parser.Parse(text);
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {

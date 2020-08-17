@@ -6,23 +6,27 @@ import SyntaxLexer from "@cmd-core/client/SyntaxHighlighter";
 import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
 
 const evt = new Net.ClientEvent("TestSendEvent");
+const getCommands = new Net.ClientFunction<AstCommandDefinitions>("GetCommands");
 
-class TestEditor extends Roact.Component<{ source?: string }, { source: string; error: string }> {
+class TestEditor extends Roact.Component<
+	{ source?: string },
+	{ source: string; error: string; cmds: AstCommandDefinitions }
+> {
 	constructor(props: { source?: string }) {
 		super(props);
 		this.state = {
 			source: props.source ?? "",
 			error: "",
+			cmds: [],
 		};
 	}
 
-	private commands: AstCommandDefinitions = [
-		{ command: "print", options: { prefix: { type: ["string"] } } },
-		{ command: "caps" },
-		{ command: "json" },
-		{ command: "kill", args: [{ type: ["string"] }] },
-		{ command: "env", options: { name: { type: ["string"] } } },
-	];
+	public didMount() {
+		getCommands.CallServerAsync().then((result) => {
+			print(game.GetService("HttpService").JSONEncode(result));
+			this.setState({ cmds: result });
+		});
+	}
 
 	public updateText = (text: string) => {
 		this.setState({ source: text });
@@ -33,7 +37,7 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 			innerExpressions: false,
 			invalidCommandIsError: true,
 			nestingInnerExpressions: false,
-			commands: this.commands,
+			commands: this.state.cmds,
 		}).Parse(text);
 		const validate = CommandAstParser.validate(ast) as { success: boolean; errorNodes: NodeError[] };
 		if (!validate.success) {
@@ -105,7 +109,7 @@ class TestEditor extends Roact.Component<{ source?: string }, { source: string; 
 						RichText
 						Text={SyntaxLexer.toRichText(
 							new SyntaxLexer(this.state.source, {
-								commands: this.commands,
+								commands: this.state.cmds,
 							}).Parse(),
 						)}
 						Position={new UDim2(0, 30, 0, 0)}
