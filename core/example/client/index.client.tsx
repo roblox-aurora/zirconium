@@ -4,9 +4,7 @@ import { NodeError } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import Net from "@rbxts/net";
 import SyntaxLexer from "@cmd-core/client/SyntaxHighlighter";
 import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
-
-const evt = new Net.ClientEvent("TestSendEvent");
-const getCommands = new Net.ClientFunction<AstCommandDefinitions>("GetCommands");
+import { CmdClient } from "@cmd-core";
 
 class TestEditor extends Roact.Component<
 	{ source?: string },
@@ -22,8 +20,7 @@ class TestEditor extends Roact.Component<
 	}
 
 	public didMount() {
-		getCommands.CallServerAsync().then((result) => {
-			print(game.GetService("HttpService").JSONEncode(result));
+		CmdClient.Registry.GetServerCommands().then((result) => {
 			this.setState({ cmds: result });
 		});
 	}
@@ -137,7 +134,8 @@ class TestEditor extends Roact.Component<
 						Font="Code"
 						Event={{
 							MouseButton1Down: () => {
-								evt.SendToServer(this.state.source);
+								CmdClient.Dispatch.InvokeServer(this.state.source);
+								// evt.SendToServer(this.state.source);
 							},
 						}}
 					/>
@@ -158,3 +156,7 @@ print "The statement is: $hello"`}
 	game.GetService("Players").LocalPlayer.FindFirstChildOfClass("PlayerGui")!,
 	"cmon",
 );
+
+CmdClient.Dispatch.ServerStdout.Connect((message) => {
+	print(tostring(message));
+});

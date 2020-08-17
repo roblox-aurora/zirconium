@@ -1,29 +1,43 @@
 import Lazy from "./internal/Lazy";
 import { GetCommandService } from "./services";
 import Net from "@rbxts/net";
-import { RemoteId } from "remote";
+import t from "@rbxts/t";
 
 const RunService = game.GetService("RunService");
 const IsServer = RunService.IsServer();
 
-export namespace CmdServer {
-	if (IsServer) {
-		Net.CreateFunction(RemoteId.GetCommands);
-		Net.CreateFunction(RemoteId.DispatchToServer);
-	}
+export const enum CmdRemoteId {
+	GetCommands = "CmdGetCommands",
+	DispatchToServer = "CmdSrvDispatch",
+	StdOutput = "CmdSrvStdout",
+}
 
+export namespace CmdServer {
 	export const Registry = Lazy(() => {
-		assert(IsServer, "Zirconium Service only accessible on server");
+		assert(IsServer, "CmdCore Service only accessible on server");
 		return GetCommandService("RegistryService");
 	});
 	export const Dispatch = Lazy(() => {
-		assert(IsServer, "Zirconium Service only accessible on server");
+		assert(IsServer, "CmdCore Service only accessible on server");
 		return GetCommandService("DispatchService");
 	});
+
+	if (IsServer) {
+		const Stdout = new Net.ServerEvent(CmdRemoteId.StdOutput);
+		const DispatchToServer = new Net.ServerEvent(CmdRemoteId.DispatchToServer, t.string);
+		DispatchToServer.Connect((player, execute) => {
+			const { stdout } = Dispatch.Execute(execute, player);
+			for (const message of stdout) {
+				Stdout.SendToPlayer(player, message);
+			}
+		});
+
+		const GetCommands = new Net.ServerFunction(CmdRemoteId.GetCommands);
+		GetCommands.SetCallback((_) => Registry.GetCommandDeclarations());
+	}
 }
 
-// export namespace CmdClient {
-// 	// export const Dispatch = Lazy(() => {
-// 	// 	return undefined;
-// 	// });
-// }
+export namespace CmdClient {
+	export const Dispatch = Lazy(() => GetCommandService("ClientDispatchService"));
+	export const Registry = Lazy(() => GetCommandService("ClientRegistryService"));
+}

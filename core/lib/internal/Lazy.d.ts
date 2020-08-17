@@ -1,7 +1,6 @@
 type Literal = string | number | boolean | undefined | null | void | defined;
 
-declare const LAZY: unique symbol;
-type Lazy<T> = T & { readonly [LAZY]: true; GetValue(): T; HasValue(): boolean };
+type Lazy<T> = T;
 
 declare function Lazy<T, A extends Array<Literal>>(fn: (...args: A) => T, ...args: A): Lazy<T>;
 

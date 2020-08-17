@@ -2,10 +2,16 @@ import Lazy from "../internal/Lazy";
 import { CmdCoreRegistryService } from "./RegistryService";
 import { CmdCoreDispatchService } from "./DispatchService";
 import t from "@rbxts/t";
+import { CmdClientDispatchService } from "./ClientDispatchService";
+import { CmdClientRegistryService } from "./ClientRegistryService";
+
+const IS_SERVER = game.GetService("RunService").IsServer();
 
 interface ServiceMap {
 	RegistryService: CmdCoreRegistryService;
 	DispatchService: CmdCoreDispatchService;
+	ClientDispatchService: CmdClientDispatchService;
+	ClientRegistryService: CmdClientRegistryService;
 }
 
 export type ServerDependencies = Array<keyof ServiceMap>;
@@ -29,9 +35,10 @@ function GetServiceInt<K extends keyof ServiceMap>(service: K, importingFrom?: k
 
 		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const serviceMaster = require(script.FindFirstChild(service) as ModuleScript) as Map<string, ServiceMap[K]>;
-		svcImport = serviceMaster.get(`CmdCore${service}`) as ServiceMap[K];
+		const importId = IS_SERVER ? `CmdCore${service}` : `Cmd${service}`;
+		svcImport = serviceMaster.get(importId) as ServiceMap[K];
 		if (svcImport === undefined) {
-			throw `Tried importing service: ${service}, but no matching ZClient${service} declaration.`;
+			throw `Tried importing service: ${service}, but no matching ${importId} declaration.`;
 		}
 		serviceMap.set(service, svcImport);
 

@@ -1,6 +1,5 @@
 import { Command } from "@cmd-core/class/Command";
 import { CmdServer } from "@cmd-core";
-import CommandTypes, { Player } from "./types";
 import Net from "@rbxts/net";
 import t from "@rbxts/t";
 
@@ -116,13 +115,10 @@ const listVars = Command.create({
 CmdServer.Registry.RegisterCommand(echoCommand);
 CmdServer.Registry.RegisterCommand(listVars);
 
-const testSend = new Net.ServerEvent("TestSendEvent", t.string);
-testSend.Connect((player, message) => {
-	const { stdout } = CmdServer.Dispatch.Execute(message, player);
-	for (const message of stdout) {
-		print("[info]", message);
-	}
-});
-
-const GetCommands = new Net.ServerFunction("GetCommands");
-GetCommands.SetCallback((_) => CmdServer.Registry.GetCommandDeclarations());
+// const testSend = new Net.ServerEvent("TestSendEvent", t.string);
+// testSend.Connect((player, message) => {
+// 	const { stdout } = CmdServer.Dispatch.Execute(message, player);
+// 	for (const message of stdout) {
+// 		print("[info]", message);
+// 	}
+// });

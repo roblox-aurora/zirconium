@@ -165,7 +165,6 @@ export namespace CmdCoreDispatchService {
 		parser.SetCommandDefinitions(Registry.GetCommandDeclarations());
 
 		const commandAst = parser.Parse(text);
-		print(text);
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {
 			const vars = getVariablesForPlayer(executor);
