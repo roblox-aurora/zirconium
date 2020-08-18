@@ -100,6 +100,8 @@ type InferTypeName<T> = T extends "string"
 	? string
 	: T extends "number"
 	? number
+	: T extends "player"
+	? Player
 	: T extends CustomCommandType<infer _, infer R>
 	? R
 	: never;
