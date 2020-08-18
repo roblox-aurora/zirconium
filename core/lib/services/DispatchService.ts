@@ -45,25 +45,6 @@ export namespace CmdCoreDispatchService {
 		if (matchingCommand) {
 			return matchingCommand.executeStatement(statement, CmdCoreDispatchService, executor, params);
 		}
-		// const variables = getVariablesForPlayer(executor);
-		// variables._cmd = statement.command.name.text;
-		// const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
-		// const result = interpreter.interpret(statement, variables);
-		// const cmd = result[0];
-		// if (CommandAstInterpreter.isCommand(cmd)) {
-		// 	const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
-		// 	if (matchingCommand) {
-		// 		return matchingCommand.executeForPlayer({
-		// 			variables,
-		// 			mappedOptions: cmd.options,
-		// 			args: cmd.args,
-		// 			executor,
-		// 			piped: params.pipedOutput,
-		// 			stdin: params.stdin,
-		// 			stdout: params.stdout,
-		// 		});
-		// 	}
-		// }
 	}
 
 	function executeBinaryExpression(expression: BinaryExpression, executor: Player, stdout: stdio["stdout"] = []) {

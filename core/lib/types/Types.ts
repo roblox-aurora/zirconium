@@ -37,19 +37,19 @@ interface CommandArgumentType<T> {
 	alias?: string[];
 }
 
-interface StringCommandArgument extends CommandArgumentType<"string" | CommandType.String> {
+interface StringCommandArgument extends CommandArgumentType<"string"> {
 	default?: string;
 }
 
-interface NumberCommandArgument extends CommandArgumentType<"number" | CommandType.Number> {
+interface NumberCommandArgument extends CommandArgumentType<"number"> {
 	default?: number;
 }
 
-interface BooleanCommandArgument extends CommandArgumentType<"boolean" | CommandType.Boolean> {
+interface BooleanCommandArgument extends CommandArgumentType<"boolean"> {
 	default?: boolean;
 }
 
-interface SwitchCommandArgument extends CommandArgumentType<"switch" | CommandType.Switch> {
+interface SwitchCommandArgument extends CommandArgumentType<"switch"> {
 	default?: never;
 }
 
@@ -92,7 +92,7 @@ const _isCmdTypeDefinition = t.interface({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isCmdTypeDefinition(value: unknown): value is CustomCommandType<unknown, unknown> {
+export function isCmdTypeDefinition(value: unknown): value is CustomCommandType<any, any> {
 	return _isCmdTypeDefinition(value);
 }
 

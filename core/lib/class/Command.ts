@@ -11,6 +11,7 @@ import CommandAstInterpreter, {
 	CommandInterpreterOption,
 	CommandInterpreterDeclaration,
 	CommandInterpreterArgument,
+	ValidationType,
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
 import { CommandBase } from "./CommandBase";
@@ -155,16 +156,27 @@ export class Command<
 		for (const [_, arg] of Object.entries(this.args)) {
 			if (isCmdTypeDefinition(arg.type)) {
 				args.push({
-					type: "string",
+					type: ["string"],
 					default: arg.default,
 				});
 			} else if (typeIs(arg.type, "table")) {
-				// Unions
-				throw `[CommandInterpreter] Union types not yet supported!`;
+				const types = new Array<ValidationType>();
+				for (const t of arg.type) {
+					if (typeIs(t, "table")) {
+						types.push("string");
+					} else {
+						types.push(t);
+					}
+				}
+
+				args.push({
+					default: arg.default,
+					type: types,
+				});
 			} else {
 				// Primitives
 				args.push({
-					type: arg.type,
+					type: [arg.type],
 					default: arg.default,
 				});
 			}
@@ -177,19 +189,35 @@ export class Command<
 	public getInterpreterOptions(): readonly CommandInterpreterOption[] {
 		const options = new Array<CommandInterpreterOption>();
 		for (const [name, option] of Object.entries(this.options)) {
-			if (typeIs(option.type, "table")) {
+			if (isCmdTypeDefinition(option.type)) {
 				options.push({
 					name,
 					default: option.default as defined,
 					alias: option.alias,
-					type: "string",
+					type: ["string"],
+				});
+			} else if (typeIs(option.type, "table")) {
+				const types = new Array<ValidationType>();
+				for (const t of option.type) {
+					if (typeIs(t, "table")) {
+						types.push("string");
+					} else {
+						types.push(t);
+					}
+				}
+
+				options.push({
+					name,
+					default: option.default,
+					alias: option.alias,
+					type: types,
 				});
 			} else {
 				options.push({
 					name,
 					alias: option.alias,
 					default: option.default as defined,
-					type: option.type as "string",
+					type: [option.type as "string"],
 				});
 			}
 		}

@@ -4,7 +4,7 @@ import { CmdCoreDispatchService } from "./DispatchService";
 import t from "@rbxts/t";
 import { CmdClientDispatchService } from "./ClientDispatchService";
 import { CmdClientRegistryService } from "./ClientRegistryService";
-import TSImport from "./tsImportShim";
+import TSRequire from "./tsImportShim";
 
 const IS_SERVER = game.GetService("RunService").IsServer();
 
@@ -37,7 +37,7 @@ function GetServiceInt<K extends keyof ServiceMap>(service: K, importingFrom?: k
 		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		// const serviceMaster = require(script.FindFirstChild(service) as ModuleScript) as Map<string, ServiceMap[K]>;
 
-		const serviceMaster = TSImport(service) as Map<string, ServiceMap[K]>;
+		const serviceMaster = TSRequire(service) as Map<string, ServiceMap[K]>;
 
 		const importId = IS_SERVER ? `CmdCore${service}` : `Cmd${service}`;
 		svcImport = serviceMaster.get(importId) as ServiceMap[K];

@@ -68,6 +68,7 @@ const echoCommand = Command.create({
 	command: "print",
 	options: {
 		prefix: { type: "string", alias: ["p"], default: "*" },
+		numTest: { type: ["number"] },
 	},
 	args: [],
 	children: [
@@ -85,11 +86,12 @@ const echoCommand = Command.create({
 		}),
 	],
 	execute: (ctx, args) => {
-		if (ctx.IsOutputPiped()) {
-			ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
-		} else {
-			ctx.PushOutput((args.Arguments as readonly defined[]).map(tostring).join(" "));
+		if (args.Options.numTest) {
+			print("numTest");
 		}
+
+		const message = (args.Options.prefix ?? "") + (args.Arguments as readonly defined[]).map(tostring).join(" ");
+		ctx.PushOutput(message);
 	},
 });
 
@@ -98,15 +100,24 @@ const listVars = Command.create({
 	options: {
 		name: { type: "string" },
 	},
-	args: [],
+	args: [{ type: "player" }],
 	execute: (ctx, args) => {
 		const vars = ctx.GetVariables();
 
-		if (args.Options.name) {
-			ctx.PushOutput(tostring(vars[args.Options.name]));
-		} else {
+		const [plr] = args.Arguments;
+		if (plr !== undefined) {
+			const vars = CmdServer.Dispatch.getVariablesForPlayer(plr);
+			ctx.PushOutput("Vars for " + plr.Name);
 			for (const [name, value] of Object.entries(vars)) {
 				ctx.PushOutput(`$${name} = ${tostring(value)}`);
+			}
+		} else {
+			if (args.Options.name) {
+				ctx.PushOutput(tostring(vars[args.Options.name]));
+			} else {
+				for (const [name, value] of Object.entries(vars)) {
+					ctx.PushOutput(`$${name} = ${tostring(value)}`);
+				}
 			}
 		}
 	},

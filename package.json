@@ -5,9 +5,9 @@
   "main": "out/init.lua",
   "scripts": {
     "prepare": "npm run build",
-    "build": "rbxtsc-dev --type=package",
+    "build": "rbxtsc-dev -p . --type=package",
     "build:example": "rbxtsc-dev -p ./core/example -i ./include",
-    "serve": "rojo serve ./core/example/default.project.json --port 34567"
+    "serve": "rojo serve ./core/example/example.project.json --port 34567"
   },
   "keywords": [],
   "author": "",
