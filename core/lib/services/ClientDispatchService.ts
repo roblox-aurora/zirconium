@@ -9,5 +9,6 @@ export namespace CmdClientDispatchService {
 	}
 
 	export const ServerStdout = new Net.ClientEvent(CmdRemoteId.StdOutput);
+	export const ServerStderr = new Net.ClientEvent(CmdRemoteId.StdErr);
 }
 export type CmdClientDispatchService = typeof CmdClientDispatchService;

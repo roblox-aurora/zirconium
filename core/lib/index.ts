@@ -9,7 +9,8 @@ const IsServer = RunService.IsServer();
 export const enum CmdRemoteId {
 	GetCommands = "CmdGetCommands",
 	DispatchToServer = "CmdSrvDispatch",
-	StdOutput = "CmdSrvStdout",
+	StdOutput = "CmdSrvStdOut",
+	StdErr = "CmdSrvStdErr",
 }
 
 export namespace CmdServer {
@@ -24,11 +25,16 @@ export namespace CmdServer {
 
 	if (IsServer) {
 		const Stdout = new Net.ServerEvent(CmdRemoteId.StdOutput);
+		const Stderr = new Net.ServerEvent(CmdRemoteId.StdErr);
 		const DispatchToServer = new Net.ServerEvent(CmdRemoteId.DispatchToServer, t.string);
 		DispatchToServer.Connect((player, execute) => {
-			const { stdout } = Dispatch.Execute(execute, player);
+			const { stdout, stderr } = Dispatch.Execute(execute, player);
 			for (const message of stdout) {
 				Stdout.SendToPlayer(player, message);
+			}
+
+			for (const message of stderr) {
+				Stderr.SendToPlayer(player, message);
 			}
 		});
 

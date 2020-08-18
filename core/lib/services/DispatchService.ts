@@ -132,7 +132,7 @@ export namespace CmdCoreDispatchService {
 			}
 		}
 
-		return { stdout };
+		return { stdout, stderr: new Array<string>() };
 	}
 
 	const parser = new CommandAstParser({
@@ -148,12 +148,16 @@ export namespace CmdCoreDispatchService {
 		const commandAst = parser.Parse(text);
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {
-			const vars = getVariablesForPlayer(executor);
-			vars._ = text;
+			try {
+				const vars = getVariablesForPlayer(executor);
+				vars._ = text;
 
-			return executeNodes(commandAst.children, executor);
+				return executeNodes(commandAst.children, executor);
+			} catch (err) {
+				return { stderr: [tostring(err)], stdout: new Array<string>() };
+			}
 		} else {
-			return { stdout: [valid.errorNodes[0].message] };
+			return { stderr: [valid.errorNodes[0].message], stdout: new Array<string>() };
 		}
 	}
 }
