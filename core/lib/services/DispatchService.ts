@@ -152,6 +152,10 @@ export namespace CmdCoreDispatchService {
 				const vars = getVariablesForPlayer(executor);
 				vars._ = text;
 
+				if (game.GetService("RunService").IsStudio() && vars.debug === true) {
+					prettyPrintNodes([commandAst]);
+				}
+
 				return executeNodes(commandAst.children, executor);
 			} catch (err) {
 				return { stderr: [tostring(err)], stdout: new Array<string>() };
