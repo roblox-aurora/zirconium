@@ -208,7 +208,7 @@ export class Command<
 
 				options.push({
 					name,
-					default: option.default,
+					default: option.default as defined,
 					alias: option.alias,
 					type: types,
 				});

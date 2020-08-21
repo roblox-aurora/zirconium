@@ -9,7 +9,7 @@ export type ValidationType = "string" | "number" | "boolean" | "player";
 export type OptionValidationType = ValidationType | "switch";
 
 export interface CommandInterpreterArgument {
-	default?: defined;
+	default?: unknown;
 	variadic?: true;
 	type: readonly ValidationType[];
 }
