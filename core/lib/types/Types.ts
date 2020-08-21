@@ -57,15 +57,10 @@ export interface CustomTypeArgument<T, U> extends CommandArgumentType<CustomComm
 	required?: boolean;
 	default?: defined;
 }
-interface CommandUnionType<T extends readonly CommandArgument[]> {
-	type: T;
-	alias?: string[];
-	default?: InferType<T[number]>;
-}
 
-interface CommandUnionType2<T extends readonly CommandArgumentTypeId[]> {
+interface UnionType<T extends readonly CommandArgumentTypeId[]> {
 	type: T;
-	default?: InferTypeName<T[number]>;
+	default?: InferTypeWithUnion<T>;
 	alias?: string[];
 }
 
@@ -76,7 +71,7 @@ type _CommandArgument =
 	| (CommandArgumentType<"player"> & { default?: Player })
 	| CustomTypeArgument<defined, defined>;
 
-export type CommandArgument = (_CommandArgument | CommandUnionType2<readonly CommandArgumentTypeId[]>) & {
+export type CommandArgument = (_CommandArgument | UnionType<readonly CommandArgumentTypeId[]>) & {
 	variadic?: true;
 };
 
@@ -150,7 +145,7 @@ type ArgTypes<T> = { readonly [P in keyof T]: InferTypeWithUnion<T[P]> };
 // 	...InferTypeWithUnion<LastInTuple<T>>[]
 // ];
 type WithVariadic<T extends ReadonlyArray<defined>> = ArgTypes<T> & [...InferTypeWithUnion<LastInTuple<T>>[]];
-type HasVariadic<T extends readonly defined[]> = LastInTuple<T> extends { varadic: true } ? true : false;
+type HasVariadic<T extends readonly defined[]> = LastInTuple<T> extends { variadic: true } ? true : false;
 
 export type MappedOptionsReadonly<T extends ReadonlyArray<defined>> = T extends never[]
 	? unknown[]
