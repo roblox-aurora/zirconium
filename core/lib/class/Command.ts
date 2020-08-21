@@ -34,7 +34,7 @@ export interface CommandDeclaration<O extends CommandOptions, A extends Readonly
 	children?: readonly Command<any, any, any>[];
 }
 
-export interface ExecutionArgs<K extends CommandOptions, A> {
+export interface ExecutionArgs<K extends CommandOptions, A extends readonly CommandArgument[]> {
 	Options: MappedOptions<K> & { stdin?: defined };
 	Arguments: MappedOptionsReadonly<A>;
 }
@@ -98,19 +98,19 @@ export class Command<
 
 		const list = new Array<AstArgumentDefinition>();
 		for (const arg of this.args) {
-			const { type: argType } = arg;
+			const { type: argType, varadic } = arg;
 			if (typeIs(argType, "table")) {
 				if (!isCmdTypeDefinition(argType)) {
 					const argl = new Array<AstPrimitiveType>();
 					for (const subType of argType) {
 						argl.push(this.typeToAstType(subType));
 					}
-					list.push({ type: argl });
+					list.push({ type: argl, varadic });
 				} else {
-					list.push({ type: ["string"] });
+					list.push({ type: ["string"], varadic });
 				}
 			} else {
-				list.push({ type: [this.typeToAstType(argType)] });
+				list.push({ type: [this.typeToAstType(argType)], varadic });
 			}
 		}
 		return list;

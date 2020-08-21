@@ -10,6 +10,7 @@ export type OptionValidationType = ValidationType | "switch";
 
 export interface CommandInterpreterArgument {
 	default?: defined;
+	varadic?: true;
 	type: readonly ValidationType[];
 }
 
