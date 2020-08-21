@@ -98,19 +98,19 @@ export class Command<
 
 		const list = new Array<AstArgumentDefinition>();
 		for (const arg of this.args) {
-			const { type: argType, varadic } = arg;
+			const { type: argType, variadic } = arg;
 			if (typeIs(argType, "table")) {
 				if (!isCmdTypeDefinition(argType)) {
 					const argl = new Array<AstPrimitiveType>();
 					for (const subType of argType) {
 						argl.push(this.typeToAstType(subType));
 					}
-					list.push({ type: argl, varadic });
+					list.push({ type: argl, variadic });
 				} else {
-					list.push({ type: ["string"], varadic });
+					list.push({ type: ["string"], variadic });
 				}
 			} else {
-				list.push({ type: [this.typeToAstType(argType)], varadic });
+				list.push({ type: [this.typeToAstType(argType)], variadic });
 			}
 		}
 		return list;

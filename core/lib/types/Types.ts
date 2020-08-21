@@ -77,7 +77,7 @@ type _CommandArgument =
 	| CustomTypeArgument<defined, defined>;
 
 export type CommandArgument = (_CommandArgument | CommandUnionType2<readonly CommandArgumentTypeId[]>) & {
-	varadic?: true;
+	variadic?: true;
 };
 
 export type CommandArgumentTypeId = _CommandArgument["type"];
