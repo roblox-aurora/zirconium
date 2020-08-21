@@ -153,11 +153,15 @@ export class Command<
 	public getInterpreterArguments(): ReadonlyArray<CommandInterpreterArgument> {
 		const args = new Array<CommandInterpreterArgument>();
 
-		for (const [_, arg] of Object.entries(this.args)) {
+		for (const [i, arg] of Object.entries(this.args)) {
+			if (arg === undefined) {
+				warn("argument issue at argument " + i);
+			}
 			if (isCmdTypeDefinition(arg.type)) {
 				args.push({
 					type: ["string"],
 					default: arg.default,
+					variadic: arg.variadic,
 				});
 			} else if (typeIs(arg.type, "table")) {
 				const types = new Array<ValidationType>();
@@ -172,12 +176,14 @@ export class Command<
 				args.push({
 					default: arg.default,
 					type: types,
+					variadic: arg.variadic,
 				});
 			} else {
 				// Primitives
 				args.push({
 					type: [arg.type],
 					default: arg.default,
+					variadic: arg.variadic,
 				});
 			}
 		}
@@ -225,7 +231,7 @@ export class Command<
 	}
 
 	private argParse(arg: CommandOptionArgument | CommandArgument, opt: defined, executor: Player) {
-		if (isCmdTypeDefinition(arg.type)) {
+		if (arg && isCmdTypeDefinition(arg.type)) {
 			const { type: optionType } = arg;
 
 			if (!typeIs(opt, "string")) {

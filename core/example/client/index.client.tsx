@@ -160,3 +160,7 @@ print "The statement is: $hello"`}
 CmdClient.Dispatch.ServerStdout.Connect((message) => {
 	print(tostring(message));
 });
+
+CmdClient.Dispatch.ServerStderr.Connect((message) => {
+	warn(tostring(message));
+});

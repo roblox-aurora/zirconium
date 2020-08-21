@@ -148,17 +148,25 @@ export namespace CmdCoreDispatchService {
 		const commandAst = parser.Parse(text);
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {
-			try {
+			const isStudio = game.GetService("RunService").IsStudio();
+			if (isStudio) {
 				const vars = getVariablesForPlayer(executor);
 				vars._ = text;
 
-				if (game.GetService("RunService").IsStudio() && vars.debug === true) {
+				if (vars.debug === true) {
 					prettyPrintNodes([commandAst]);
 				}
 
 				return executeNodes(commandAst.children, executor);
-			} catch (err) {
-				return { stderr: [tostring(err)], stdout: new Array<string>() };
+			} else {
+				try {
+					const vars = getVariablesForPlayer(executor);
+					vars._ = text;
+
+					return executeNodes(commandAst.children, executor);
+				} catch (err) {
+					return { stderr: [tostring(err)], stdout: new Array<string>() };
+				}
 			}
 		} else {
 			return { stderr: [valid.errorNodes[0].message], stdout: new Array<string>() };

@@ -212,13 +212,15 @@ export default class CommandAstInterpreter {
 						continue;
 					}
 
-					if (argIdx >= matchingCommand.args.size()) {
+					const lastArg = matchingCommand.args[matchingCommand.args.size() - 1];
+
+					if (argIdx >= matchingCommand.args.size() && !lastArg.variadic) {
 						throw `[CommandInterpreter] Exceeding argument list: [ ${matchingCommand.args
 							.map((t) => t.type)
 							.join(", ")} ] with ${getNodeKindName(node)}`;
 					}
 
-					const arg = matchingCommand.args[argIdx];
+					const arg = matchingCommand.args[argIdx] ?? (lastArg.variadic ? lastArg : undefined);
 
 					const matcher = matchInterpreterType(node, arg.type);
 					if (matcher.matches) {
