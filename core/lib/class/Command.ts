@@ -25,10 +25,12 @@ import {
 } from "@rbxts/cmd-ast/out/Definitions/Definitions";
 import { typeGuards, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
 import { createCommandStatement } from "@rbxts/cmd-ast/out/Nodes/Create";
+import { GroupType } from "./CommandGroup";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {
 	command: string;
 	options: O;
+	groups: GroupType[];
 	args: A;
 	execute?: (this: void, context: CommandContext<O>, args: ExecutionArgs<O, A>) => R;
 	children?: readonly Command<any, any, any>[];
@@ -49,8 +51,8 @@ export class Command<
 	private execute: CommandDeclaration<O, A, R>["execute"];
 	private children: readonly Command[] | undefined;
 
-	private constructor({ command, options, args, execute, children }: CommandDeclaration<O, A, R>) {
-		super(command);
+	private constructor({ command, options, args, execute, children, groups }: CommandDeclaration<O, A, R>) {
+		super(command, groups);
 		this.options = options;
 		this.args = args;
 		this.children = children;

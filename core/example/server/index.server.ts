@@ -2,12 +2,14 @@ import { Command } from "@cmd-core/class/Command";
 import { CmdServer } from "@cmd-core";
 import Net from "@rbxts/net";
 import t from "@rbxts/t";
+import { GroupType } from "./class/CommandGroup";
 
 const killCommand = Command.create({
 	command: "kill",
 	options: {
 		withExplosion: { type: "switch", alias: ["e"] },
 	},
+	groups: [GroupType.Creator],
 	args: [{ type: "player", required: true }] as const,
 	execute: (_, { Arguments: [player], Options }) => {
 		if (Options.withExplosion) {
@@ -25,6 +27,7 @@ const jq = Command.create({
 	options: {
 		wrap: { type: "string", default: "" },
 	},
+	groups: [GroupType.Creator],
 	args: [],
 	execute: (ctx, args) => {
 		const http = game.GetService("HttpService");
@@ -49,6 +52,7 @@ const jq = Command.create({
 const upper = Command.create({
 	command: "caps",
 	options: {},
+	groups: [GroupType.Creator],
 	args: [],
 	execute: (ctx, args) => {
 		const input = ctx.GetInput();
@@ -66,15 +70,17 @@ const upper = Command.create({
 
 const echoCommand = Command.create({
 	command: "print",
+	groups: [GroupType.Creator, GroupType.User],
 	options: {
 		prefix: { type: "string", alias: ["p"], default: "*" },
 		numTest: { type: ["number"] },
 	},
-	args: [],
+	args: [{ type: ["string", "number", "boolean"], variadic: true }] as const,
 	children: [
 		Command.create({
 			command: "workspace",
 			options: {},
+			groups: [GroupType.Creator, GroupType.User],
 			args: [{ type: "string" }] as const,
 			execute: (ctx, args) => {
 				const [name] = args.Arguments;
@@ -90,13 +96,14 @@ const echoCommand = Command.create({
 			print("numTest");
 		}
 
-		const message = (args.Options.prefix ?? "") + (args.Arguments as readonly defined[]).map(tostring).join(" ");
+		const message = (args.Options.prefix ?? "") + args.Arguments.filterUndefined().map(tostring).join(" ");
 		ctx.PushOutput(message);
 	},
 });
 
 const listVars = Command.create({
 	command: "env",
+	groups: [GroupType.Creator],
 	options: {
 		name: { type: "string" },
 	},
@@ -125,6 +132,24 @@ const listVars = Command.create({
 
 CmdServer.Registry.RegisterCommand(echoCommand);
 CmdServer.Registry.RegisterCommand(listVars);
+
+CmdServer.Registry.RegisterCommand(
+	Command.create({
+		command: "testargs",
+		groups: [GroupType.Creator, GroupType.User],
+		args: [
+			{ type: "string" },
+			{ type: "number" },
+			{ type: ["string", "number", "boolean"], varadic: true },
+		] as const,
+		options: {},
+		execute: (ctx, args) => {
+			for (const arg of args.Arguments) {
+				print(arg);
+			}
+		},
+	}),
+);
 
 // const testSend = new Net.ServerEvent("TestSendEvent", t.string);
 // testSend.Connect((player, message) => {

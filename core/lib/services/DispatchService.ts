@@ -1,7 +1,13 @@
 import { CmdCoreRegistryService } from "./RegistryService";
 import CommandAstParser from "@rbxts/cmd-ast";
 import CommandAstInterpreter from "../interpreter";
-import { CommandStatement, BinaryExpression, VariableStatement, Node } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import {
+	CommandStatement,
+	BinaryExpression,
+	VariableStatement,
+	Node,
+	CommandSource,
+} from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
 import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
 import { prettyPrintNodes } from "@rbxts/cmd-ast/out/Utility";
@@ -142,16 +148,13 @@ export namespace CmdCoreDispatchService {
 		nestingInnerExpressions: true,
 	});
 
-	export function Execute(text: string, executor: Player) {
-		parser.SetCommandDefinitions(Registry.GetCommandDeclarations());
-
-		const commandAst = parser.Parse(text);
+	export function ExecuteAst(commandAst: CommandSource, executor: Player) {
 		const valid = CommandAstParser.validate(commandAst);
 		if (valid.success) {
 			const isStudio = game.GetService("RunService").IsStudio();
 			if (isStudio) {
 				const vars = getVariablesForPlayer(executor);
-				vars._ = text;
+				vars._ = commandAst.rawText ?? "";
 
 				if (vars.debug === true) {
 					prettyPrintNodes([commandAst]);
@@ -161,7 +164,7 @@ export namespace CmdCoreDispatchService {
 			} else {
 				try {
 					const vars = getVariablesForPlayer(executor);
-					vars._ = text;
+					vars._ = commandAst.rawText ?? "";
 
 					return executeNodes(commandAst.children, executor);
 				} catch (err) {
@@ -171,6 +174,14 @@ export namespace CmdCoreDispatchService {
 		} else {
 			return { stderr: [valid.errorNodes[0].message], stdout: new Array<string>() };
 		}
+	}
+
+	export function Execute(text: string, executor: Player) {
+		const definitions = Registry.GetCommandDeclarations(executor);
+		parser.SetCommandDefinitions(definitions);
+
+		const commandAst = parser.Parse(text);
+		return ExecuteAst(commandAst, executor);
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;

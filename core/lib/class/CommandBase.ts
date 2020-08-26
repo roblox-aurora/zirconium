@@ -1,9 +1,10 @@
 import { CommandStatement } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
 import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
 import { AstCommandDefinition } from "@rbxts/cmd-ast/out/Definitions/Definitions";
+import { GroupType } from "./CommandGroup";
 
 export abstract class CommandBase {
-	constructor(protected readonly command: string) {}
+	constructor(protected readonly command: string, public readonly groups: GroupType[]) {}
 
 	/** @internal */
 	public matchesCommand(statement: CommandStatement) {

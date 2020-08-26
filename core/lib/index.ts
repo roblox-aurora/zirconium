@@ -39,7 +39,14 @@ export namespace CmdServer {
 		});
 
 		const GetCommands = new Net.ServerFunction(CmdRemoteId.GetCommands);
-		GetCommands.SetCallback((_) => Registry.GetCommandDeclarations());
+		GetCommands.SetCallback((player) => Registry.GetCommandDeclarations(player));
+
+		const Players = game.GetService("Players");
+		Players.PlayerAdded.Connect((player) => {
+			Registry.RegisterPlayer(player);
+		});
+
+		Players.PlayerRemoving.Connect((player) => Registry.UnregisterPlayer(player));
 	}
 }
 

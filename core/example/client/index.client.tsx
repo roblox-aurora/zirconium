@@ -32,7 +32,6 @@ class TestEditor extends Roact.Component<
 			prefixExpressions: true,
 			variableDeclarations: true,
 			innerExpressions: false,
-			invalidCommandIsError: true,
 			nestingInnerExpressions: false,
 			commands: this.state.cmds,
 		}).Parse(text);
@@ -134,7 +133,7 @@ class TestEditor extends Roact.Component<
 						Font="Code"
 						Event={{
 							MouseButton1Down: () => {
-								CmdClient.Dispatch.InvokeServer(this.state.source);
+								CmdClient.Dispatch.Execute(this.state.source);
 								// evt.SendToServer(this.state.source);
 							},
 						}}
