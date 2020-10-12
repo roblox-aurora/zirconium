@@ -1,4 +1,5 @@
-## _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+### _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+
 <div align="center">
 	<img src="https://assets.vorlias.com/i1/zirconium.png"/>
 </div>
@@ -29,7 +30,7 @@ const KillCommand = Command.create({
 		}
     }
 })
-CmdServer.Registry.RegisterCommand(KillCommand);
+ZrServer.Registry.RegisterCommand(KillCommand);
 ```
 
 then
@@ -51,7 +52,7 @@ const PrintCommand = Command.create({
         ctx.PushOutput(message);
     }
 });
-CmdServer.Registry.RegisterCommand(PrintCommand);
+ZrServer.Registry.RegisterCommand(PrintCommand);
 ```
 
 Then
