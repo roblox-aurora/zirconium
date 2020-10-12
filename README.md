@@ -7,7 +7,8 @@
 		<img src="https://badge.fury.io/js/%40rbxts%2Fzirconium.svg"></img>
 	</a>
 </div>
-Bash-like command framework for Roblox, written in TypeScript, which uses [cmd-ast](https://github.com/roblox-aurora/cmd-ast) for parsing commands.
+
+Bash-like command framework for Roblox, written in TypeScript.
 
 The purpose of this specific framework is to provide a framework for adding programmatic command capabilities to your games, which you can extend through player chat or your own custom command console.
 
