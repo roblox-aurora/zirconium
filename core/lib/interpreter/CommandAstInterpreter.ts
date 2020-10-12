@@ -1,37 +1,24 @@
-import {
-	NodeKind,
-	CommandName,
-	Option,
-	Node,
-	NodeTypes,
-	isNodeIn,
-	getKindName,
-	getNodeKindName,
-	isNode,
-	CommandStatement,
-	CommandSource,
-	BinaryExpression,
-	CmdSyntaxKind,
-	flattenInterpolatedString,
-	createBooleanNode,
-	createInterpolatedString,
-	BooleanLiteral,
-	NumberLiteral,
-} from "@rbxts/cmd-ast/out/Nodes";
-import { argumentTransformers, getFriendlyName } from "./InterpreterHelpers";
+import { isNodeIn, getKindName, getNodeKindName, isNode, CmdSyntaxKind } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { argumentTransformers, matchInterpreterType, matchInterpreterOptionType } from "./InterpreterHelpers";
+import { Node, CommandStatement, CommandSource, BinaryExpression } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 
-type ValidationType = "string" | "number" | "boolean";
+export type ValidationType = "string" | "number" | "boolean" | "player";
+export type OptionValidationType = ValidationType | "switch";
 
 export interface CommandInterpreterArgument {
-	default?: defined;
-	type: ValidationType | "player" | "any" | "var";
+	default?: unknown;
+	variadic?: true;
+	type: readonly ValidationType[];
 }
 
 export interface CommandInterpreterOption {
 	name: string;
 	alias?: string[];
 	default?: defined;
-	type: ValidationType | "switch" | "any" | "var";
+	type: ReadonlyArray<ValidationType | "switch">;
 }
 
 export const enum ResultKind {
@@ -88,36 +75,6 @@ export default class CommandAstInterpreter {
 	}
 
 	constructor(private commands: CommandInterpreterDeclaration[]) {}
-
-	private expectOptionTypes<K extends NodeKind>(
-		command: CommandName,
-		option: Option,
-		node: Node,
-		...kind: K[]
-	): asserts node is NodeTypes[K] {
-		if (!isNodeIn(node, kind)) {
-			error(
-				`[CommandInterpreter] Invalid option for ${command.name.text}: ${option.flag} expects ${kind
-					.map((k) => getKindName(k))
-					.join(" | ")}, got ${getNodeKindName(node)}.`,
-			);
-		}
-	}
-
-	private expectOptionType<K extends NodeKind>(
-		command: CommandName,
-		option: Option,
-		node: Node,
-		kind: K,
-	): asserts node is NodeTypes[K] {
-		if (!isNode(node, kind)) {
-			error(
-				`[CommandInterpreter] Invalid option for ${command.name.text}: ${option.flag} expects ${getKindName(
-					kind,
-				)}, got ${getNodeKindName(node)}.`,
-			);
-		}
-	}
 
 	public interpret(
 		node: CommandStatement | CommandSource | BinaryExpression,
@@ -189,58 +146,6 @@ export default class CommandAstInterpreter {
 			}
 		}
 
-		const commandTypeHandler: Record<
-			CommandInterpreterOption["type"] | "_",
-			(optionFullName: string, optionNode: Option, nextNode: Node) => boolean
-		> = {
-			string: (optionFullName, node, nextNode) => {
-				if (isNode(nextNode, CmdSyntaxKind.InterpolatedString)) {
-					nextNode = flattenInterpolatedString(nextNode, variables);
-				}
-				this.expectOptionTypes(command, node, nextNode, CmdSyntaxKind.String);
-				options.set(optionFullName, nextNode.text);
-				return true;
-			},
-			number: (optionFullName, node, nextNode) => {
-				this.expectOptionType(command, node, nextNode, CmdSyntaxKind.Number);
-				options.set(optionFullName, nextNode.value);
-				return true;
-			},
-			boolean: (optionFullName, node, nextNode) => {
-				this.expectOptionType(command, node, nextNode, CmdSyntaxKind.Boolean);
-				options.set(optionFullName, nextNode.value);
-				return true;
-			},
-			any: (optionFullName, _, nextNode) => {
-				if (isNode(nextNode, CmdSyntaxKind.String)) {
-					options.set(optionFullName, nextNode.text);
-				} else if (isNode(nextNode, CmdSyntaxKind.InterpolatedString)) {
-					options.set(optionFullName, flattenInterpolatedString(nextNode, variables).text);
-				} else if (isNode(nextNode, CmdSyntaxKind.Number)) {
-					options.set(optionFullName, nextNode.value);
-				} else if (isNode(nextNode, CmdSyntaxKind.Boolean)) {
-					options.set(optionFullName, nextNode.value);
-				} else {
-					throw `[CommandInterpreter] Cannot parse node value ${getNodeKindName(nextNode)}`;
-				}
-				return true;
-			},
-			var: (optionFullName, node, nextNode) => {
-				this.expectOptionType(command, node, nextNode, CmdSyntaxKind.Identifier);
-				options.set(optionFullName, variables[nextNode.name]);
-				return true;
-			},
-			switch: (node, _) => {
-				options.set(node, createBooleanNode(true).value);
-				return false;
-			},
-			// default
-			_: (_optionFullName, node, _nextNode) => {
-				throw `[CommandInterpreter] Cannot handle option type for ${node.flag}`;
-				// return false;
-			},
-		};
-
 		// Set defaults
 		for (const option of matchingCommand.options) {
 			if (option.default !== undefined) {
@@ -254,26 +159,38 @@ export default class CommandAstInterpreter {
 		while (ptr < children.size()) {
 			const node = children[ptr];
 
-			if (isNode(node, CmdSyntaxKind.Option)) {
+			if (isNode(node, CmdSyntaxKind.OptionExpression)) {
+				const { option: optionNode, expression: expressionNode } = node;
 				// handle option
-				const option = matchingCommand.options.find(
-					(f) => f.name === node.flag || f.alias?.includes(node.flag),
+				const matchingOption = matchingCommand.options.find(
+					(f) => f.name === optionNode.flag || f.alias?.includes(optionNode.flag),
 				);
 
-				if (option === undefined) {
-					if (interpreterOptions.throwOnInvalidOption) {
-						throw `[CommandInterpreter] Invalid option for ${matchingCommand.command}: ${node.flag}`;
-					} else {
-						commandTypeHandler.switch(node.flag, node, children[ptr + 1]);
-					}
+				if (matchingOption === undefined) {
+					throw `[CommandInterpreter] Invalid option for ${matchingCommand.command}: ${optionNode.flag}`;
 				} else {
-					const typeHandler = commandTypeHandler[option.type];
-					const nextNode = children[ptr + 1];
+					const matcher = matchInterpreterOptionType(expressionNode, matchingOption.type);
+					if (matcher.matches) {
+						const { type: matchType } = matcher;
+						if (matchType === "switch") {
+							options.set(matchingOption.name, true);
+						} else {
+							const transformer = argumentTransformers[matchType];
+							if (transformer) {
+								if (expressionNode.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
 
-					if (typeHandler) {
-						typeHandler(option.name, node, nextNode) && ptr++;
-					} else {
-						commandTypeHandler._(option?.name, node, nextNode) && ptr++;
+								const typeNodeHandler = transformer[expressionNode.kind] as (
+									node: Node,
+									vars: Record<string, defined>,
+								) => defined;
+								if (typeNodeHandler !== undefined) {
+									const value = typeNodeHandler(expressionNode, variables);
+									options.set(matchingOption.name, value);
+								} else {
+									throw `[CommandInterpreter] Transform failed`;
+								}
+							}
+						}
 					}
 				}
 			} else {
@@ -281,7 +198,7 @@ export default class CommandAstInterpreter {
 				if (!isNodeIn(node, [CmdSyntaxKind.CommandName, CmdSyntaxKind.EndOfStatement])) {
 					if (matchingCommand.args.size() === 0) {
 						// Allow any number of arguments if not specified
-						ptr++;
+
 						if (isNode(node, CmdSyntaxKind.String)) {
 							args.push(node.text);
 						} else if (isNode(node, CmdSyntaxKind.InterpolatedString)) {
@@ -291,33 +208,64 @@ export default class CommandAstInterpreter {
 						} else if (isNode(node, CmdSyntaxKind.Identifier)) {
 							args.push(variables[node.name]);
 						}
+						ptr++;
 						continue;
 					}
 
-					if (argIdx >= matchingCommand.args.size()) {
+					const lastArg = matchingCommand.args[matchingCommand.args.size() - 1];
+
+					if (argIdx >= matchingCommand.args.size() && !lastArg.variadic) {
 						throw `[CommandInterpreter] Exceeding argument list: [ ${matchingCommand.args
 							.map((t) => t.type)
 							.join(", ")} ] with ${getNodeKindName(node)}`;
 					}
 
-					const arg = matchingCommand.args[argIdx];
-					const typeNodeHandlers = argumentTransformers[arg.type];
-					if (typeNodeHandlers) {
-						if (node.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
+					const arg = matchingCommand.args[argIdx] ?? (lastArg.variadic ? lastArg : undefined);
 
-						const typeNodeHandler = typeNodeHandlers[node.kind] as (
-							node: Node,
-							vars: Record<string, defined>,
-						) => defined;
-						if (typeNodeHandler !== undefined) {
-							const value = typeNodeHandler(node, variables);
-							args.push(value);
+					const matcher = matchInterpreterType(node, arg.type);
+					if (matcher.matches) {
+						const typeNodeHandlers = argumentTransformers[matcher.type];
+						if (typeNodeHandlers) {
+							if (node.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
+
+							const typeNodeHandler = typeNodeHandlers[node.kind] as (
+								node: Node,
+								vars: Record<string, defined>,
+							) => defined;
+							if (typeNodeHandler !== undefined) {
+								const value = typeNodeHandler(node, variables);
+								args.push(value);
+							} else {
+								throw `[CommandInterpreter] expected '${arg.type.join(" | ")}' - but type handler '${
+									matcher.type
+								}[${getNodeKindName(node)}]' does not exist.`;
+							}
 						} else {
-							throw `[CommandInterpreter] expected ${arg.type}, got ${getFriendlyName(node)}`;
+							throw `[CommandInterpreter] No argument type handler for ${arg.type}`;
 						}
 					} else {
-						throw `[CommandInterpreter] No argument type handler for ${arg.type}`;
+						throw `[CommandInterpeter] Type mismatch '${getFriendlyName(node)}' to '${arg.type.join(
+							" | ",
+						)}'`;
 					}
+
+					// const typeNodeHandlers = argumentTransformers[arg.type];
+					// if (typeNodeHandlers) {
+					// 	if (node.kind === CmdSyntaxKind.Unknown) throw `UnknownNodeKind`;
+
+					// 	const typeNodeHandler = typeNodeHandlers[node.kind] as (
+					// 		node: Node,
+					// 		vars: Record<string, defined>,
+					// 	) => defined;
+					// 	if (typeNodeHandler !== undefined) {
+					// 		const value = typeNodeHandler(node, variables);
+					// 		args.push(value);
+					// 	} else {
+					// 		throw `[CommandInterpreter] expected ${arg.type}, got ${getFriendlyName(node)}`;
+					// 	}
+					// } else {
+					// 	throw `[CommandInterpreter] No argument type handler for ${arg.type}`;
+					// }
 
 					argIdx++;
 				}

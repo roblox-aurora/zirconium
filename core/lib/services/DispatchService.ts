@@ -1,22 +1,23 @@
 import { CmdCoreRegistryService } from "./RegistryService";
+import CommandAstParser from "@rbxts/zirconium-ast";
+import CommandAstInterpreter from "../interpreter";
 import {
 	CommandStatement,
-	isNode,
-	CmdSyntaxKind,
 	BinaryExpression,
-	getNodeKindName,
 	VariableStatement,
-	flattenInterpolatedString,
-} from "@rbxts/cmd-ast/out/Nodes";
-import CommandAstParser, { ast } from "@rbxts/cmd-ast";
-import CommandAstInterpreter from "../interpreter";
+	Node,
+	CommandSource,
+} from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 
 interface stdio {
 	stdout: Array<string>;
 	stdin: Array<string>;
 }
 
-interface ExecutionParams extends stdio {
+export interface ExecutionParams extends stdio {
 	pipedOutput: boolean;
 }
 
@@ -29,7 +30,7 @@ export namespace CmdCoreDispatchService {
 		_VERSION: PKG_VERSION,
 	};
 
-	function getVariablesForPlayer(player: Player): Record<string, defined> {
+	export function getVariablesForPlayer(player: Player): Record<string, defined> {
 		if (playerVariables.has(player)) {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			return playerVariables.get(player)!;
@@ -46,26 +47,9 @@ export namespace CmdCoreDispatchService {
 	}
 
 	function executeStatement(statement: CommandStatement, executor: Player, params: ExecutionParams) {
-		const variables = getVariablesForPlayer(executor);
-		variables._cmd = statement.command.name;
-
-		const interpreter = new CommandAstInterpreter(Registry.GetCommandDeclarations());
-		const result = interpreter.interpret(statement, variables);
-
-		const cmd = result[0];
-		if (CommandAstInterpreter.isCommand(cmd)) {
-			const matchingCommand = Registry.GetCommands().find((c) => c.command === cmd.command);
-			if (matchingCommand) {
-				return matchingCommand.executeForPlayer({
-					variables,
-					mappedOptions: cmd.options,
-					args: cmd.args,
-					executor,
-					piped: params.pipedOutput,
-					stdin: params.stdin,
-					stdout: params.stdout,
-				});
-			}
+		const matchingCommand = Registry.GetCommands().find((c) => c.matchesCommand(statement));
+		if (matchingCommand) {
+			return matchingCommand.executeStatement(statement, CmdCoreDispatchService, executor, params);
 		}
 	}
 
@@ -81,14 +65,14 @@ export namespace CmdCoreDispatchService {
 		if (isNode(left, CmdSyntaxKind.CommandStatement)) {
 			const result = executeStatement(left, executor, {
 				stdin: [],
-				stdout: tmpstdout,
+				stdout: op === "|" ? tmpstdout : stdout,
 				pipedOutput: op === "|",
 			}) as defined | undefined;
 			const success = result !== undefined ? result : true;
 
 			if (success && op === "&&") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
-					return executeStatement(right, executor, { stdin: [], stdout: [], pipedOutput: false });
+					return executeStatement(right, executor, { stdin: [], stdout: stdout, pipedOutput: false });
 				}
 			} else if (op === "|") {
 				if (isNode(right, CmdSyntaxKind.CommandStatement)) {
@@ -140,18 +124,13 @@ export namespace CmdCoreDispatchService {
 		}
 	}
 
-	export function Execute(text: string, executor: Player) {
-		const commandAst = new CommandAstParser(text, {
-			prefixExpressions: true,
-			variableDeclarations: true,
-		}).Parse();
+	function executeNodes(nodes: Node[], executor: Player, stdin = new Array<string>()) {
+		const stdout = new Array<string>();
 		const vars = getVariablesForPlayer(executor);
 
-		const stdout = new Array<string>();
-
-		for (const statement of commandAst.children) {
+		for (const statement of nodes) {
 			if (isNode(statement, CmdSyntaxKind.CommandStatement)) {
-				vars._ = executeStatement(statement, executor, { stdin: [], stdout, pipedOutput: false }) as defined;
+				vars._ = executeStatement(statement, executor, { stdin, stdout, pipedOutput: false }) as defined;
 			} else if (isNode(statement, CmdSyntaxKind.BinaryExpression)) {
 				vars._ = executeBinaryExpression(statement, executor, stdout) as defined;
 			} else if (isNode(statement, CmdSyntaxKind.VariableStatement)) {
@@ -159,9 +138,50 @@ export namespace CmdCoreDispatchService {
 			}
 		}
 
-		vars._ = text;
+		return { stdout, stderr: new Array<string>() };
+	}
 
-		return { stdout };
+	const parser = new CommandAstParser({
+		prefixExpressions: false,
+		variableDeclarations: true,
+		innerExpressions: false,
+		nestingInnerExpressions: true,
+	});
+
+	export function ExecuteAst(commandAst: CommandSource, executor: Player) {
+		const valid = CommandAstParser.validate(commandAst);
+		if (valid.success) {
+			const isStudio = game.GetService("RunService").IsStudio();
+			if (isStudio) {
+				const vars = getVariablesForPlayer(executor);
+				vars._ = commandAst.rawText ?? "";
+
+				if (vars.debug === true) {
+					prettyPrintNodes([commandAst]);
+				}
+
+				return executeNodes(commandAst.children, executor);
+			} else {
+				try {
+					const vars = getVariablesForPlayer(executor);
+					vars._ = commandAst.rawText ?? "";
+
+					return executeNodes(commandAst.children, executor);
+				} catch (err) {
+					return { stderr: [tostring(err)], stdout: new Array<string>() };
+				}
+			}
+		} else {
+			return { stderr: [valid.errorNodes[0].message], stdout: new Array<string>() };
+		}
+	}
+
+	export function Execute(text: string, executor: Player) {
+		const definitions = Registry.GetCommandDeclarations(executor);
+		parser.SetCommandDefinitions(definitions);
+
+		const commandAst = parser.Parse(text);
+		return ExecuteAst(commandAst, executor);
 	}
 }
 export type CmdCoreDispatchService = typeof CmdCoreDispatchService;

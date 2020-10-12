@@ -10,6 +10,7 @@
 		"typeRoots": ["node_modules/@rbxts"],
 		"resolveJsonModule": true,
 		"module": "commonjs",
+		"stripInternal": true,
 
 		// required, configurable
 		"rootDirs": ["core/lib"],

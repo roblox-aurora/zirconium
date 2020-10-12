@@ -37,19 +37,19 @@ interface CommandArgumentType<T> {
 	alias?: string[];
 }
 
-interface StringCommandArgument extends CommandArgumentType<"string" | CommandType.String> {
+interface StringCommandArgument extends CommandArgumentType<"string"> {
 	default?: string;
 }
 
-interface NumberCommandArgument extends CommandArgumentType<"number" | CommandType.Number> {
+interface NumberCommandArgument extends CommandArgumentType<"number"> {
 	default?: number;
 }
 
-interface BooleanCommandArgument extends CommandArgumentType<"boolean" | CommandType.Boolean> {
+interface BooleanCommandArgument extends CommandArgumentType<"boolean"> {
 	default?: boolean;
 }
 
-interface SwitchCommandArgument extends CommandArgumentType<"switch" | CommandType.Switch> {
+interface SwitchCommandArgument extends CommandArgumentType<"switch"> {
 	default?: never;
 }
 
@@ -57,15 +57,10 @@ export interface CustomTypeArgument<T, U> extends CommandArgumentType<CustomComm
 	required?: boolean;
 	default?: defined;
 }
-interface CommandUnionType<T extends readonly CommandArgument[]> {
-	type: T;
-	alias?: string[];
-	default?: InferType<T[number]>;
-}
 
-interface CommandUnionType2<T extends readonly CommandArgumentTypeId[]> {
+interface UnionType<T extends readonly CommandArgumentTypeId[]> {
 	type: T;
-	default?: InferTypeName<T[number]>;
+	default?: InferTypeWithUnion<T>;
 	alias?: string[];
 }
 
@@ -76,7 +71,9 @@ type _CommandArgument =
 	| (CommandArgumentType<"player"> & { default?: Player })
 	| CustomTypeArgument<defined, defined>;
 
-export type CommandArgument = _CommandArgument | CommandUnionType2<readonly CommandArgumentTypeId[]>;
+export type CommandArgument = (_CommandArgument | UnionType<readonly CommandArgumentTypeId[]>) & {
+	variadic?: true;
+};
 
 export type CommandArgumentTypeId = _CommandArgument["type"];
 
@@ -92,7 +89,7 @@ const _isCmdTypeDefinition = t.interface({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isCmdTypeDefinition(value: unknown): value is CustomCommandType<unknown, unknown> {
+export function isCmdTypeDefinition(value: unknown): value is CustomCommandType<any, any> {
 	return _isCmdTypeDefinition(value);
 }
 
@@ -100,6 +97,10 @@ type InferTypeName<T> = T extends "string"
 	? string
 	: T extends "number"
 	? number
+	: T extends "boolean"
+	? boolean
+	: T extends "player"
+	? Player
 	: T extends CustomCommandType<infer _, infer R>
 	? R
 	: never;
@@ -126,9 +127,31 @@ type InferTypeWithUnion<T> = T extends { type: readonly CommandArgumentTypeId[] 
 	? InferTypeName<T["type"][number]> | undefined
 	: InferType<T>;
 
-export type MappedOptionsReadonly<T> = T extends never[]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DropFirstInTuple<T extends readonly defined[]> = ((...args: T) => any) extends (
+	arg: any,
+	...rest: infer U
+) => any
+	? U
+	: T;
+export type LastInTuple<T extends readonly defined[]> = T[LengthOfTuple<DropFirstInTuple<T>>];
+type LengthOfTuple<T extends readonly defined[]> = T extends { length: infer L } ? L : -1;
+
+type ArgTypes<T> = { readonly [P in keyof T]: InferTypeWithUnion<T[P]> };
+
+// once 4.0 is out.
+// type WithVariadic<T extends Array<unknown> = Array<unknown>> = [
+// 	...ArgTypes<T>,
+// 	...InferTypeWithUnion<LastInTuple<T>>[]
+// ];
+type WithVariadic<T extends ReadonlyArray<defined>> = ArgTypes<T> & [...InferTypeWithUnion<LastInTuple<T>>[]];
+type HasVariadic<T extends readonly defined[]> = LastInTuple<T> extends { variadic: true } ? true : false;
+
+export type MappedOptionsReadonly<T extends ReadonlyArray<defined>> = T extends never[]
 	? unknown[]
-	: { readonly [P in keyof T]: InferTypeWithUnion<T[P]> };
+	: HasVariadic<T> extends true
+	? WithVariadic<T>
+	: ArgTypes<T>;
 
 export type MappedOptions<T> = { [P in keyof T]: InferTypeWithUnion<T[P]> };
 export type MappedArgs<T> = T extends [infer A]

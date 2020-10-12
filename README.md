@@ -1,3 +1,5 @@
+## _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+
 <div align="center">
 	<img src="https://assets.vorlias.com/i1/zirconium.png"/>
 </div>
@@ -8,11 +10,57 @@
 	</a>
 </div>
 
-Bash-like command framework for Roblox, written in TypeScript.
+## Fixed commands
+```ts
+const KillCommand = Command.create({
+    command: "kill",
+    args: [{type: "player"}] as const,
+    options: {
+        withExplosion: {type: "switch"},
+    },
+    execute: (ctx, {Arguments, Options}) => {
+        const [player] = Arguments; // player: Player | undefined
+        const {withExplosion} = Options;
+		if (withExplosion) {
+			const explode = new Instance("Explosion");
+			explode.Position = player.Character?.GetPrimaryPartCFrame().Position ?? new Vector3();
+			explode.Parent = game.Workspace;
+		} else {
+			player.Character?.BreakJoints();
+		}
+    }
+})
+CmdServer.Registry.RegisterCommand(KillCommand);
+```
 
-The purpose of this specific framework is to provide a framework for adding programmatic command capabilities to your games, which you can extend through player chat or your own custom command console.
+then
+```bash
+kill vorlias # any more than 'vorlias' will be an error.
+kill --with-explosion vorlias # sets 'withExplosion' to true
+```
 
-Example script:
+## Variadic Commands
+
+```ts
+// basic print command, for example
+const PrintCommand = Command.create({
+    command: "print",
+    args: [{type: ["string", "number", "boolean"], variadic: true}] as const, // ...(string | number | boolean)[]
+    options: {},
+    execute: (ctx, { Arguments }) => {
+        const message = Arguments.filterUndefined().join(" ");
+        ctx.PushOutput(message);
+    }
+});
+CmdServer.Registry.RegisterCommand(PrintCommand);
+```
+
+Then
+
+```bash
+print "Hello, World!" 10 true
+```
+will work.
 
 ## Differences to other solutions
 - Uses AST for parsing

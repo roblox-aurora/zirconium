@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from "./Command";
 import { CommandOptions, MappedOptions } from "../types/Types";
 

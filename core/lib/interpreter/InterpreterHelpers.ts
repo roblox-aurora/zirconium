@@ -1,23 +1,25 @@
 import {
-	NodeTypes,
-	BooleanLiteral,
-	NumberLiteral,
-	CmdSyntaxKind,
-	flattenInterpolatedString,
-	isNode,
-	Node,
-	getNodeKindName,
-} from "@rbxts/cmd-ast/out/Nodes";
-import { CommandInterpreterArgument } from "./CommandAstInterpreter";
+	CommandInterpreterArgument,
+	ValidationType,
+	OptionValidationType,
+	CommandInterpreterOption,
+} from "./CommandAstInterpreter";
+import { NodeTypes, BooleanLiteral, NumberLiteral, Node } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { CmdSyntaxKind, getNodeKindName } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { isStringExpression, isNumberLiteral, isBooleanLiteral } from "@rbxts/zirconium-ast/out/Nodes/Guards";
 import util from "../util";
 
-export type CmdSyntaxMap<R = defined> = {
+export type CmdSyntaxMap<R = unknown> = {
 	[P in keyof NodeTypes]: (value: NodeTypes[P], variables: Record<string, defined>) => R;
 };
 
 const numericHandler = (node: BooleanLiteral | NumberLiteral) => node.value;
 
-export const argumentTransformers: Partial<Record<CommandInterpreterArgument["type"], Partial<CmdSyntaxMap>>> = {
+export const argumentTransformers: Partial<Record<
+	CommandInterpreterArgument["type"][number],
+	Partial<CmdSyntaxMap>
+>> = {
 	string: {
 		[CmdSyntaxKind.InterpolatedString]: (node, variables) => flattenInterpolatedString(node, variables).text,
 		[CmdSyntaxKind.String]: (node) => node.text,
@@ -29,30 +31,6 @@ export const argumentTransformers: Partial<Record<CommandInterpreterArgument["ty
 				throw `[CommandInterpreter] expected string, got ${getFriendlyName(node)}`;
 			}
 		},
-	},
-	player: {
-		[CmdSyntaxKind.String]: (node) => {
-			const players = game.GetService("Players").GetPlayers();
-			const player = players.find((p) => util.startsWithIgnoreCase(p.Name, node.text));
-			if (player) {
-				return player;
-			} else {
-				throw `[CommandInterpreter] Could not find player matching ${node.text}`;
-			}
-		},
-		// [CmdSyntaxKind.PrefixExpression]: (node, variables) => {
-		// 	const { prefix, expression } = node;
-		// 	if (prefix.value === "@") {
-		// 		const player = variables.player as Player;
-
-		// 		if (isNode(expression, CmdSyntaxKind.String)) {
-		// 			const { text } = expression;
-		// 			if (text === "me") {
-		// 			}
-		// 		}
-		// 	}
-		// 	return [];
-		// },
 	},
 	number: {
 		[CmdSyntaxKind.Number]: numericHandler,
@@ -76,17 +54,55 @@ export const argumentTransformers: Partial<Record<CommandInterpreterArgument["ty
 			}
 		},
 	},
-	var: {
-		[CmdSyntaxKind.Identifier]: (node, variables) => variables[node.name],
-	},
-	any: {
-		[CmdSyntaxKind.Identifier]: (node, variables) => variables[node.name],
-		[CmdSyntaxKind.InterpolatedString]: (node, variables) => flattenInterpolatedString(node, variables).text,
-		[CmdSyntaxKind.String]: (node) => node.text,
-		[CmdSyntaxKind.Number]: numericHandler,
-		[CmdSyntaxKind.Boolean]: numericHandler,
+	player: {
+		[CmdSyntaxKind.InterpolatedString]: (node, variables) => {
+			const text = flattenInterpolatedString(node, variables).text;
+			const players = game.GetService("Players").GetPlayers();
+			return players.find((f) => util.startsWithIgnoreCase(f.Name, text));
+		},
+		[CmdSyntaxKind.String]: (node) => {
+			const players = game.GetService("Players").GetPlayers();
+			return players.find((f) => util.startsWithIgnoreCase(f.Name, node.text));
+		},
 	},
 };
+
+type OptionMatch = { matches: true; type: CommandInterpreterOption["type"][number] } | { matches: false };
+type Match = { matches: true; type: CommandInterpreterArgument["type"][number] } | { matches: false };
+
+export function matchInterpreterOptionType(node: Node, types: readonly OptionValidationType[]): OptionMatch {
+	for (const typeName of types) {
+		if (typeName === "string" && isStringExpression(node)) {
+			return { matches: true, type: "string" };
+		} else if (typeName === "player" && isStringExpression(node)) {
+			return { matches: true, type: "player" };
+		} else if (typeName === "number" && isNumberLiteral(node)) {
+			return { matches: true, type: "number" };
+		} else if (typeName === "boolean" && isBooleanLiteral(node)) {
+			return { matches: true, type: "boolean" };
+		} else if (typeName === "switch") {
+			return { matches: true, type: "switch" };
+		}
+	}
+
+	return { matches: false };
+}
+
+export function matchInterpreterType(node: Node, types: readonly ValidationType[]): Match {
+	for (const typeName of types) {
+		if (typeName === "string" && isStringExpression(node)) {
+			return { matches: true, type: "string" };
+		} else if (typeName === "player" && isStringExpression(node)) {
+			return { matches: true, type: "player" };
+		} else if (typeName === "number" && isNumberLiteral(node)) {
+			return { matches: true, type: "number" };
+		} else if (typeName === "boolean" && isBooleanLiteral(node)) {
+			return { matches: true, type: "boolean" };
+		}
+	}
+
+	return { matches: false };
+}
 
 export function getFriendlyName(node: Node) {
 	switch (node.kind) {
