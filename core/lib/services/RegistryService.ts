@@ -1,6 +1,7 @@
 import type { CustomCommandType } from "../types/Types";
 import { CommandBase } from "../class/CommandBase";
 import { GroupType } from "../class/CommandGroup";
+import EchoBuiltInCommand from "inbuilt/EchoCommand";
 
 export namespace CmdCoreRegistryService {
 	const commands = new Array<CommandBase>();
@@ -23,6 +24,10 @@ export namespace CmdCoreRegistryService {
 				return value;
 			},
 		};
+	}
+
+	export function RegisterDefaultCommands() {
+		RegisterCommand(EchoBuiltInCommand);
 	}
 
 	export function GetCommands(): ReadonlyArray<CommandBase> {
