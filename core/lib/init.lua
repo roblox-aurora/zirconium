@@ -1,3 +1,0 @@
---[[
-    Zircon Shim Loader
-]]
