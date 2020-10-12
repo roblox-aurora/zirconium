@@ -1,4 +1,4 @@
-Command Core
+Zirconium
 ====================
 Bash-like command framework for Roblox, written in TypeScript, which uses [cmd-ast](https://github.com/roblox-aurora/cmd-ast) for parsing commands.
 
