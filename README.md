@@ -10,6 +10,8 @@
 	</a>
 </div>
 
+A type-safe, bash-like command language framework for Roblox that allows programmatic manipulation of Roblox games during runtime.
+
 ## Fixed commands
 ```ts
 const KillCommand = Command.create({
