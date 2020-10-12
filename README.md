@@ -1,5 +1,3 @@
-### _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
-
 <div align="center">
 	<img src="https://assets.vorlias.com/i1/zirconium.png"/>
 </div>
@@ -10,9 +8,17 @@
 	</a>
 </div>
 
+### _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+
 A type-safe, bash-like command language framework for Roblox that allows programmatic manipulation of Roblox games during runtime.
 
-## Fixed commands
+Syntax support can be seen [here](https://github.com/roblox-aurora/zirconium-ast#supported-syntaxes).
+
+## Usage
+Coming Soon &trade; since alpha development.
+
+## Roblox-side programming of commands
+### Creating Fixed commands
 ```ts
 const KillCommand = Command.create({
     command: "kill",
@@ -41,7 +47,7 @@ kill vorlias # any more than 'vorlias' will be an error.
 kill --with-explosion vorlias # sets 'withExplosion' to true
 ```
 
-## Variadic Commands
+### Creating Variadic Commands
 
 ```ts
 // basic print command, for example
@@ -67,7 +73,9 @@ will work.
 ## Differences to other solutions
 - Uses AST for parsing
 - Commands can be executed sequentially and/or results of commands can be piped to other commands. More akin to writing a script for your game.
+- In-built syntax validation & strict types.
 - Option capabilities (e.g. `my-cmd --thing xyz`)
+- Sub command capabilities (e.g. `player equip --slot 'Head' 24`, where `equip` is a subcommand of `player`.)
 - Variable usage - e.g. `my-cmd $value` and string interpolation with `my-cmd "A value is: $value"`
 
 ## Goals
