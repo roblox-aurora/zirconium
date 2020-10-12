@@ -1,12 +1,12 @@
 {
-  "name": "@rbxts/cmd-core",
-  "version": "1.0.0-alpha.2",
+  "name": "@rbxts/zirconium",
+  "version": "1.0.0-alpha.3",
   "description": "",
   "main": "out/init.lua",
   "scripts": {
     "prepare": "npm run build",
-    "build": "rbxtsc-dev -p . --type=package",
-    "build:example": "rbxtsc-dev -p ./core/example -i ./include",
+    "build": "rbxtsc -p . --type=package",
+    "build:example": "rbxtsc -p ./core/example -i ./include",
     "serve": "rojo serve ./core/example/example.project.json --port 34567"
   },
   "keywords": [],
@@ -18,7 +18,7 @@
   "types": "out/index.d.ts",
   "devDependencies": {
     "@rbxts/roact": "^1.3.0-ts.2",
-    "@rbxts/types": "^1.0.375",
+    "@rbxts/types": "^1.0.416",
     "@typescript-eslint/eslint-plugin": "^3.5.0",
     "@typescript-eslint/parser": "^3.5.0",
     "eslint": "^7.3.1",
@@ -29,8 +29,8 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@rbxts/cmd-ast": "github:roblox-aurora/cmd-ast#v1.0.0-alpha",
     "@rbxts/net": "^1.3.0-beta",
-    "@rbxts/t": "^1.3.1"
+    "@rbxts/t": "^1.3.1",
+    "@rbxts/zirconium-ast": "github:roblox-aurora/zirconium-ast#v1.0.0-alpha"
   }
 }

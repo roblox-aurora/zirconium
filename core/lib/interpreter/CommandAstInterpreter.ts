@@ -1,9 +1,9 @@
-import { isNodeIn, getKindName, getNodeKindName, isNode, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
-import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
+import { isNodeIn, getKindName, getNodeKindName, isNode, CmdSyntaxKind } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
 import { argumentTransformers, matchInterpreterType, matchInterpreterOptionType } from "./InterpreterHelpers";
-import { Node, CommandStatement, CommandSource, BinaryExpression } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
-import { getFriendlyName } from "@rbxts/cmd-ast/out/Nodes/Functions";
-import { prettyPrintNodes } from "@rbxts/cmd-ast/out/Utility";
+import { Node, CommandStatement, CommandSource, BinaryExpression } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 
 export type ValidationType = "string" | "number" | "boolean" | "player";
 export type OptionValidationType = ValidationType | "switch";

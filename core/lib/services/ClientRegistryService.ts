@@ -1,6 +1,6 @@
 import Net from "@rbxts/net";
 import { CmdRemoteId } from "..";
-import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
+import { AstCommandDefinitions } from "@rbxts/zirconium-ast/out/Definitions/Definitions";
 import { CommandBase } from "../class/CommandBase";
 
 const GetCommands = new Net.ClientFunction<AstCommandDefinitions>(CmdRemoteId.GetCommands);

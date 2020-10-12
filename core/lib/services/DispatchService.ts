@@ -1,5 +1,5 @@
 import { CmdCoreRegistryService } from "./RegistryService";
-import CommandAstParser from "@rbxts/cmd-ast";
+import CommandAstParser from "@rbxts/zirconium-ast";
 import CommandAstInterpreter from "../interpreter";
 import {
 	CommandStatement,
@@ -7,10 +7,10 @@ import {
 	VariableStatement,
 	Node,
 	CommandSource,
-} from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
-import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
-import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
-import { prettyPrintNodes } from "@rbxts/cmd-ast/out/Utility";
+} from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { isNode, CmdSyntaxKind, getNodeKindName } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 
 interface stdio {
 	stdout: Array<string>;

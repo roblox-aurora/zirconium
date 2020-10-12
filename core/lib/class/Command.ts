@@ -15,16 +15,16 @@ import CommandAstInterpreter, {
 } from "../interpreter/CommandAstInterpreter";
 import CommandContext from "./CommandContext";
 import { CommandBase } from "./CommandBase";
-import { CommandStatement, CommandName } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { CommandStatement, CommandName } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
 import {
 	AstCommandDefinition,
 	AstOptionDefinition,
 	AstArgumentDefinition,
 	AstPrimitiveType,
-} from "@rbxts/cmd-ast/out/Definitions/Definitions";
-import { typeGuards, CmdSyntaxKind } from "@rbxts/cmd-ast/out/Nodes";
-import { createCommandStatement } from "@rbxts/cmd-ast/out/Nodes/Create";
+} from "@rbxts/zirconium-ast/out/Definitions/Definitions";
+import { typeGuards, CmdSyntaxKind } from "@rbxts/zirconium-ast/out/Nodes";
+import { createCommandStatement } from "@rbxts/zirconium-ast/out/Nodes/Create";
 import { GroupType } from "./CommandGroup";
 
 export interface CommandDeclaration<O extends CommandOptions, A extends ReadonlyArray<CommandArgument>, R> {

@@ -1,6 +1,6 @@
-import { CommandStatement } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import { CommandStatement } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import { CmdCoreDispatchService, ExecutionParams } from "../services/DispatchService";
-import { AstCommandDefinition } from "@rbxts/cmd-ast/out/Definitions/Definitions";
+import { AstCommandDefinition } from "@rbxts/zirconium-ast/out/Definitions/Definitions";
 import { GroupType } from "./CommandGroup";
 
 export abstract class CommandBase {

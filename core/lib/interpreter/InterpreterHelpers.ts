@@ -4,10 +4,10 @@ import {
 	OptionValidationType,
 	CommandInterpreterOption,
 } from "./CommandAstInterpreter";
-import { NodeTypes, BooleanLiteral, NumberLiteral, Node } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
-import { CmdSyntaxKind, getNodeKindName } from "@rbxts/cmd-ast/out/Nodes";
-import { flattenInterpolatedString } from "@rbxts/cmd-ast/out/Nodes/Create";
-import { isStringExpression, isNumberLiteral, isBooleanLiteral } from "@rbxts/cmd-ast/out/Nodes/Guards";
+import { NodeTypes, BooleanLiteral, NumberLiteral, Node } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { CmdSyntaxKind, getNodeKindName } from "@rbxts/zirconium-ast/out/Nodes";
+import { flattenInterpolatedString } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { isStringExpression, isNumberLiteral, isBooleanLiteral } from "@rbxts/zirconium-ast/out/Nodes/Guards";
 import util from "../util";
 
 export type CmdSyntaxMap<R = unknown> = {

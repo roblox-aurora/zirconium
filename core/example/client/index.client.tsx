@@ -1,10 +1,10 @@
 import Roact from "@rbxts/roact";
-import CommandAstParser from "@rbxts/cmd-ast";
-import { NodeError } from "@rbxts/cmd-ast/out/Nodes/NodeTypes";
+import CommandAstParser from "@rbxts/zirconium-ast";
+import { NodeError } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import Net from "@rbxts/net";
 import SyntaxLexer from "@cmd-core/client/SyntaxHighlighter";
-import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
-import { CmdClient } from "@cmd-core";
+import { AstCommandDefinitions } from "@rbxts/zirconium-ast/out/Definitions/Definitions";
+import { ZrClient } from "@cmd-core";
 
 class TestEditor extends Roact.Component<
 	{ source?: string },
@@ -20,7 +20,7 @@ class TestEditor extends Roact.Component<
 	}
 
 	public didMount() {
-		CmdClient.Registry.GetServerCommands().then((result) => {
+		ZrClient.Registry.GetServerCommands().then((result) => {
 			this.setState({ cmds: result });
 		});
 	}
@@ -133,7 +133,7 @@ class TestEditor extends Roact.Component<
 						Font="Code"
 						Event={{
 							MouseButton1Down: () => {
-								CmdClient.Dispatch.Execute(this.state.source);
+								ZrClient.Dispatch.Execute(this.state.source);
 								// evt.SendToServer(this.state.source);
 							},
 						}}
@@ -156,10 +156,10 @@ print "The statement is: $hello"`}
 	"cmon",
 );
 
-CmdClient.Dispatch.ServerStdout.Connect((message) => {
+ZrClient.Dispatch.ServerStdout.Connect((message) => {
 	print(tostring(message));
 });
 
-CmdClient.Dispatch.ServerStderr.Connect((message) => {
+ZrClient.Dispatch.ServerStderr.Connect((message) => {
 	warn(tostring(message));
 });

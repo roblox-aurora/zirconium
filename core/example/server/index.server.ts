@@ -1,5 +1,5 @@
 import { Command } from "@cmd-core/class/Command";
-import { CmdServer } from "@cmd-core";
+import { ZrServer } from "@cmd-core";
 import Net from "@rbxts/net";
 import t from "@rbxts/t";
 import { GroupType } from "./class/CommandGroup";
@@ -113,7 +113,7 @@ const listVars = Command.create({
 
 		const [plr] = args.Arguments;
 		if (plr !== undefined) {
-			const vars = CmdServer.Dispatch.getVariablesForPlayer(plr);
+			const vars = ZrServer.Dispatch.getVariablesForPlayer(plr);
 			ctx.PushOutput("Vars for " + plr.Name);
 			for (const [name, value] of Object.entries(vars)) {
 				ctx.PushOutput(`$${name} = ${tostring(value)}`);
@@ -130,10 +130,10 @@ const listVars = Command.create({
 	},
 });
 
-CmdServer.Registry.RegisterCommand(echoCommand);
-CmdServer.Registry.RegisterCommand(listVars);
+ZrServer.Registry.RegisterCommand(echoCommand);
+ZrServer.Registry.RegisterCommand(listVars);
 
-CmdServer.Registry.RegisterCommand(
+ZrServer.Registry.RegisterCommand(
 	Command.create({
 		command: "testargs",
 		groups: [GroupType.Creator, GroupType.User],

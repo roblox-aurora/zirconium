@@ -1,5 +1,5 @@
-import { isValidPrefixCharacter } from "@rbxts/cmd-ast/out/Nodes";
-import { AstCommandDefinitions } from "@rbxts/cmd-ast/out/Definitions/Definitions";
+import { isValidPrefixCharacter } from "@rbxts/zirconium-ast/out/Nodes";
+import { AstCommandDefinitions } from "@rbxts/zirconium-ast/out/Definitions/Definitions";
 
 export enum TokenType {
 	Identifier,

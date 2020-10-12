@@ -1,8 +1,13 @@
-Command Core
-====================
-Bash-like command framework for Roblox, written in TypeScript, which uses [cmd-ast](https://github.com/roblox-aurora/cmd-ast) for parsing commands.
-
-The purpose of this specific framework is to provide a framework for adding programmatic command capabilities to your games, which you can extend through player chat or your own custom command console.
+## _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+<div align="center">
+	<img src="https://assets.vorlias.com/i1/zirconium.png"/>
+</div>
+<div align="center">
+	<h1>Zirconium</h1>
+    	<a href="https://www.npmjs.com/package/@rbxts/zirconium">
+		<img src="https://badge.fury.io/js/%40rbxts%2Fzirconium.svg"></img>
+	</a>
+</div>
 
 ## Fixed commands
 ```ts

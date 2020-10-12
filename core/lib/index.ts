@@ -13,7 +13,7 @@ export const enum CmdRemoteId {
 	StdErr = "CmdSrvStdErr",
 }
 
-export namespace CmdServer {
+export namespace ZrServer {
 	export const Registry = Lazy(() => {
 		assert(IsServer, "CmdCore Service only accessible on server");
 		return GetCommandService("RegistryService");
@@ -50,7 +50,7 @@ export namespace CmdServer {
 	}
 }
 
-export namespace CmdClient {
+export namespace ZrClient {
 	export const Dispatch = Lazy(() => GetCommandService("ClientDispatchService"));
 	export const Registry = Lazy(() => GetCommandService("ClientRegistryService"));
 }
