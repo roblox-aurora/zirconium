@@ -1,4 +1,4 @@
-import Lazy from "../internal/Lazy";
+import Lazy from "internal/Lazy";
 import { CmdCoreRegistryService } from "./RegistryService";
 import { CmdCoreDispatchService } from "./DispatchService";
 import t from "@rbxts/t";

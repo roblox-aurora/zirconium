@@ -5,9 +5,10 @@
   "main": "out/init.lua",
   "scripts": {
     "prepare": "npm run build",
-    "build": "rbxtsc -p . --type=package",
-    "build:example": "rbxtsc -p ./core/example -i ./include",
-    "serve": "rojo serve ./core/example/example.project.json --port 34567"
+    "build": "rbxtsc",
+    "build:example": "rbxtsc-dev --type=game -p ./example -i ./include",
+    "watch:example": "rbxtsc-dev -w --type=game -p ./example -i ./include",
+    "serve": "rojo serve ./example/default.project.json --port 34567"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +32,6 @@
   "dependencies": {
     "@rbxts/net": "^1.3.0-beta",
     "@rbxts/t": "^1.3.1",
-    "@rbxts/zirconium-ast": "github:roblox-aurora/zirconium-ast#v1.0.0-alpha"
+    "@rbxts/zirconium-ast": "github:roblox-aurora/zirconium-ast#v1.0.0-beta"
   }
 }

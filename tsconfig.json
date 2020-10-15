@@ -13,11 +13,11 @@
 		"stripInternal": true,
 
 		// required, configurable
-		"rootDirs": ["core/lib"],
+		"rootDirs": ["lib"],
 		"outDir": "out",
 
 		// optional
-		"baseUrl": "core/lib",
+		"baseUrl": "lib",
 		"declaration": true,
 
 		// optional, non-configurable
@@ -28,7 +28,9 @@
 		"**/*"
 	],
 	"exclude": [
-        "core/example/**",
+		"core/example/**",
+		"example/**",
+		"core/**",
         "out"
 	]
 }

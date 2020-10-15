@@ -3,3 +3,4 @@
 /include
 *.tsbuildinfo
 /core/example/build
+/example/build

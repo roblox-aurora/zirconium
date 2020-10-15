@@ -1,6 +1,9 @@
 {
-    "name": "Zirconium",
+    "name": "zirconium",
     "tree": {
-        "$path": "out"
+        "$path": "out",
+        "node_modules": {
+            "$path": "node_modules"
+        }
     }
 }
