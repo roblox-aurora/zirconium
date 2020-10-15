@@ -2,7 +2,7 @@ import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
 import { InterpolatedStringExpression, StringLiteral } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrObject from "./Object";
 
-export type ZrValue = number | string | boolean | ZrObject;
+export type ZrValue = number | string | boolean | ZrObject | Array<ZrValue>;
 
 export default class ZrLocalStack {
 	private locals = new Array<Map<string, ZrValue>>();

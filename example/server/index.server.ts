@@ -25,20 +25,16 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    $variable = 10
-    $x = 10
-    $y = {
-        a: 10,
-        b: {
-            c: 20
-        }
+    $aString = "Hello, World!"
+    $aNumber = 10
+    $aBoolean = true
+    $anInterpolatedString = "$aString, $aNumber, $aBoolean"
+    $anObject = {
+        anObjectValue: true
     }
-    debug
-    {
-        $innerVariable = 20
-        $variable = 25
-        debug
-    }
+    $anArray = [
+        "Hello, World!"
+    ]
     debug
 `;
 let t = tick();
