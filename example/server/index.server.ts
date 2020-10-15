@@ -25,12 +25,23 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    $x = [1, 2, 3, 4, 5]
+    $x = [true, false, true]
+    
     for $value in $x {
-        debug
+        if $value {
+            debug
+            $x = 20
+        }
     }
 
     debug
+
+    $y = {
+        a: 10,
+        b: 20
+    }
+
+    
 `;
 let t = tick();
 

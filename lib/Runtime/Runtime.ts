@@ -4,6 +4,7 @@ import {
 	ArrayLiteral,
 	CommandSource,
 	ForInStatement,
+	IfStatement,
 	Node,
 	ObjectLiteral,
 	SourceBlock,
@@ -39,16 +40,16 @@ export default class ZrRuntime {
 			node,
 		});
 		this.errors.push(err);
-		throw `[RuntimeError] ${err}`;
+		throw `[RuntimeError] ${err.message}`;
 	}
 
-	private runtimeAssert(
+	private runtimeAssertNotUndefined(
 		condition: unknown,
 		message: string,
 		code: ZrRuntimeErrorCode,
 		node?: Node,
-	): asserts condition {
-		if (!condition) {
+	): asserts condition is defined {
+		if (condition === undefined) {
 			this.runtimeError(message, code, node);
 		}
 	}
@@ -84,7 +85,12 @@ export default class ZrRuntime {
 	private executeSetVariable(node: VariableDeclaration) {
 		const { identifier, expression } = node;
 		const value = this.evaluateNode(expression);
-		this.runtimeAssert(value, "Failed to get value of node", ZrRuntimeErrorCode.NodeValueError, expression);
+		this.runtimeAssertNotUndefined(
+			value,
+			"Failed to get value of node",
+			ZrRuntimeErrorCode.NodeValueError,
+			expression,
+		);
 		this.getLocals().setUpValueOrLocal(identifier.name, value);
 		return undefined;
 	}
@@ -93,7 +99,7 @@ export default class ZrRuntime {
 		const object = new ZrObject();
 		for (const prop of node.values) {
 			const value = this.evaluateNode(prop.initializer);
-			this.runtimeAssert(value, "No value", ZrRuntimeErrorCode.NodeValueError, prop.initializer);
+			this.runtimeAssertNotUndefined(value, "No value", ZrRuntimeErrorCode.NodeValueError, prop.initializer);
 			object.set(prop.name.name, value);
 		}
 		return object;
@@ -101,12 +107,36 @@ export default class ZrRuntime {
 
 	private evaluateArrayNode(node: ArrayLiteral) {
 		const values = new Array<ZrValue>();
+		let i = 0;
 		for (const subNode of node.values) {
 			const value = this.evaluateNode(subNode);
-			this.runtimeAssert(value, "No value", ZrRuntimeErrorCode.NodeValueError, subNode);
+			this.runtimeAssertNotUndefined(
+				value,
+				"Array value is NONE at index " + i,
+				ZrRuntimeErrorCode.NodeValueError,
+				subNode,
+			);
 			values.push(value);
+			i++;
 		}
 		return values;
+	}
+
+	private evaluateIfStatement(node: IfStatement) {
+		const { condition, thenStatement, elseStatement } = node;
+		assert(condition);
+		const resultOfCondition = this.evaluateNode(condition);
+		this.runtimeAssertNotUndefined(
+			resultOfCondition,
+			"Condition not valid?",
+			ZrRuntimeErrorCode.EvaluationError,
+			condition,
+		);
+		if (resultOfCondition && thenStatement) {
+			this.evaluateNode(thenStatement);
+		} else if (!resultOfCondition && elseStatement) {
+			this.evaluateNode(elseStatement);
+		}
 	}
 
 	private evaluateForInStatement(node: ForInStatement) {
@@ -114,15 +144,15 @@ export default class ZrRuntime {
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
 			const value = this.locals.getLocalOrUpValue(expression.name);
-			this.runtimeAssert(
+			this.runtimeAssertNotUndefined(
 				typeIs(value, "table"),
 				"Array or Object expected",
 				ZrRuntimeErrorCode.InvalidForInExpression,
 			);
 			if (value instanceof ZrObject) {
-				for (const [, v] of value.toMap()) {
+				for (const [k, v] of value.toMap()) {
 					this.push();
-					this.locals.setLocal(initializer.name, v);
+					this.locals.setLocal(initializer.name, [k, v]);
 					this.evaluateNode(statement);
 					this.pop();
 				}
@@ -145,8 +175,12 @@ export default class ZrRuntime {
 			return undefined;
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
+		} else if (isNode(node, ZrNodeKind.Identifier)) {
+			return this.getLocals().getLocalOrUpValue(node.name);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
 			this.evaluateForInStatement(node);
+		} else if (isNode(node, ZrNodeKind.IfStatement)) {
+			this.evaluateIfStatement(node);
 		} else if (isNode(node, ZrNodeKind.ObjectLiteralExpression)) {
 			return this.evaluateObjectNode(node);
 		} else if (isNode(node, ZrNodeKind.ArrayLiteralExpression)) {
