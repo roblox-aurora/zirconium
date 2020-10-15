@@ -25,6 +25,7 @@ export default class ZrLocalStack {
 
 	/**
 	 * Will set the value on the first stack
+	 * @internal
 	 */
 	public setGlobal(name: string, value: ZrValue) {
 		const first = this.locals[0];
@@ -32,7 +33,16 @@ export default class ZrLocalStack {
 	}
 
 	/**
+	 * Gets the specified global
+	 */
+	public getGlobal(name: string) {
+		const first = this.locals[0];
+		return first.get(name);
+	}
+
+	/**
 	 * Will set the value at the stack it was first declared
+	 * @internal
 	 */
 	public setUpValueOrLocal(name: string, value: ZrValue) {
 		const stack = this.getUpValueStack(name) ?? this.current();
@@ -41,6 +51,7 @@ export default class ZrLocalStack {
 
 	/**
 	 * Will set the value on the last stack
+	 * @internal
 	 */
 	public setLocal(name: string, value: ZrValue) {
 		const last = this.current();
@@ -49,6 +60,7 @@ export default class ZrLocalStack {
 
 	/**
 	 * Gets the stack (if any) the local is declared at
+	 * @internal
 	 */
 	private getUpValueStack(name: string) {
 		for (const currentLocals of this.locals) if (currentLocals.has(name)) return currentLocals;
@@ -56,6 +68,7 @@ export default class ZrLocalStack {
 
 	/**
 	 * Gets the value of a local (or the upvalue if it's not local to this stack)
+	 * @internal
 	 */
 	public getLocalOrUpValue(name: string) {
 		for (const currentLocals of this.locals) {
@@ -63,10 +76,12 @@ export default class ZrLocalStack {
 		}
 	}
 
+	/** @internal */
 	public pop() {
 		return this.locals.pop();
 	}
 
+	/** @internal */
 	public push() {
 		this.locals.push(new Map<string, ZrValue>());
 	}
@@ -79,6 +94,7 @@ export default class ZrLocalStack {
 		return map as ReadonlyMap<string, ZrValue>;
 	}
 
+	/** @internal */
 	public evaluateInterpolatedString(expression: InterpolatedStringExpression): string {
 		const top = this.current();
 		let text = "";

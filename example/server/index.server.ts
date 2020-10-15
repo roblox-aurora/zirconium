@@ -25,16 +25,11 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    $aString = "Hello, World!"
-    $aNumber = 10
-    $aBoolean = true
-    $anInterpolatedString = "$aString, $aNumber, $aBoolean"
-    $anObject = {
-        anObjectValue: true
+    $x = [1, 2, 3, 4, 5]
+    for $value in $x {
+        debug
     }
-    $anArray = [
-        "Hello, World!"
-    ]
+
     debug
 `;
 let t = tick();
@@ -50,7 +45,7 @@ print("parser", `${(tick() - t) * 1000}ms`);
 t = tick();
 
 const test = new ZrScript(source, {});
-test.execute();
+test.executeOrThrow();
 
 print("execution", `${(tick() - t) * 1000}ms`);
 t = tick();

@@ -19,4 +19,8 @@ export default class ZrObject {
 		}
 		return `Object {${str.join(", ")}}`;
 	}
+
+	public toMap() {
+		return this.map as ReadonlyMap<string, ZrValue>;
+	}
 }

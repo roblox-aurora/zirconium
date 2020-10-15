@@ -3,6 +3,7 @@ import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
 import {
 	ArrayLiteral,
 	CommandSource,
+	ForInStatement,
 	Node,
 	ObjectLiteral,
 	SourceBlock,
@@ -14,8 +15,10 @@ import ZrLocalStack, { ZrValue } from "../Data/Locals";
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
 	EvaluationError,
+	StackOverflow,
+	InvalidForInExpression,
 }
-export interface RuntimeError {
+export interface ZrRuntimeError {
 	message: string;
 	code: ZrRuntimeErrorCode;
 	node?: Node;
@@ -24,13 +27,13 @@ export interface RuntimeError {
 /**
  * Handles a block
  */
-export default class ZrExecution {
+export default class ZrRuntime {
 	private level = 0;
-	private errors = new Array<RuntimeError>();
+	private errors = new Array<ZrRuntimeError>();
 	public constructor(private source: CommandSource | SourceBlock, private locals = new ZrLocalStack()) {}
 
 	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
-		const err = identity<RuntimeError>({
+		const err = identity<ZrRuntimeError>({
 			message,
 			code,
 			node,
@@ -54,12 +57,20 @@ export default class ZrExecution {
 		return this.locals;
 	}
 
+	public getErrors() {
+		return this.errors;
+	}
+
 	/**
 	 * Pushes a new stack onto the executor
 	 */
 	private push() {
 		this.level++;
 		this.locals.push();
+
+		if (this.level > 256) {
+			this.runtimeError("Stack overflow", ZrRuntimeErrorCode.StackOverflow);
+		}
 	}
 
 	/**
@@ -70,7 +81,7 @@ export default class ZrExecution {
 		return this.locals.pop();
 	}
 
-	public executeSetVariable(node: VariableDeclaration) {
+	private executeSetVariable(node: VariableDeclaration) {
 		const { identifier, expression } = node;
 		const value = this.evaluateNode(expression);
 		this.runtimeAssert(value, "Failed to get value of node", ZrRuntimeErrorCode.NodeValueError, expression);
@@ -78,7 +89,7 @@ export default class ZrExecution {
 		return undefined;
 	}
 
-	public evaluateObjectNode(node: ObjectLiteral) {
+	private evaluateObjectNode(node: ObjectLiteral) {
 		const object = new ZrObject();
 		for (const prop of node.values) {
 			const value = this.evaluateNode(prop.initializer);
@@ -88,7 +99,7 @@ export default class ZrExecution {
 		return object;
 	}
 
-	public evaluateArrayNode(node: ArrayLiteral) {
+	private evaluateArrayNode(node: ArrayLiteral) {
 		const values = new Array<ZrValue>();
 		for (const subNode of node.values) {
 			const value = this.evaluateNode(subNode);
@@ -98,7 +109,35 @@ export default class ZrExecution {
 		return values;
 	}
 
-	public evaluateNode(node: Node): ZrValue | undefined {
+	private evaluateForInStatement(node: ForInStatement) {
+		const { initializer, expression, statement } = node;
+
+		if (isNode(expression, ZrNodeKind.Identifier)) {
+			const value = this.locals.getLocalOrUpValue(expression.name);
+			this.runtimeAssert(
+				typeIs(value, "table"),
+				"Array or Object expected",
+				ZrRuntimeErrorCode.InvalidForInExpression,
+			);
+			if (value instanceof ZrObject) {
+				for (const [, v] of value.toMap()) {
+					this.push();
+					this.locals.setLocal(initializer.name, v);
+					this.evaluateNode(statement);
+					this.pop();
+				}
+			} else {
+				for (const [, v] of pairs(value)) {
+					this.push();
+					this.locals.setLocal(initializer.name, v);
+					this.evaluateNode(statement);
+					this.pop();
+				}
+			}
+		}
+	}
+
+	private evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);
@@ -106,6 +145,8 @@ export default class ZrExecution {
 			return undefined;
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
+		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
+			this.evaluateForInStatement(node);
 		} else if (isNode(node, ZrNodeKind.ObjectLiteralExpression)) {
 			return this.evaluateObjectNode(node);
 		} else if (isNode(node, ZrNodeKind.ArrayLiteralExpression)) {
