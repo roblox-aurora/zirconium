@@ -4,7 +4,15 @@ import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import ZrUserFunction from "./UserFunction";
 
-export type ZrValue = number | string | boolean | ZrObject | Array<ZrValue> | ZrUserFunction | ZrLuauFunction;
+export type ZrValue =
+	| number
+	| string
+	| boolean
+	| ZrObject
+	| Array<ZrValue>
+	| Map<string, ZrValue>
+	| ZrUserFunction
+	| ZrLuauFunction;
 
 export default class ZrLocalStack {
 	private locals = new Array<Map<string, ZrValue>>();

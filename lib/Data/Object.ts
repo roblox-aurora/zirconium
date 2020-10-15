@@ -17,7 +17,7 @@ export default class ZrObject {
 		for (const [key, value] of this.map) {
 			str.push(`${key}: ${value}`);
 		}
-		return `Object {${str.join(", ")}}`;
+		return `{${str.join(", ") || " "}}`;
 	}
 
 	public toMap() {

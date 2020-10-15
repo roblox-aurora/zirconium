@@ -304,44 +304,41 @@ export default class ZrRuntime {
 				command: { name },
 				children,
 			} = node;
-			if (name.text === "debug") {
-				this.locals.print();
-			} else {
-				const matching = this.locals.getLocalOrUpValue(name.text);
-				if (matching instanceof ZrUserFunction) {
-					this.push();
-					const params = matching.getParameters();
-					for (const [i, param] of ipairs(params)) {
-						const value = children[i];
-						if (value !== undefined) {
-							const valueOf = this.evaluateNode(value);
-							this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
-							this.locals.setLocal(param.name.name, valueOf);
-						}
-					}
 
-					this.evaluateNode(matching.getBody());
-					this.pop();
-				} else if (matching instanceof ZrLuauFunction) {
-					const args = new Array<ZrValue>();
-					for (const child of children) {
-						if (isNode(child, ZrNodeKind.CommandName)) continue;
-						const value = this.evaluateNode(child);
-						this.runtimeAssertNotUndefined(
-							value,
-							"Unexpected value",
-							ZrRuntimeErrorCode.EvaluationError,
-							child,
-						);
-						args.push(value);
+			const matching = this.locals.getLocalOrUpValue(name.text);
+			if (matching instanceof ZrUserFunction) {
+				this.push();
+				const params = matching.getParameters();
+				for (const [i, param] of ipairs(params)) {
+					const value = children[i];
+					if (value !== undefined) {
+						const valueOf = this.evaluateNode(value);
+						this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
+						this.locals.setLocal(param.name.name, valueOf);
 					}
-					const result = matching.call(new ZrContext(this), ...args);
-					if (result) {
-						return result;
-					}
-				} else {
-					this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 				}
+
+				this.evaluateNode(matching.getBody());
+				this.pop();
+			} else if (matching instanceof ZrLuauFunction) {
+				const args = new Array<ZrValue>();
+				for (const child of children) {
+					if (isNode(child, ZrNodeKind.CommandName)) continue;
+					const value = this.evaluateNode(child);
+					this.runtimeAssertNotUndefined(
+						value,
+						"Unexpected value",
+						ZrRuntimeErrorCode.EvaluationError,
+						child,
+					);
+					args.push(value);
+				}
+				const result = matching.call(new ZrContext(this), ...args);
+				if (result) {
+					return result;
+				}
+			} else {
+				this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 			}
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);
