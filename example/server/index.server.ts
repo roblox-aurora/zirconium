@@ -27,9 +27,7 @@ const source2 = createCommandSource([
 
 const stringSrc = `
 	x = range 1 10
-	y = {
-		y: 20
-	}
+	y = {}
 	z = $y.y
     debug
 `;

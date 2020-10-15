@@ -28,7 +28,7 @@ export default class ZrLocalStack {
 				print("░".rep(i - 1), k, v);
 			}
 		}
-		print ("=== end stack ===");
+		print("=== end stack ===");
 	}
 
 	private current() {
@@ -56,9 +56,13 @@ export default class ZrLocalStack {
 	 * Will set the value at the stack it was first declared
 	 * @internal
 	 */
-	public setUpValueOrLocal(name: string, value: ZrValue) {
+	public setUpValueOrLocal(name: string, value: ZrValue | undefined) {
 		const stack = this.getUpValueStack(name) ?? this.current();
-		stack.set(name, value);
+		if (value !== undefined) {
+			stack.set(name, value);
+		} else {
+			stack.delete(name);
+		}
 	}
 
 	/**

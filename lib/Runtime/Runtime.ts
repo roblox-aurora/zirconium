@@ -124,12 +124,6 @@ export default class ZrRuntime {
 	private executeSetVariable(node: VariableDeclaration) {
 		const { identifier, expression } = node;
 		const value = this.evaluateNode(expression);
-		this.runtimeAssertNotUndefined(
-			value,
-			"Failed to get value of node",
-			ZrRuntimeErrorCode.NodeValueError,
-			expression,
-		);
 		this.getLocals().setUpValueOrLocal(identifier.name, value);
 		return undefined;
 	}
