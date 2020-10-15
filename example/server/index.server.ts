@@ -26,11 +26,12 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    print "Hello, World!"
-
-    for $i in range 1 10 {
-        print "range $i"
-    }
+	x = range 1 10
+	y = {
+		y: 20
+	}
+	z = $y.y
+    debug
 `;
 let t = tick();
 

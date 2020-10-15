@@ -9,6 +9,7 @@ import {
 	IfStatement,
 	Node,
 	ObjectLiteral,
+	PropertyAccessExpression,
 	SourceBlock,
 	VariableDeclaration,
 } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
@@ -28,6 +29,7 @@ export enum ZrRuntimeErrorCode {
 	InvalidArrayIndex,
 	InvalidType,
 	NotCallable,
+	InvalidPropertyAccess,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -240,6 +242,30 @@ export default class ZrRuntime {
 		return value[index.value];
 	}
 
+	private evaluatePropertyAccessExpression(node: PropertyAccessExpression) {
+		const { expression, name } = node;
+		const value = this.evaluateNode(expression);
+		const id = name.name;
+		this.runtimeAssertNotUndefined(id, "", ZrRuntimeErrorCode.NodeValueError, name);
+		this.runtimeAssertNotUndefined(
+			value,
+			"Attempted to index nil with " + id,
+			ZrRuntimeErrorCode.IndexingUndefined,
+			expression,
+		);
+		if (value instanceof ZrObject) {
+			return value.get(id);
+		} else if (isMap<ZrValue>(value)) {
+			return value.get(id);
+		} else {
+			this.runtimeError(
+				`Attempt to index ${getTypeName(value)} with '${id}'`,
+				ZrRuntimeErrorCode.InvalidPropertyAccess,
+				name,
+			);
+		}
+	}
+
 	/** @internal */
 	public evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
@@ -255,6 +281,8 @@ export default class ZrRuntime {
 			return this.getLocals().getLocalOrUpValue(node.name);
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
+		} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
+			return this.evaluatePropertyAccessExpression(node);
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			return this.evaluateFunctionDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
