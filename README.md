@@ -8,90 +8,53 @@
 	</a>
 </div>
 
-### _Note: Currently Alpha: This means the API will have breaking changes while it's developed._
+### _Note: Currently Beta: This means the API is not finalized and may change._
 
-A type-safe, bash-like command language framework for Roblox that allows programmatic manipulation of Roblox games during runtime.
 
-Syntax support can be seen [here](https://github.com/roblox-aurora/zirconium-ast#supported-syntaxes).
 
-## Usage
-Coming Soon &trade; since alpha development.
+## What Zirconium is
+- Zirconium is a runtime scripting language for Roblox, for programmatic manipulation of Roblox games during runtime. Unlike other solutions this is not bound to any sort of command framework.
+- The scripts can be as simple as user commands, to more complex scripting systems like quest triggers.
+- Zirconium is sandboxed. You can only use functions that you explicitly provide. Each script runs in it's own environment.
 
-## Roblox-side programming of commands
-### Creating Fixed commands
-```ts
-const KillCommand = Command.create({
-    command: "kill",
-    args: [{type: "player"}] as const,
-    options: {
-        withExplosion: {type: "switch"},
-    },
-    execute: (ctx, {Arguments, Options}) => {
-        const [player] = Arguments; // player: Player | undefined
-        const {withExplosion} = Options;
-		if (withExplosion) {
-			const explode = new Instance("Explosion");
-			explode.Position = player.Character?.GetPrimaryPartCFrame().Position ?? new Vector3();
-			explode.Parent = game.Workspace;
-		} else {
-			player.Character?.BreakJoints();
-		}
-    }
-})
-ZrServer.Registry.RegisterCommand(KillCommand);
+## Supported
+- [x] Variables
+- [x] If/Else
+- [x] For-In Statement
+- [x] Functions (both Zr and Luau)
+- [x] Arrays (including indexing)
+- [x] Objects (including property access)
+
+
+## Limitations
+- Stack limit: 256. This is intentionally small as _you shouldn't_ be doing anything that complex with this.
+
+
+<!-- ```bash
+# Zirconium alpha, [aka cmd-core]
+player --set-level 5
+player equip --slot 'Chest' 25
+player equip --slot 'Legs' 22
+player equip --slot 'Shoulders' 21
+player equip --slot 'Hands' 24
+player equip --slot 'Feet' 23
+player stats
 ```
 
-then
+and as you can see, while it worked it was very tedious and 
+
+Zirconium - The beta (target)
 ```bash
-kill vorlias # any more than 'vorlias' will be an error.
-kill --with-explosion vorlias # sets 'withExplosion' to true
-```
+# Zirconium Beta
+$toEquip = {
+    Chest: 25,
+    Legs: 22,
+    Shoulders: 21,
+    Hands: 24,
+    Feet: 23
+} # This is an object, one of the many new structures in Zr.
 
-### Creating Variadic Commands
-
-```ts
-// basic print command, for example
-const PrintCommand = Command.create({
-    command: "print",
-    args: [{type: ["string", "number", "boolean"], variadic: true}] as const, // ...(string | number | boolean)[]
-    options: {},
-    execute: (ctx, { Arguments }) => {
-        const message = Arguments.filterUndefined().join(" ");
-        ctx.PushOutput(message);
-    }
-});
-ZrServer.Registry.RegisterCommand(PrintCommand);
-```
-
-Then
-
-```bash
-print "Hello, World!" 10 true
-```
-will work.
-
-## Differences to other solutions
-- Uses AST for parsing
-- Commands can be executed sequentially and/or results of commands can be piped to other commands. More akin to writing a script for your game.
-- In-built syntax validation & strict types.
-- Option capabilities (e.g. `my-cmd --thing xyz`)
-- Sub command capabilities (e.g. `player equip --slot 'Head' 24`, where `equip` is a subcommand of `player`.)
-- Variable usage - e.g. `my-cmd $value` and string interpolation with `my-cmd "A value is: $value"`
-
-## Goals
-- Allow declaration of commands, for server and for client
-- Allow commands to have child commands
-- Allow option and argument type parsing/transforming
-- Allow user-based permission restrictions on commands
-- Allow the ability to "suggest" input (intellisense-esque)
-- Plus anything else I think of later down the line...
-
-## Possible future goals
-- Allow more complex constructs like loops, variable declarations etc.
-
-## Non-goals
-- Becoming a fully-fledged command console package like [cmdr](https://github.com/evaera/cmdr). This is just a core framework.
-
-# Used by Core
-- [Command AST](https://github.com/roblox-aurora/cmd-ast) for parsing commands.
-- [Net](https://github.com/roblox-aurora/rbx-net) for Server/Client networking.
+player.setLevel 5 # implicit call
+player.equip $toEquip
+print(player.stats(), prettyPrint: true) # "Explicit call", since we want the result of player.stats printed
+``` -->
