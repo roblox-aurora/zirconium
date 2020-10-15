@@ -1,6 +1,7 @@
 import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
 import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
 import {
+	ArrayIndexExpression,
 	ArrayLiteral,
 	CommandSource,
 	ForInStatement,
@@ -12,18 +13,31 @@ import {
 } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
+import { isArray } from "../Util";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
 	EvaluationError,
 	StackOverflow,
 	InvalidForInExpression,
+	IndexingUndefined,
+	InvalidArrayIndex,
 }
 export interface ZrRuntimeError {
 	message: string;
 	code: ZrRuntimeErrorCode;
 	node?: Node;
 }
+
+const getTypeName = (value: ZrValue) => {
+	if (isArray(value)) {
+		return "Array";
+	} else if (value instanceof ZrObject) {
+		return "Object";
+	} else {
+		return typeOf(value);
+	}
+};
 
 /**
  * Handles a block
@@ -41,6 +55,17 @@ export default class ZrRuntime {
 		});
 		this.errors.push(err);
 		throw `[RuntimeError] ${err.message}`;
+	}
+
+	private runtimeAssert(
+		condition: unknown,
+		message: string,
+		code: ZrRuntimeErrorCode,
+		node?: Node,
+	): asserts condition {
+		if (condition === false) {
+			this.runtimeError(message, code, node);
+		}
 	}
 
 	private runtimeAssertNotUndefined(
@@ -167,6 +192,24 @@ export default class ZrRuntime {
 		}
 	}
 
+	private evaluateArrayIndexExpression(node: ArrayIndexExpression) {
+		const { expression, index } = node;
+		const value = this.evaluateNode(expression);
+		this.runtimeAssertNotUndefined(
+			value,
+			"Attempted to index nil value",
+			ZrRuntimeErrorCode.IndexingUndefined,
+			expression,
+		);
+		this.runtimeAssert(
+			isArray<ZrValue>(value),
+			"Attempt to index " + getTypeName(value) + " with a number",
+			ZrRuntimeErrorCode.InvalidArrayIndex,
+			index,
+		);
+		return value[index.value];
+	}
+
 	private evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
@@ -177,6 +220,8 @@ export default class ZrRuntime {
 			return node.text;
 		} else if (isNode(node, ZrNodeKind.Identifier)) {
 			return this.getLocals().getLocalOrUpValue(node.name);
+		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
+			return this.evaluateArrayIndexExpression(node);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
 			this.evaluateForInStatement(node);
 		} else if (isNode(node, ZrNodeKind.IfStatement)) {
