@@ -16,6 +16,8 @@ import ZrObject from "../Data/Object";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
 import { isArray, isMap } from "../Util";
 import ZrUserFunction from "../Data/UserFunction";
+import ZrLuauFunction from "../Data/LuauFunction";
+import ZrContext from "../Data/Context";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -49,6 +51,7 @@ const getTypeName = (value: ZrValue) => {
 export default class ZrRuntime {
 	private level = 0;
 	private errors = new Array<ZrRuntimeError>();
+	private functions = new Map<string, ZrLuauFunction>();
 	public constructor(private source: CommandSource | SourceBlock, private locals = new ZrLocalStack()) {}
 
 	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
@@ -81,6 +84,11 @@ export default class ZrRuntime {
 		if (condition === undefined) {
 			this.runtimeError(message, code, node);
 		}
+	}
+
+	public registerFunction(name: string, func: ZrLuauFunction) {
+		this.functions.set(name, func);
+		this.locals.setGlobal(name, func);
 	}
 
 	public getLocals() {
@@ -267,6 +275,9 @@ export default class ZrRuntime {
 			} = node;
 			if (name.text === "debug") {
 				this.locals.print();
+			} else if (this.functions.has(name.text)) {
+				// const func = this.functions.get(name.text) as ZrLuauFunction;
+				// func.
 			} else {
 				const matching = this.locals.getLocalOrUpValue(name.text);
 				if (matching instanceof ZrUserFunction) {
@@ -283,6 +294,20 @@ export default class ZrRuntime {
 
 					this.evaluateNode(matching.getBody());
 					this.pop();
+				} else if (matching instanceof ZrLuauFunction) {
+					const args = new Array<ZrValue>();
+					for (const child of children) {
+						if (isNode(child, ZrNodeKind.CommandName)) continue;
+						const value = this.evaluateNode(child);
+						this.runtimeAssertNotUndefined(
+							value,
+							"Unexpected value",
+							ZrRuntimeErrorCode.EvaluationError,
+							child,
+						);
+						args.push(value);
+					}
+					matching.call(new ZrContext(this), ...args);
 				} else {
 					this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 				}

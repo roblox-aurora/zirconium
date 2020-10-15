@@ -10,6 +10,7 @@ import {
 	createVariableDeclaration,
 	createVariableStatement,
 } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { ZrPrint } from "./Data/LuauFunction";
 import ZrScript from "./Runtime/Script";
 
 const debugPrint = createCommandStatement(createCommandName(createStringNode("debug.print")), []);
@@ -25,15 +26,7 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    function test($value) {
-        $local = true
-        debug
-    }
-
-    $range = [1, 2, 3, 4, 5]
-    for $i in $range {
-        test $i
-    }
+    print "Hello, World!"
 `;
 let t = tick();
 
@@ -48,6 +41,7 @@ print("parser", `${(tick() - t) * 1000}ms`);
 t = tick();
 
 const test = new ZrScript(source, {});
+test.registerFunction("print", ZrPrint);
 test.executeOrThrow();
 
 print("execution", `${(tick() - t) * 1000}ms`);
