@@ -25,13 +25,15 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-    $x = ["one", "two", "three"]
-    $invalid = {}
-    $y = $x.1
+    function test($value) {
+        $local = true
+        debug
+    }
 
-    $z = $invalid.0
-
-    debug
+    $range = [1, 2, 3, 4, 5]
+    for $i in $range {
+        test $i
+    }
 `;
 let t = tick();
 

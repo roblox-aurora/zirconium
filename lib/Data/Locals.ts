@@ -1,8 +1,9 @@
 import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
 import { InterpolatedStringExpression, StringLiteral } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrObject from "./Object";
+import ZrUserFunction from "./UserFunction";
 
-export type ZrValue = number | string | boolean | ZrObject | Array<ZrValue>;
+export type ZrValue = number | string | boolean | ZrObject | Array<ZrValue> | ZrUserFunction;
 
 export default class ZrLocalStack {
 	private locals = new Array<Map<string, ZrValue>>();
@@ -17,6 +18,16 @@ export default class ZrLocalStack {
 			}
 			this.locals.push(newLocals);
 		}
+	}
+
+	public print() {
+		print("=== stack ===");
+		for (const [i, localStack] of ipairs(this.locals)) {
+			for (const [k, v] of localStack) {
+				print("\t".rep(i - 1), k, v);
+			}
+		}
+		print ("=== end stack ===");
 	}
 
 	private current() {

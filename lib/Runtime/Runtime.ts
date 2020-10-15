@@ -5,6 +5,7 @@ import {
 	ArrayLiteral,
 	CommandSource,
 	ForInStatement,
+	FunctionDeclaration,
 	IfStatement,
 	Node,
 	ObjectLiteral,
@@ -13,7 +14,8 @@ import {
 } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
-import { isArray } from "../Util";
+import { isArray, isMap } from "../Util";
+import ZrUserFunction from "../Data/UserFunction";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -22,6 +24,8 @@ export enum ZrRuntimeErrorCode {
 	InvalidForInExpression,
 	IndexingUndefined,
 	InvalidArrayIndex,
+	InvalidType,
+	NotCallable,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -130,6 +134,12 @@ export default class ZrRuntime {
 		return object;
 	}
 
+	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
+		const declaration = new ZrUserFunction(node);
+		this.locals.setLocal(node.name.name, declaration);
+		return declaration;
+	}
+
 	private evaluateArrayNode(node: ArrayLiteral) {
 		const values = new Array<ZrValue>();
 		let i = 0;
@@ -170,9 +180,14 @@ export default class ZrRuntime {
 		if (isNode(expression, ZrNodeKind.Identifier)) {
 			const value = this.locals.getLocalOrUpValue(expression.name);
 			this.runtimeAssertNotUndefined(
-				typeIs(value, "table"),
+				value,
 				"Array or Object expected",
 				ZrRuntimeErrorCode.InvalidForInExpression,
+			);
+			this.runtimeAssert(
+				isArray(value) || value instanceof ZrObject,
+				"Array, Map or Object expected",
+				ZrRuntimeErrorCode.InvalidType,
 			);
 			if (value instanceof ZrObject) {
 				for (const [k, v] of value.toMap()) {
@@ -210,7 +225,8 @@ export default class ZrRuntime {
 		return value[index.value];
 	}
 
-	private evaluateNode(node: Node): ZrValue | undefined {
+	/** @internal */
+	public evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);
@@ -222,6 +238,8 @@ export default class ZrRuntime {
 			return this.getLocals().getLocalOrUpValue(node.name);
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
+		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
+			return this.evaluateFunctionDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
 			this.evaluateForInStatement(node);
 		} else if (isNode(node, ZrNodeKind.IfStatement)) {
@@ -245,13 +263,29 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.CommandStatement)) {
 			const {
 				command: { name },
+				children,
 			} = node;
 			if (name.text === "debug") {
-				for (const [name, value] of this.getLocals().toMap()) {
-					print(">".rep(this.level), name, value);
-				}
+				this.locals.print();
 			} else {
-				throw `Invalid command: ${name.text}`;
+				const matching = this.locals.getLocalOrUpValue(name.text);
+				if (matching instanceof ZrUserFunction) {
+					this.push();
+					const params = matching.getParameters();
+					for (const [i, param] of ipairs(params)) {
+						const value = children[i];
+						if (value !== undefined) {
+							const valueOf = this.evaluateNode(value);
+							this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
+							this.locals.setLocal(param.name.name, valueOf);
+						}
+					}
+
+					this.evaluateNode(matching.getBody());
+					this.pop();
+				} else {
+					this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
+				}
 			}
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);
