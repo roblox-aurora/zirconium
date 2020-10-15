@@ -185,32 +185,39 @@ export default class ZrRuntime {
 	private evaluateForInStatement(node: ForInStatement) {
 		const { initializer, expression, statement } = node;
 
+		let value: ZrValue | undefined;
+
 		if (isNode(expression, ZrNodeKind.Identifier)) {
-			const value = this.locals.getLocalOrUpValue(expression.name);
-			this.runtimeAssertNotUndefined(
-				value,
-				"Array or Object expected",
-				ZrRuntimeErrorCode.InvalidForInExpression,
-			);
-			this.runtimeAssert(
-				isArray(value) || value instanceof ZrObject,
-				"Array, Map or Object expected",
-				ZrRuntimeErrorCode.InvalidType,
-			);
-			if (value instanceof ZrObject) {
-				for (const [k, v] of value.toMap()) {
-					this.push();
-					this.locals.setLocal(initializer.name, [k, v]);
-					this.evaluateNode(statement);
-					this.pop();
-				}
-			} else {
-				for (const [, v] of pairs(value)) {
-					this.push();
-					this.locals.setLocal(initializer.name, v);
-					this.evaluateNode(statement);
-					this.pop();
-				}
+			value = this.locals.getLocalOrUpValue(expression.name);
+		} else if (isNode(expression, ZrNodeKind.CommandStatement)) {
+			value = this.evaluateNode(expression);
+		}
+
+		this.runtimeAssertNotUndefined(
+			value,
+			"Array or Object expected",
+			ZrRuntimeErrorCode.InvalidForInExpression,
+			expression,
+		);
+		this.runtimeAssert(
+			isArray(value) || value instanceof ZrObject,
+			"Array, Map or Object expected",
+			ZrRuntimeErrorCode.InvalidType,
+			expression,
+		);
+		if (value instanceof ZrObject) {
+			for (const [k, v] of value.toMap()) {
+				this.push();
+				this.locals.setLocal(initializer.name, [k, v]);
+				this.evaluateNode(statement);
+				this.pop();
+			}
+		} else {
+			for (const [, v] of pairs(value)) {
+				this.push();
+				this.locals.setLocal(initializer.name, v);
+				this.evaluateNode(statement);
+				this.pop();
 			}
 		}
 	}
@@ -236,9 +243,11 @@ export default class ZrRuntime {
 	/** @internal */
 	public evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
+			this.push();
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);
 			}
+			this.pop();
 			return undefined;
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
@@ -275,9 +284,6 @@ export default class ZrRuntime {
 			} = node;
 			if (name.text === "debug") {
 				this.locals.print();
-			} else if (this.functions.has(name.text)) {
-				// const func = this.functions.get(name.text) as ZrLuauFunction;
-				// func.
 			} else {
 				const matching = this.locals.getLocalOrUpValue(name.text);
 				if (matching instanceof ZrUserFunction) {
@@ -307,7 +313,10 @@ export default class ZrRuntime {
 						);
 						args.push(value);
 					}
-					matching.call(new ZrContext(this), ...args);
+					const result = matching.call(new ZrContext(this), ...args);
+					if (result) {
+						return result;
+					}
 				} else {
 					this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 				}

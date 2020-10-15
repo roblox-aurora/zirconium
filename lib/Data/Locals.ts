@@ -25,7 +25,7 @@ export default class ZrLocalStack {
 		print("=== stack ===");
 		for (const [i, localStack] of ipairs(this.locals)) {
 			for (const [k, v] of localStack) {
-				print("\t".rep(i - 1), k, v);
+				print("░".rep(i - 1), k, v);
 			}
 		}
 		print ("=== end stack ===");

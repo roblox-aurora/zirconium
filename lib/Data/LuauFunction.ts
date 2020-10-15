@@ -40,3 +40,13 @@ export default class ZrLuauFunction {
 export const ZrPrint = ZrLuauFunction.createDynamic((ctx, ...params) => {
 	print(params.map((p) => tostring(p)).join(" "));
 });
+
+export const ZrRange = ZrLuauFunction.createDynamic((ctx, start, stop) => {
+	if (typeIs(start, "number") && typeIs(stop, "number")) {
+		const arr = new Array<number>(stop - start);
+		for (let i = 0; i <= stop - start; i++) {
+			arr.push(start + i);
+		}
+		return arr;
+	}
+});
