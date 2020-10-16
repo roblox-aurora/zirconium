@@ -6,7 +6,7 @@ const runService = game.GetService("RunService");
 
 const stringify = (value: ZrValue): string => {
 	if (isArray(value)) {
-		return "[" + value.map((v) => stringify(v)).join(", ") || " " + "]";
+		return "[" + (value.map((v) => stringify(v)).join(", ") || " ") + "]";
 	} else if (isMap<ZrValue>(value)) {
 		return (
 			"{" +
@@ -16,6 +16,8 @@ const stringify = (value: ZrValue): string => {
 				.join(", ") +
 			"}"
 		);
+	} else if (typeIs(value, "table")) {
+		return "[ ]";
 	} else {
 		return tostring(value);
 	}

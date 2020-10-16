@@ -29,7 +29,10 @@ export default class ZrScript {
 	}
 
 	public executeOrThrow() {
-		this.runtime.execute();
+		const results = this.runtime.execute();
+		for (const result of results) {
+			print(">", result);
+		}
 	}
 
 	/** @internal Testing function */

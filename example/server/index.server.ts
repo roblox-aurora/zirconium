@@ -10,6 +10,8 @@ import {
 	createVariableDeclaration,
 	createVariableStatement,
 } from "@rbxts/zirconium-ast/out/Nodes/Create";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
+import ZrLuauFunction from "./Data/LuauFunction";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
 import ZrScript from "./Runtime/Script";
 
@@ -26,16 +28,14 @@ const source2 = createCommandSource([
 ]);
 
 const stringSrc = `
-	x = range 1 10
-	y = {}
-	z = $y.y
-	
-	print $x $y
+	if $value {
+		print "!!!"
+	}
 `;
 let t = tick();
 
 const textStr = new ZrTextStream(stringSrc);
-const txtTkn = new ZrLexer(textStr, {});
+const txtTkn = new ZrLexer(textStr);
 print("tokenizer", `${(tick() - t) * 1000}ms`);
 t = tick();
 
@@ -44,10 +44,22 @@ const source = stst.parseOrThrow();
 print("parser", `${(tick() - t) * 1000}ms`);
 t = tick();
 
+prettyPrintNodes([source]);
 const test = new ZrScript(source, {});
 test.registerFunction("print", ZrPrint);
 test.registerFunction("range", ZrRange);
 test.registerFunction("debug", ZrDebug);
+test.registerFunction(
+	"pipe",
+	ZrLuauFunction.createDynamic((ctx, arg) => {
+		if (ctx.getInput().size() > 0) {
+			print(ctx.getInput().join(", "));
+			ctx.pushOutput("test2" + ctx.getInput()[ctx.getInput().size() - 1]);
+		} else {
+			ctx.pushOutput("test" + tostring(arg));
+		}
+	}),
+);
 test.executeOrThrow();
 
 print("execution", `${(tick() - t) * 1000}ms`);
