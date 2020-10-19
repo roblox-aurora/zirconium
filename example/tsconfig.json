@@ -15,6 +15,7 @@
 
         "rootDirs": [
             "server",
+            "client",
             "../lib",
         ],
 
