@@ -93,6 +93,13 @@ class ZrRichTextHighlighter {
 				} else {
 					str += token.value;
 				}
+			} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
+				str += font(`$${token.value}`, options.VariableColor);
+				for (const prop of token.properties) {
+					str +=
+						font(".", options.OperatorColor) +
+						(prop.match("%d+")[0] ? font(prop, options.NumberColor) : font(prop, options.VariableColor));
+				}
 			} else if (isToken(token, ZrTokenKind.Comment)) {
 				str += font(token.value, options.CommentColor ?? options.OperatorColor);
 			} else {
@@ -108,9 +115,12 @@ const source = `# Hello there
 print "Hello, World!"
 print "Hello $again!"
 $x = 10
-for $i in range 1 10 {
+for $i in2 range 1 10 {
 	print "This is $i"
 }
+
+$y = ["Hello, World!", 10, true];
+$z = $y.0.test
 
 for $i in range(1, 10): print "this is $i"`;
 const txtPr = new ZrTextStream(source);
@@ -122,7 +132,7 @@ Roact.mount(
 		<textlabel
 			Font="Code"
 			TextSize={16}
-			Size={new UDim2(0, 200, 0, 200)}
+			Size={new UDim2(0, 400, 0, 400)}
 			TextXAlignment="Left"
 			TextYAlignment="Top"
 			BackgroundColor3={Color3.fromRGB(33, 37, 43)}
