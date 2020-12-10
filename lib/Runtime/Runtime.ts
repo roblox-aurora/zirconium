@@ -365,11 +365,9 @@ export default class ZrRuntime {
 	/** @internal */
 	public evaluateNode(node: Node): ZrValue | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
-			this.push();
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);
 			}
-			this.pop();
 			return undefined;
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;

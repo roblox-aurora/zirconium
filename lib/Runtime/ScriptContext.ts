@@ -1,6 +1,7 @@
 import { ZrTextStream, ZrLexer } from "@rbxts/zirconium-ast";
 import { CommandSource } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrParser, { ParserError } from "@rbxts/zirconium-ast/out/Parser";
+import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
 import ZrLuauFunction from "../Data/LuauFunction";
@@ -40,10 +41,13 @@ export default class ZrScriptContext {
 		const stream = new ZrTextStream(source);
 		const lexer = new ZrLexer(stream);
 		const parser = new ZrParser(lexer);
+
 		try {
+			const nodes = parser.parseOrThrow();
+			prettyPrintNodes([nodes]);
 			return identity<ZrCreateScriptSuccess>({
 				result: ZrScriptCreateResult.OK,
-				current: this.createScriptFromNodes(parser.parseOrThrow(), locals),
+				current: this.createScriptFromNodes(nodes, locals),
 			});
 		} catch (error) {
 			return identity<ZrCreateScriptError>({

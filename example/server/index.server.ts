@@ -7,8 +7,8 @@ test.registerGlobal("print", ZrPrint);
 test.registerGlobal("range", ZrRange);
 test.registerGlobal("debug", ZrDebug);
 const script = test.createScriptFromSource(`
-	if !$value: print "!!!"
-	for $value in range 1 10: print $value {
+	$value = ["Hello, World!"]
+	$value.0
 `);
 if (script.result === ZrScriptCreateResult.OK) {
 	script.current.executeOrThrow();

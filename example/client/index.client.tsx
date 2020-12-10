@@ -93,6 +93,8 @@ class ZrRichTextHighlighter {
 				} else {
 					str += token.value;
 				}
+			} else if (isToken(token, ZrTokenKind.Option)) {
+				str += font(`${token.prefix ?? ""}${token.value}`, options.KeywordColor);
 			} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
 				str += font(`$${token.value}`, options.VariableColor);
 				for (const prop of token.properties) {
@@ -111,18 +113,13 @@ class ZrRichTextHighlighter {
 	}
 }
 
-const source = `# Hello there
-print "Hello, World!"
-print "Hello $again!"
-$x = 10
-for $i in2 range 1 10 {
-	print "This is $i"
+const source = `# it does functions
+function example($message) {
+	print "The message was: $message"
 }
 
-$y = ["Hello, World!", 10, true];
-$z = $y.0.test
-
-for $i in range(1, 10): print "this is $i"`;
+example("Hello, World!"); # YEET
+`;
 const txtPr = new ZrTextStream(source);
 const lex = new ZrLexer(txtPr, { ParseCommentsAsTokens: true, ParseWhitespaceAsTokens: true });
 const res = new ZrRichTextHighlighter(lex);
