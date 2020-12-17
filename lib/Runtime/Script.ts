@@ -1,4 +1,4 @@
-import { CommandSource } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { SourceFile } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
 import ZrRuntime, { ZrRuntimeError } from "./Runtime";
@@ -6,7 +6,7 @@ import ZrRuntime, { ZrRuntimeError } from "./Runtime";
 export default class ZrScript {
 	private runtime: ZrRuntime;
 
-	public constructor(source: CommandSource, globalVariables: Record<string, ZrValue>) {
+	public constructor(source: SourceFile, globalVariables: Record<string, ZrValue>) {
 		const globals = new ZrLocalStack(globalVariables);
 		this.runtime = new ZrRuntime(source, globals);
 	}

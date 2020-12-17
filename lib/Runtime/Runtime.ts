@@ -4,7 +4,7 @@ import {
 	ArrayIndexExpression,
 	ArrayLiteralExpression,
 	BinaryExpression,
-	CommandSource,
+	SourceFile,
 	CallExpression,
 	SimpleCallExpression,
 	ForInStatement,
@@ -15,6 +15,7 @@ import {
 	PropertyAccessExpression,
 	SourceBlock,
 	VariableDeclaration,
+	OptionExpression,
 } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
@@ -59,7 +60,7 @@ export default class ZrRuntime {
 	private level = 0;
 	private errors = new Array<ZrRuntimeError>();
 	private functions = new Map<string, ZrLuauFunction>();
-	public constructor(private source: CommandSource | SourceBlock, private locals = new ZrLocalStack()) {}
+	public constructor(private source: SourceFile | SourceBlock, private locals = new ZrLocalStack()) {}
 
 	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
 		const err = identity<ZrRuntimeError>({
@@ -189,19 +190,35 @@ export default class ZrRuntime {
 	}
 
 	private evaluateForInStatement(node: ForInStatement) {
-		const { initializer, expression, statement } = node;
+		const { initializer, statement } = node;
+		let { expression } = node;
+
+		// Shortcut a parenthesized expression
+		if (isNode(expression, ZrNodeKind.ParenthesizedExpression)) {
+			expression = expression.expression;
+		}
 
 		let value: ZrValue | undefined;
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
 			value = this.locals.getLocalOrUpValue(expression.name);
-		} else if (types.isCallableExpression(expression)) {
+		} else if (
+			types.isCallableExpression(expression) ||
+			isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
+			isNode(expression, ZrNodeKind.ObjectLiteralExpression)
+		) {
 			value = this.evaluateNode(expression);
+		} else {
+			this.runtimeError(
+				"Invalid expression to ForIn statement - expects Array or Object",
+				ZrRuntimeErrorCode.InvalidForInExpression,
+				expression,
+			);
 		}
 
 		this.runtimeAssertNotUndefined(
 			value,
-			"Array or Object expected",
+			"Expression expected",
 			ZrRuntimeErrorCode.InvalidForInExpression,
 			expression,
 		);
@@ -277,6 +294,11 @@ export default class ZrRuntime {
 			arguments: callArgs,
 		} = node;
 
+		let options = new Array<OptionExpression>();
+		if (types.isCallExpression(node)) {
+			({ options } = node);
+		}
+
 		const matching = this.locals.getLocalOrUpValue(name);
 		if (matching instanceof ZrUserFunction) {
 			this.push();
@@ -288,6 +310,12 @@ export default class ZrRuntime {
 					const valueOf = this.evaluateNode(value);
 					this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
 					this.locals.setLocal(param.name.name, valueOf);
+				}
+			}
+			for (const option of options) {
+				const value = this.evaluateNode(option.expression);
+				if (value) {
+					this.locals.setLocal(option.option.flag, value);
 				}
 			}
 
@@ -380,6 +408,8 @@ export default class ZrRuntime {
 			return this.evaluatePropertyAccessExpression(node);
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			return this.evaluateFunctionDeclaration(node);
+		} else if (isNode(node, ZrNodeKind.ParenthesizedExpression)) {
+			return this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.BinaryExpression)) {
 			return this.evaluateBinaryExpression(node);
 		} else if (isNode(node, ZrNodeKind.UnaryExpression)) {

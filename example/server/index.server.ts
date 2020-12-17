@@ -8,18 +8,27 @@ test.registerGlobal("range", ZrRange);
 test.registerGlobal("debug", ZrDebug);
 const script = test.createScriptFromSource(`
 	$value = ["Hello, World!"]
-	
-	function test($message) {
-		print("The message is", $message)
+	$arr = {a: 10}
+	print $value.0
+	print([1, 2, 3], k: true)
+	if $value {
+		print "has value"
 	}
 
-	test("Hello, World!")
-	test "Hello, World! 2"
+	function test($x) {
+		if $prettyPrint {
+			print("**", $x, "**")
+		} else {
+			print($x)
+		}
+	}
+
+	test("Hello there", prettyPrint: true)
 `);
 if (script.result === ZrScriptCreateResult.OK) {
 	const { current } = script;
 	current.executeOrThrow();
 } else {
 	const [error] = script.errors;
-	warn(error.message);
+	warn(error?.message ?? script.message);
 }

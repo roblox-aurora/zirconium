@@ -14,7 +14,7 @@ const stringify = (value: ZrValue): string => {
 		}
 		return values.join(", ");
 	} else if (typeIs(value, "table")) {
-		return "[ ]";
+		return tostring(value);
 	} else {
 		return tostring(value);
 	}
