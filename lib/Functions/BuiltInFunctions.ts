@@ -8,14 +8,11 @@ const stringify = (value: ZrValue): string => {
 	if (isArray(value)) {
 		return "[" + (value.map((v) => stringify(v)).join(", ") || " ") + "]";
 	} else if (isMap<ZrValue>(value)) {
-		return (
-			"{" +
-			value
-				.entries()
-				.map(([k, v]) => `${k}: ${stringify(v)}`)
-				.join(", ") +
-			"}"
-		);
+		const values = new Array<string>();
+		for (const [k, v] of value) {
+			values.push(`${k}: ${stringify(v)}`);
+		}
+		return values.join(", ");
 	} else if (typeIs(value, "table")) {
 		return "[ ]";
 	} else {

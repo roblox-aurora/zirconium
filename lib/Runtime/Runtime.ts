@@ -2,10 +2,11 @@ import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
 import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
 import {
 	ArrayIndexExpression,
-	ArrayLiteral,
+	ArrayLiteralExpression,
 	BinaryExpression,
 	CommandSource,
-	CommandStatement,
+	CallExpression,
+	SimpleCallExpression,
 	ForInStatement,
 	FunctionDeclaration,
 	IfStatement,
@@ -21,6 +22,7 @@ import { isArray, isMap } from "../Util";
 import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
+import { types } from "@rbxts/zirconium-ast";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -127,7 +129,12 @@ export default class ZrRuntime {
 	private executeSetVariable(node: VariableDeclaration) {
 		const { identifier, expression } = node;
 		const value = this.evaluateNode(expression);
-		this.getLocals().setUpValueOrLocal(identifier.name, value);
+		if (types.isIdentifier(identifier)) {
+			this.getLocals().setUpValueOrLocal(identifier.name, value);
+		} else {
+			this.runtimeError("Not yet implemented", ZrRuntimeErrorCode.EvaluationError); // TODO
+		}
+
 		return undefined;
 	}
 
@@ -147,7 +154,7 @@ export default class ZrRuntime {
 		return declaration;
 	}
 
-	private evaluateArrayNode(node: ArrayLiteral) {
+	private evaluateArrayNode(node: ArrayLiteralExpression) {
 		const values = new Array<ZrValue>();
 		let i = 0;
 		for (const subNode of node.values) {
@@ -188,7 +195,7 @@ export default class ZrRuntime {
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
 			value = this.locals.getLocalOrUpValue(expression.name);
-		} else if (isNode(expression, ZrNodeKind.CommandStatement)) {
+		} else if (types.isCallableExpression(expression)) {
 			value = this.evaluateNode(expression);
 		}
 
@@ -263,18 +270,20 @@ export default class ZrRuntime {
 		}
 	}
 
-	private evaluateFunctionCall(node: CommandStatement, context: ZrContext) {
+	private evaluateFunctionCall(node: CallExpression | SimpleCallExpression, context: ZrContext) {
 		const {
-			command: { name },
+			expression: { name },
 			children,
+			arguments: callArgs,
 		} = node;
 
-		const matching = this.locals.getLocalOrUpValue(name.text);
+		const matching = this.locals.getLocalOrUpValue(name);
 		if (matching instanceof ZrUserFunction) {
 			this.push();
 			const params = matching.getParameters();
-			for (const [i, param] of ipairs(params)) {
-				const value = children[i];
+			for (let i = 0; i < params.size(); i++) {
+				const param = params[i];
+				const value = callArgs[i];
 				if (value !== undefined) {
 					const valueOf = this.evaluateNode(value);
 					this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
@@ -287,19 +296,11 @@ export default class ZrRuntime {
 		} else if (matching instanceof ZrLuauFunction) {
 			const args = new Array<ZrValue>();
 			let i = 0;
-			for (const child of children) {
-				if (isNode(child, ZrNodeKind.CommandName)) continue;
+			for (const child of callArgs) {
 				const value = this.evaluateNode(child);
-				// this.runtimeAssertNotUndefined(
-				// 	value,
-				// 	`Argument #${i} to '${name.text}' - expected value got nil`,
-				// 	ZrRuntimeErrorCode.EvaluationError,
-				// 	child,
-				// );
 				if (value) {
 					args[i] = value;
 				}
-				// args.push(value);
 				i++;
 			}
 			const result = matching.call(context, ...args);
@@ -307,7 +308,7 @@ export default class ZrRuntime {
 				return result;
 			}
 		} else {
-			this.runtimeError(name.text + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
+			this.runtimeError(name + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 		}
 	}
 
@@ -315,8 +316,8 @@ export default class ZrRuntime {
 		const { left, operator, right } = node;
 		if (operator === "|") {
 			this.runtimeAssert(
-				isNode(left, ZrNodeKind.CommandStatement) &&
-					(isNode(right, ZrNodeKind.CommandStatement) || isNode(right, ZrNodeKind.BinaryExpression)),
+				types.isCallableExpression(left) &&
+					(types.isCallableExpression(right) || isNode(right, ZrNodeKind.BinaryExpression)),
 				"Pipe expression only works with two command statements",
 				ZrRuntimeErrorCode.PipeError,
 			);
@@ -324,7 +325,7 @@ export default class ZrRuntime {
 			const context = ZrContext.createPipedContext(this, input, output);
 			this.evaluateFunctionCall(left, context);
 
-			if (isNode(right, ZrNodeKind.CommandStatement)) {
+			if (types.isCallableExpression(right)) {
 				this.evaluateFunctionCall(
 					right,
 					ZrContext.createPipedContext(this, output, this.mainContext._getOutput()),
@@ -333,7 +334,7 @@ export default class ZrRuntime {
 				this.evaluateBinaryExpression(right, output);
 			}
 		} else if (operator === "&&") {
-			if (isNode(left, ZrNodeKind.CommandStatement)) {
+			if (types.isCallableExpression(left)) {
 				const result = this.evaluateFunctionCall(left, this.mainContext);
 				if (result === undefined || result) {
 					return this.evaluateNode(right);
@@ -346,7 +347,7 @@ export default class ZrRuntime {
 				// this.runtimeError(`Unable to handle ${getFriendlyName(left)}`, ZrRuntimeErrorCode.EvaluationError);
 			}
 		} else if (operator === "||") {
-			if (isNode(left, ZrNodeKind.CommandStatement)) {
+			if (types.isCallableExpression(left)) {
 				const result = this.evaluateFunctionCall(left, this.mainContext);
 				if (!result && result !== undefined) {
 					return this.evaluateNode(right);
@@ -385,6 +386,8 @@ export default class ZrRuntime {
 			if (node.operator === "!") {
 				return !this.evaluateNode(node.expression);
 			}
+		} else if (isNode(node, ZrNodeKind.ExpressionStatement)) {
+			this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
 			this.evaluateForInStatement(node);
 		} else if (isNode(node, ZrNodeKind.IfStatement)) {
@@ -405,7 +408,7 @@ export default class ZrRuntime {
 				this.evaluateNode(statement);
 			}
 			this.pop();
-		} else if (isNode(node, ZrNodeKind.CommandStatement)) {
+		} else if (types.isCallableExpression(node)) {
 			return this.evaluateFunctionCall(node, this.mainContext);
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);

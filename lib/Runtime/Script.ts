@@ -1,7 +1,7 @@
 import { CommandSource } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
-import ZrRuntime from "./Runtime";
+import ZrRuntime, { ZrRuntimeError } from "./Runtime";
 
 export default class ZrScript {
 	private runtime: ZrRuntime;
@@ -16,16 +16,15 @@ export default class ZrScript {
 	}
 
 	public async execute() {
-		return new Promise<void>((resolve, reject) => {
-			Promise.spawn(() => {
+		return Promise.defer<string[]>(
+			(resolve: (value: string[]) => void, reject: (err: ZrRuntimeError[]) => void) => {
 				try {
-					this.runtime.execute();
-					resolve();
+					resolve(this.runtime.execute());
 				} catch (e) {
-					reject(this.runtime.getErrors()[0]);
+					reject(this.runtime.getErrors());
 				}
-			});
-		});
+			},
+		);
 	}
 
 	public executeOrThrow() {
