@@ -9,6 +9,10 @@
     "build:example": "rbxtsc -p ./core/example -i ./include",
     "serve": "rojo serve ./core/example/example.project.json --port 34567"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roblox-aurora/zirconium.git"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
