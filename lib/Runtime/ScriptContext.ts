@@ -1,6 +1,6 @@
 import { ZrTextStream, ZrLexer } from "@rbxts/zirconium-ast";
 import { SourceFile } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
-import ZrParser, { ParserError } from "@rbxts/zirconium-ast/out/Parser";
+import ZrParser, { ZrParserError } from "@rbxts/zirconium-ast/out/Parser";
 import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
@@ -19,13 +19,14 @@ interface ZrCreateScriptSuccess {
 }
 interface ZrCreateScriptError {
 	result: ZrScriptCreateResult.ParserError;
-	errors: readonly ParserError[];
+	errors: readonly ZrParserError[];
 	message: string;
 }
 type ZrCreateScriptResult = ZrCreateScriptError | ZrCreateScriptSuccess;
 
 export default class ZrScriptContext {
 	private globals = identity<Record<string, ZrValue>>({});
+
 	public registerGlobal(name: string, value: ZrValue) {
 		this.globals[name] = value;
 	}

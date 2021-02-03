@@ -98,6 +98,7 @@ export default class ZrLocalStack {
 		for (const currentLocals of this.locals) {
 			if (currentLocals.has(name)) return currentLocals.get(name);
 		}
+		return undefined;
 	}
 
 	/** @internal */
@@ -124,7 +125,7 @@ export default class ZrLocalStack {
 		let text = "";
 		for (const value of expression.values) {
 			if (isNode(value, ZrNodeKind.Identifier)) {
-				text += tostring(this.getLocalOrUpValue(value.name));
+				text += tostring(this.getLocalOrUpValue(value.name) ?? "");
 			} else {
 				text += value.text;
 			}
