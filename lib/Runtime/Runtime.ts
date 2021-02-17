@@ -24,6 +24,8 @@ import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
 import { types } from "@rbxts/zirconium-ast";
+import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userdata";
+import ZrUndefined from "../Data/Undefined";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -36,6 +38,9 @@ export enum ZrRuntimeErrorCode {
 	NotCallable,
 	InvalidPropertyAccess,
 	PipeError,
+	InstanceSetViolation,
+	InstanceGetViolation,
+	InvalidIterator,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -43,11 +48,13 @@ export interface ZrRuntimeError {
 	node?: Node;
 }
 
-const getTypeName = (value: ZrValue) => {
+const getTypeName = (value: ZrValue | ZrUndefined) => {
 	if (isArray(value)) {
 		return "Array";
 	} else if (value instanceof ZrObject) {
 		return "Object";
+	} else if (value === ZrUndefined) {
+		return "undefined";
 	} else {
 		return typeOf(value);
 	}
@@ -131,9 +138,13 @@ export default class ZrRuntime {
 		const { identifier, expression } = node;
 		const value = this.evaluateNode(expression);
 		if (types.isIdentifier(identifier)) {
-			this.getLocals().setUpValueOrLocal(identifier.name, value);
+			if (value === ZrUndefined) {
+				this.getLocals().setUpValueOrLocal(identifier.name, undefined);
+			} else {
+				this.getLocals().setUpValueOrLocal(identifier.name, value);
+			}
 		} else {
-			this.runtimeError("Not yet implemented", ZrRuntimeErrorCode.EvaluationError); // TODO
+			this.runtimeError("Not yet implemented", ZrRuntimeErrorCode.EvaluationError); // TODO implement
 		}
 
 		return undefined;
@@ -166,6 +177,9 @@ export default class ZrRuntime {
 				ZrRuntimeErrorCode.NodeValueError,
 				subNode,
 			);
+			if (value === ZrUndefined) {
+				break;
+			}
 			values.push(value);
 			i++;
 		}
@@ -198,10 +212,10 @@ export default class ZrRuntime {
 			expression = expression.expression;
 		}
 
-		let value: ZrValue | undefined;
+		let value: ZrValue | ZrUndefined | undefined;
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
-			value = this.locals.getLocalOrUpValue(expression.name);
+			value = this.locals.getLocalOrUpValue(expression.name) ?? ZrUndefined;
 		} else if (
 			types.isCallableExpression(expression) ||
 			isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
@@ -214,6 +228,10 @@ export default class ZrRuntime {
 				ZrRuntimeErrorCode.InvalidForInExpression,
 				expression,
 			);
+		}
+
+		if (value === ZrUndefined) {
+			this.runtimeError("Cannot iterate undefined value", ZrRuntimeErrorCode.InvalidIterator, expression);
 		}
 
 		this.runtimeAssertNotUndefined(
@@ -263,6 +281,45 @@ export default class ZrRuntime {
 		return value[index.value];
 	}
 
+	private setUserdata(
+		expression: PropertyAccessExpression["expression"],
+		userdata: ZrUserdata<defined>,
+		key: string,
+		value: ZrValue,
+	) {
+		if (userdata.isInstance()) {
+			this.runtimeError(
+				"Runtime Violation: Instance properties are read-only via Zirconium",
+				ZrRuntimeErrorCode.InstanceSetViolation,
+				expression,
+			);
+		} else {
+			const object = userdata.value() as Record<string, unknown>;
+			try {
+				object[key] = value;
+			} catch (err) {
+				this.runtimeError(err, ZrRuntimeErrorCode.InstanceSetViolation, expression);
+			}
+		}
+	}
+
+	private getUserdata<T extends ZrUserdata<defined>>(
+		expression: PropertyAccessExpression["expression"],
+		userdata: T,
+		key: string,
+	) {
+		if (userdata.isInstance()) {
+			try {
+				return userdata.get(key as InferUserdataKeys<T>);
+			} catch (err) {
+				this.runtimeError(err, ZrRuntimeErrorCode.InstanceGetViolation, expression);
+			}
+		} else {
+			const object = userdata.value() as Record<string, ZrValue>;
+			return object[key];
+		}
+	}
+
 	private evaluatePropertyAccessExpression(node: PropertyAccessExpression) {
 		const { expression, name } = node;
 		const value = this.evaluateNode(expression);
@@ -276,6 +333,8 @@ export default class ZrRuntime {
 		);
 		if (value instanceof ZrObject) {
 			return value.get(id);
+		} else if (value instanceof ZrUserdata) {
+			return this.getUserdata(expression, value, id);
 		} else if (isMap<ZrValue>(value)) {
 			return value.get(id);
 		} else {
@@ -309,20 +368,25 @@ export default class ZrRuntime {
 				if (value !== undefined) {
 					const valueOf = this.evaluateNode(value);
 					this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
-					this.locals.setLocal(param.name.name, valueOf);
+
+					if (valueOf !== ZrUndefined) {
+						this.locals.setLocal(param.name.name, valueOf);
+					}
 				}
 			}
 			for (const option of options) {
 				const value = this.evaluateNode(option.expression);
 				if (value) {
-					this.locals.setLocal(option.option.flag, value);
+					if (value !== ZrUndefined) {
+						this.locals.setLocal(option.option.flag, value);
+					}
 				}
 			}
 
 			this.evaluateNode(matching.getBody());
 			this.pop();
 		} else if (matching instanceof ZrLuauFunction) {
-			const args = new Array<ZrValue>();
+			const args = new Array<ZrValue | ZrUndefined>();
 			let i = 0;
 			for (const child of callArgs) {
 				const value = this.evaluateNode(child);
@@ -392,7 +456,7 @@ export default class ZrRuntime {
 	private mainContext = new ZrContext(this);
 
 	/** @internal */
-	public evaluateNode(node: Node): ZrValue | undefined {
+	public evaluateNode(node: Node): ZrValue | ZrUndefined | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);
@@ -401,11 +465,11 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
 		} else if (isNode(node, ZrNodeKind.Identifier)) {
-			return this.getLocals().getLocalOrUpValue(node.name);
+			return this.getLocals().getLocalOrUpValue(node.name) ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
 		} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
-			return this.evaluatePropertyAccessExpression(node);
+			return this.evaluatePropertyAccessExpression(node) ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			return this.evaluateFunctionDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ParenthesizedExpression)) {

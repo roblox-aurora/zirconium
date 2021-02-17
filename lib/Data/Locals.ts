@@ -1,7 +1,8 @@
 import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
-import { InterpolatedStringExpression, StringLiteral } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { InterpolatedStringExpression } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
+import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
 
 export type ZrValue =
@@ -12,7 +13,8 @@ export type ZrValue =
 	| Array<ZrValue>
 	| Map<string, ZrValue>
 	| ZrUserFunction
-	| ZrLuauFunction;
+	| ZrLuauFunction
+	| ZrUserdata<defined>;
 
 export default class ZrLocalStack {
 	private locals = new Array<Map<string, ZrValue>>();
@@ -121,7 +123,6 @@ export default class ZrLocalStack {
 
 	/** @internal */
 	public evaluateInterpolatedString(expression: InterpolatedStringExpression): string {
-		const top = this.current();
 		let text = "";
 		for (const value of expression.values) {
 			if (isNode(value, ZrNodeKind.Identifier)) {

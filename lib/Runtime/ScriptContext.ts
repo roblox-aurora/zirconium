@@ -4,7 +4,7 @@ import ZrParser, { ZrParserError } from "@rbxts/zirconium-ast/out/Parser";
 import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
-import ZrLuauFunction from "../Data/LuauFunction";
+import ZrLuauFunction, { ZrLuauArgument } from "../Data/LuauFunction";
 import { ZrRuntimeError } from "./Runtime";
 import ZrScript from "./Script";
 
@@ -31,7 +31,7 @@ export default class ZrScriptContext {
 		this.globals[name] = value;
 	}
 
-	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrValue[]) => ZrValue | undefined) {
+	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrLuauArgument[]) => ZrValue | undefined) {
 		this.registerGlobal(name, new ZrLuauFunction(fn));
 	}
 

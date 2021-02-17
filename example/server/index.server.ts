@@ -1,4 +1,7 @@
 import Zr from "@zirconium";
+import { ZrValue } from "./Data/Locals";
+import ZrUndefined from "./Data/Undefined";
+import { ZrUserdata } from "./Data/Userdata";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
 import { ZrScriptCreateResult } from "./Runtime/ScriptContext";
 
@@ -6,29 +9,24 @@ const test = Zr.createContext();
 test.registerGlobal("print", ZrPrint);
 test.registerGlobal("range", ZrRange);
 test.registerGlobal("debug", ZrDebug);
-const script = test.createScriptFromSource(`
-	$value = ["Hello, World!"]
-	$arr = {a: 10}
-	print $value.0
-	print([1, 2, 3], k: true)
-	if $value {
-		print "has value"
-	}
+test.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
 
-	function test($x) {
-		if $prettyPrint {
-			print("**", $x, "**")
-		} else {
-			print($x)
-		}
-	}
+game.GetService("Players").PlayerAdded.Connect((player) => {
+	test.registerGlobal("player", ZrUserdata.fromInstance(player));
 
-	test("Hello there", prettyPrint: true)
+	const script = test.createScriptFromSource(`
+	$playerName = $player.Character
+	$table = {
+		a: $null,
+		b: 20
+	}
+	print($null, $table2, $table)
 `);
-if (script.result === ZrScriptCreateResult.OK) {
-	const { current } = script;
-	current.executeOrThrow();
-} else {
-	const [error] = script.errors;
-	warn(error?.message ?? script.message);
-}
+	if (script.result === ZrScriptCreateResult.OK) {
+		const { current } = script;
+		current.executeOrThrow();
+	} else {
+		const [error] = script.errors;
+		warn(error?.message ?? script.message);
+	}
+});
