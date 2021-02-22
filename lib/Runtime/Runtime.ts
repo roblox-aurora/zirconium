@@ -26,6 +26,7 @@ import ZrContext from "../Data/Context";
 import { types } from "@rbxts/zirconium-ast";
 import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
+import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -67,7 +68,10 @@ export default class ZrRuntime {
 	private level = 0;
 	private errors = new Array<ZrRuntimeError>();
 	private functions = new Map<string, ZrLuauFunction>();
-	public constructor(private source: SourceFile | SourceBlock, private locals = new ZrLocalStack()) {}
+	private context: ZrContext;
+	public constructor(private source: SourceFile | SourceBlock, private locals = new ZrLocalStack()) {
+		this.context = new ZrContext(this);
+	}
 
 	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
 		const err = identity<ZrRuntimeError>({
@@ -404,7 +408,7 @@ export default class ZrRuntime {
 		}
 	}
 
-	public evaluateBinaryExpression(node: BinaryExpression, input = new Array<string>()) {
+	public evaluateBinaryExpression(node: BinaryExpression, input = ZrInputStream.empty()) {
 		const { left, operator, right } = node;
 		if (operator === "|") {
 			this.runtimeAssert(
@@ -413,21 +417,25 @@ export default class ZrRuntime {
 				"Pipe expression only works with two command statements",
 				ZrRuntimeErrorCode.PipeError,
 			);
-			const output = new Array<string>();
+			const output = new ZrOutputStream();
 			const context = ZrContext.createPipedContext(this, input, output);
-			this.evaluateFunctionCall(left, context);
+			const result = this.evaluateFunctionCall(left, context);
+
+			if (result && result !== ZrUndefined) {
+				output.write(result);
+			}
 
 			if (types.isCallableExpression(right)) {
 				this.evaluateFunctionCall(
 					right,
-					ZrContext.createPipedContext(this, output, this.mainContext._getOutput()),
+					ZrContext.createPipedContext(this, output._toInputStream(), this.context.getOutput()),
 				);
 			} else {
-				this.evaluateBinaryExpression(right, output);
+				this.evaluateBinaryExpression(right, output._toInputStream());
 			}
 		} else if (operator === "&&") {
 			if (types.isCallableExpression(left)) {
-				const result = this.evaluateFunctionCall(left, this.mainContext);
+				const result = this.evaluateFunctionCall(left, this.context);
 				if (result === undefined || result) {
 					return this.evaluateNode(right);
 				}
@@ -440,7 +448,7 @@ export default class ZrRuntime {
 			}
 		} else if (operator === "||") {
 			if (types.isCallableExpression(left)) {
-				const result = this.evaluateFunctionCall(left, this.mainContext);
+				const result = this.evaluateFunctionCall(left, this.context);
 				if (!result && result !== undefined) {
 					return this.evaluateNode(right);
 				}
@@ -452,8 +460,6 @@ export default class ZrRuntime {
 		}
 		return undefined;
 	}
-
-	private mainContext = new ZrContext(this);
 
 	/** @internal */
 	public evaluateNode(node: Node): ZrValue | ZrUndefined | undefined {
@@ -503,7 +509,7 @@ export default class ZrRuntime {
 			}
 			this.pop();
 		} else if (types.isCallableExpression(node)) {
-			return this.evaluateFunctionCall(node, this.mainContext);
+			return this.evaluateFunctionCall(node, this.context);
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);
 		}
@@ -511,6 +517,6 @@ export default class ZrRuntime {
 
 	public execute() {
 		this.evaluateNode(this.source);
-		return this.mainContext._getOutput();
+		return this.context.getOutput();
 	}
 }

@@ -16,10 +16,10 @@ export default class ZrScript {
 	}
 
 	public async execute() {
-		return Promise.defer<string[]>(
-			(resolve: (value: string[]) => void, reject: (err: ZrRuntimeError[]) => void) => {
+		return Promise.defer<readonly string[]>(
+			(resolve: (value: readonly string[]) => void, reject: (err: ZrRuntimeError[]) => void) => {
 				try {
-					resolve(this.runtime.execute());
+					resolve(this.runtime.execute()._toStringArray());
 				} catch (e) {
 					reject(this.runtime.getErrors());
 				}
@@ -28,7 +28,7 @@ export default class ZrScript {
 	}
 
 	public executeOrThrow() {
-		const results = this.runtime.execute();
+		const results = this.runtime.execute().toArray();
 		for (const result of results) {
 			print(">", result);
 		}

@@ -1,10 +1,10 @@
 import ZrObject from "../Data/Object";
 import { isArray, isMap } from "../Util";
-import ZrLuauFunction from "../Data/LuauFunction";
+import ZrLuauFunction, { ZrLuauArgument } from "../Data/LuauFunction";
 import { ZrValue } from "../Data/Locals";
 const runService = game.GetService("RunService");
 
-const stringify = (value: ZrValue): string => {
+export const stringify = (value: ZrLuauArgument): string => {
 	if (isArray(value)) {
 		return "[" + (value.map((v) => stringify(v)).join(", ") || " ") + "]";
 	} else if (isMap<ZrValue>(value)) {
@@ -21,7 +21,17 @@ const stringify = (value: ZrValue): string => {
 };
 
 export const ZrPrint = ZrLuauFunction.createDynamic((ctx, ...params) => {
-	print(params.map((p) => stringify(p)).join(" "));
+	const input = ctx.getInput();
+	if (input.isEmpty()) {
+		print(params.map((p) => stringify(p)).join(" "));
+	} else {
+		print(
+			input
+				.toArray()
+				.map((p) => stringify(p))
+				.join(" "),
+		);
+	}
 });
 
 export const ZrRange = ZrLuauFunction.createDynamic((ctx, start, stop) => {

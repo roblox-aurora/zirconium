@@ -1,3 +1,5 @@
+import { ZrValue } from "Data/Locals";
+import { ZrLuauArgument } from "Data/LuauFunction";
 import ZrScriptContext from "./Runtime/ScriptContext";
 
 /**
@@ -16,6 +18,9 @@ namespace Zr {
 		contexts.set(name, ctx);
 		return ctx;
 	}
+
+	export type Value = ZrValue;
+	export type Argument = ZrLuauArgument;
 }
 
 export = Zr;

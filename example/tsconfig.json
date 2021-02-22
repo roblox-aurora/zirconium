@@ -20,7 +20,7 @@
         ],
 
         "outDir": "build",
-        "baseUrl": ".",
+        "baseUrl": "../lib",
 
         "paths": {
             "@zirconium": ["../lib"],

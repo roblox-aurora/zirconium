@@ -1,12 +1,14 @@
 import ZrRuntime from "../Runtime/Runtime";
+import { ZrValue } from "./Locals";
+import { ZrInputStream, ZrOutputStream } from "./Stream";
 
 export default class ZrContext {
-	private input = new Array<string>();
-	private output = new Array<string>();
+	private input = ZrInputStream.empty();
+	private output = new ZrOutputStream();
 
 	constructor(private runtime: ZrRuntime) {}
 
-	public static createPipedContext(runtime: ZrRuntime, input: Array<string>, output: Array<string>) {
+	public static createPipedContext(runtime: ZrRuntime, input: ZrInputStream, output: ZrOutputStream) {
 		const context = new ZrContext(runtime);
 		context.input = input;
 		context.output = output;
@@ -18,16 +20,17 @@ export default class ZrContext {
 		return this.runtime.getLocals();
 	}
 
-	public getInput(): readonly string[] {
+	/**
+	 * Gets the input stream
+	 */
+	public getInput() {
 		return this.input;
 	}
 
-	public pushOutput(value: string) {
-		this.output.push(value);
-	}
-
-	/** @internal */
-	public _getOutput() {
+	/**
+	 * Gets the output stream
+	 */
+	public getOutput() {
 		return this.output;
 	}
 }

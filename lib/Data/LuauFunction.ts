@@ -20,7 +20,9 @@ type ArgTypes<T> = { readonly [P in keyof T]: InferTypeName<T[P]> };
 
 export type ZrLuauArgument = ZrValue | ZrUndefined;
 export default class ZrLuauFunction {
-	constructor(private callback: (ctx: ZrContext, ...args: readonly ZrLuauArgument[]) => ZrValue | void) {}
+	constructor(
+		private callback: (ctx: ZrContext, ...args: readonly ZrLuauArgument[]) => ZrValue | ZrUndefined | void,
+	) {}
 
 	/**
 	 * Create a dynamic function (one that takes any value per argument)
