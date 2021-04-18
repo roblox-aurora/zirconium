@@ -1,0 +1,8 @@
+{
+    "INVALID_IDENTIFIER": "Invalid identifier '%s'",
+    "IDENTIFIER_EXPECTED": "Identifier expected",
+    "FUNCTION_ID_EXPECTED": "Identifier expected for function declaration",
+    "PROPERTY_ACCESS_IDENTIFIER_INVALID": "Attempt to access property '%s' with invalid identifier '%s'",
+    "PROPERTY_ACCESS_PROPERTY_INVALID": "Attempt to access invalid property '%s' of '%s'",
+    "FUNCTION_IMPLEMENTATION_MISSING": "Missing function implementation for '%s'"
+}

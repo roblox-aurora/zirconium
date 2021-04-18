@@ -1,5 +1,5 @@
-import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
-import { getFriendlyName } from "@rbxts/zirconium-ast/out/Nodes/Functions";
+import { isNode, ZrNodeKind } from "../Ast/Nodes";
+import { getFriendlyName } from "../Ast/Nodes/Functions";
 import {
 	ArrayIndexExpression,
 	ArrayLiteralExpression,
@@ -16,14 +16,14 @@ import {
 	SourceBlock,
 	VariableDeclaration,
 	OptionExpression,
-} from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+} from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
 import { isArray, isMap } from "../Util";
 import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
-import { types } from "@rbxts/zirconium-ast";
+import { types } from "../Ast";
 import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";

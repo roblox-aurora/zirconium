@@ -1,7 +1,7 @@
-import { ZrTextStream, ZrLexer } from "@rbxts/zirconium-ast";
-import { SourceFile } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
-import ZrParser, { ZrParserError } from "@rbxts/zirconium-ast/out/Parser";
-import { prettyPrintNodes } from "@rbxts/zirconium-ast/out/Utility";
+import { ZrTextStream, ZrLexer } from "../Ast";
+import { SourceFile } from "../Ast/Nodes/NodeTypes";
+import ZrParser, { ZrParserError } from "../Ast/Parser";
+import prettyPrintNodes from "../Ast/Utility/PrettyPrintNodes";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
 import ZrLuauFunction, { ZrLuauArgument } from "../Data/LuauFunction";
@@ -36,7 +36,16 @@ export default class ZrScriptContext {
 	}
 
 	public createScriptFromNodes(nodes: SourceFile, locals?: Record<string, ZrValue>) {
-		return new ZrScript(nodes, { ...this.globals, ...locals });
+		const localMap = new Map<string, ZrValue>();
+		for (const [k, v] of pairs(this.globals)) {
+			localMap.set(k, v);
+		}
+		if (locals) {
+			for (const [k, v] of pairs(locals)) {
+				localMap.set(k, v);
+			}
+		}
+		return new ZrScript(nodes, localMap);
 	}
 
 	public createScriptFromSource(source: string, locals?: Record<string, ZrValue>): ZrCreateScriptResult {

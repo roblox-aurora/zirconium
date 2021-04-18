@@ -23,6 +23,11 @@
 		// optional, non-configurable
 		"jsx": "react",
 		"jsxFactory": "Roact.createElement",
+		"plugins": [
+			{
+				"transform": "rbxts-transform-debug",
+			}
+		]
 	},
 	"include": [
 		"**/*"

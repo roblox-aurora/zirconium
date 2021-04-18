@@ -1,4 +1,4 @@
-import { FunctionDeclaration, ParameterDeclaration, SourceBlock } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { FunctionDeclaration, ParameterDeclaration, SourceBlock } from "../Ast/Nodes/NodeTypes";
 import ZrRuntime, { ZrRuntimeErrorCode } from "../Runtime/Runtime";
 import ZrLocalStack, { ZrValue } from "./Locals";
 

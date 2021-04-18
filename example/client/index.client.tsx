@@ -9,6 +9,11 @@ function example($message) {
 }
 
 example("Hello, World!"); # YEET
+let x = undefined;
+
+export function test() {
+	return 10
+}
 `;
 const res = new ZrRichTextHighlighter(source);
 

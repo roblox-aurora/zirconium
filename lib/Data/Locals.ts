@@ -1,5 +1,5 @@
-import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
-import { InterpolatedStringExpression } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { isNode, ZrNodeKind } from "../Ast/Nodes";
+import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import { ZrUserdata } from "./Userdata";
@@ -19,9 +19,7 @@ export type ZrValue =
 export default class ZrLocalStack {
 	private locals = new Array<Map<string, ZrValue>>();
 
-	constructor(inject?: Record<string, ZrValue>);
-	constructor(inject?: ReadonlyMap<string, ZrValue>);
-	constructor(inject?: defined) {
+	constructor(inject?: ReadonlyMap<string, ZrValue>) {
 		if (inject) {
 			const newLocals = new Map<string, ZrValue>();
 			for (const [name, value] of pairs(inject)) {

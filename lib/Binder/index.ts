@@ -1,7 +1,7 @@
-import { isNode, ZrNodeKind } from "@rbxts/zirconium-ast/out/Nodes";
-import { Node, NodeTypes, SourceFile } from "@rbxts/zirconium-ast/out/Nodes/NodeTypes";
+import { isNode, ZrNodeKind } from "../Ast/Nodes";
+import { Node, NodeTypes, SourceFile } from "../Ast/Nodes/NodeTypes";
 
-export default interface ZrBinder {
+export interface ZrBinder {
 	// TODO
 	bind(): void;
 }
@@ -37,7 +37,7 @@ interface ZrSymbolMap {
 
 type ZrSymbols = ZrSymbolMap[keyof ZrSymbolMap];
 
-export default class ZrSymbolTable {
+export class ZrSymbolTable {
 	public symbols = new Array<ZrSymbols>();
 	public hasSymbolById(symbolId: string) {
 		return this.symbols.find((f) => f.name === symbolId);
@@ -46,7 +46,7 @@ export default class ZrSymbolTable {
 }
 
 /** @internal */
-export default class ZrBinder implements ZrBinder {
+export class ZrBinder implements ZrBinder {
 	private symbolMap = new Array<ZrSymbols>();
 	private symbolStack = new Array<ZrSymbols>();
 	private currentSymbol: ZrSymbols;
