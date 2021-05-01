@@ -22,27 +22,18 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	test.registerGlobal("player", ZrUserdata.fromInstance(player));
 
 	const script = test.createScriptFromSource(`
-	#$playerName = $player.Character
-	#$table = {
-	#	a: $null,
-	#	b: 20
-	#}
-	#print($null, $table2, $table)
-	print $player
-	print("UserId", $player.UserId)
-	$player | print
-	range(1, 10) | print
-	value({
-		a: 10
-	}) | print
-	#range 1 10 | print
-	range 1 10 && print "hi"
-`);
+	const x = 10;
+	print(x, x);
+	`);
 	if (script.result === ZrScriptCreateResult.OK) {
 		const { current } = script;
 		current.executeOrThrow();
 	} else {
 		const [error] = script.errors;
+		if (error) {
+			warn(error.message, error.node?.startPos ?? error.token?.value);
+		}
+
 		warn(error?.message ?? script.message);
 	}
 });

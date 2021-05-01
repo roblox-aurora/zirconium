@@ -128,7 +128,7 @@ export const enum ZrScriptVersion {
 	/**
 	 * Enables `export`, `let`, `const`
 	 */
-	Next = 1000,
+	Zr2021 = 1000,
 }
 
 export interface ZrParserOptions {
@@ -158,7 +158,7 @@ export default class ZrParser {
 		this.strict = this.options.mode === ZrScriptMode.Strict;
 		this.enableExportKeyword = this.options.enableExport;
 
-		if (this.options.version >= ZrScriptVersion.Next) {
+		if (this.options.version >= ZrScriptVersion.Zr2021) {
 			warn("[ZrParser] Using `next` version of the parser.");
 			this.experimentalFeaturesEnabled = true;
 		}
@@ -746,7 +746,6 @@ export default class ZrParser {
 
 				return createStringNode(token.value, token.startCharacter);
 			} else if (token.value !== "") {
-				// assert(token.value.match("[%w_.]+")[0], `Invalid command expression: '${token.value}'`);
 				if (!token.value.match("[%w_.]+")[0]) {
 					this.throwParserError("Expression expected", ZrParserErrorCode.ExpressionExpected, token);
 				}
@@ -757,8 +756,22 @@ export default class ZrParser {
 					return this.parseStrictFunctionOption(token.value);
 				}
 
-				const result = this.parseCallExpression(token);
-				return result;
+				const callContext = this.getCurrentCallContext();
+				// If we're inside a function
+				if (callContext) {
+					if (callContext.strict) {
+						const isFunctionCall = this.is(ZrTokenKind.Special, "(");
+						const result = !isFunctionCall
+							? createIdentifier(token.value)
+							: this.parseCallExpression(token);
+						return result;
+					} else {
+						return createStringNode(token.value);
+					}
+				} else {
+					const result = this.parseCallExpression(token);
+					return result;
+				}
 			}
 		}
 

@@ -12,6 +12,7 @@
             "../node_modules/@rbxts"
         ],
         "removeComments": true,
+        "resolveJsonModule": true,
 
         "rootDirs": [
             "server",
@@ -24,7 +25,9 @@
 
         "paths": {
             "@zirconium": ["../lib"],
-            "@zirconium/*": ["../lib/*"]
+            "@zirconium/*": ["../lib/*"],
+            "@rbxts/zirconium-ast": ["../lib/Ast"],
+            "@rbxts/zirconium-ast/*": ["../lib/Ast/*"]
         },
         "jsx": "react",
         "jsxFactory": "Roact.createElement"

@@ -1,6 +1,6 @@
 import { ZrTextStream, ZrLexer } from "../Ast";
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
-import ZrParser, { ZrParserError } from "../Ast/Parser";
+import ZrParser, { ZrParserError, ZrScriptMode, ZrScriptVersion } from "../Ast/Parser";
 import prettyPrintNodes from "../Ast/Utility/PrettyPrintNodes";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
@@ -51,7 +51,7 @@ export default class ZrScriptContext {
 	public createScriptFromSource(source: string, locals?: Record<string, ZrValue>): ZrCreateScriptResult {
 		const stream = new ZrTextStream(source);
 		const lexer = new ZrLexer(stream);
-		const parser = new ZrParser(lexer);
+		const parser = new ZrParser(lexer, { version: ZrScriptVersion.Zr2021, mode: ZrScriptMode.CommandLike });
 
 		try {
 			const nodes = parser.parseOrThrow();
