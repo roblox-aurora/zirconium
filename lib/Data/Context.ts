@@ -27,6 +27,10 @@ export default class ZrContext {
 		return this.input;
 	}
 
+	public getExecutor() {
+		return this.runtime.getExecutingPlayer();
+	}
+
 	/**
 	 * Gets the output stream
 	 */

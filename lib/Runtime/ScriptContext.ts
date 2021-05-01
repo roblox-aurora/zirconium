@@ -1,3 +1,4 @@
+import { Result } from "@rbxts/rust-classes";
 import { ZrTextStream, ZrLexer } from "../Ast";
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
 import ZrParser, { ZrParserError, ZrScriptMode, ZrScriptVersion } from "../Ast/Parser";
@@ -31,41 +32,56 @@ export default class ZrScriptContext {
 		this.globals[name] = value;
 	}
 
+	public importGlobals(context: ZrScriptContext) {
+		for (const [name, global] of pairs(context.globals)) {
+			this.globals[name] = global;
+		}
+	}
+
 	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrLuauArgument[]) => ZrValue | undefined) {
 		this.registerGlobal(name, new ZrLuauFunction(fn));
 	}
 
-	public createScriptFromNodes(nodes: SourceFile, locals?: Record<string, ZrValue>) {
+	protected getGlobals() {
 		const localMap = new Map<string, ZrValue>();
 		for (const [k, v] of pairs(this.globals)) {
 			localMap.set(k, v);
 		}
-		if (locals) {
-			for (const [k, v] of pairs(locals)) {
-				localMap.set(k, v);
-			}
-		}
-		return new ZrScript(nodes, localMap);
+		return localMap;
 	}
 
-	public createScriptFromSource(source: string, locals?: Record<string, ZrValue>): ZrCreateScriptResult {
+	/**
+	 * Creates a script from the specified source
+	 * @param nodes The source nodes
+	 * @returns The script
+	 */
+	public createScript(nodes: SourceFile) {
+		return new ZrScript(nodes, this.getGlobals());
+	}
+
+	/**
+	 * Creates a source file, and returns a `Result<T, E>` of the result of parsing the file
+	 */
+	public parseSource(
+		source: string,
+		version = ZrScriptVersion.Zr2020,
+		mode = ZrScriptMode.CommandLike,
+	): Result<SourceFile, ZrCreateScriptError> {
 		const stream = new ZrTextStream(source);
 		const lexer = new ZrLexer(stream);
-		const parser = new ZrParser(lexer, { version: ZrScriptVersion.Zr2021, mode: ZrScriptMode.CommandLike });
+		const parser = new ZrParser(lexer, { version, mode });
 
 		try {
 			const nodes = parser.parseOrThrow();
-			prettyPrintNodes([nodes]);
-			return identity<ZrCreateScriptSuccess>({
-				result: ZrScriptCreateResult.OK,
-				current: this.createScriptFromNodes(nodes, locals),
-			});
+			return Result.ok(nodes);
 		} catch (error) {
-			return identity<ZrCreateScriptError>({
-				result: ZrScriptCreateResult.ParserError,
-				errors: parser.getErrors(),
-				message: tostring(error),
-			});
+			return Result.err(
+				identity<ZrCreateScriptError>({
+					result: ZrScriptCreateResult.ParserError,
+					errors: parser.getErrors(),
+					message: tostring(error),
+				}),
+			);
 		}
 	}
 }

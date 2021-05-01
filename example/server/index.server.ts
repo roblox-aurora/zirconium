@@ -1,3 +1,4 @@
+import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
 import ZrLuauFunction from "Data/LuauFunction";
 import { ZrValue } from "./Data/Locals";
@@ -6,34 +7,33 @@ import { ZrUserdata } from "./Data/Userdata";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
 import { ZrScriptCreateResult } from "./Runtime/ScriptContext";
 
-const test = Zr.createContext();
-test.registerGlobal("print", ZrPrint);
-test.registerGlobal("range", ZrRange);
-test.registerGlobal("debug", ZrDebug);
-test.registerGlobal(
+const globals = Zr.createContext();
+globals.registerGlobal("print", ZrPrint);
+globals.registerGlobal("range", ZrRange);
+globals.registerGlobal("debug", ZrDebug);
+globals.registerGlobal(
 	"value",
 	new ZrLuauFunction((context, value) => {
 		return value;
 	}),
 );
-test.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
+globals.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
-	test.registerGlobal("player", ZrUserdata.fromInstance(player));
+	const playerContext = Zr.createPlayerContext(player);
+	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
+	playerContext.importGlobals(globals);
 
-	const script = test.createScriptFromSource(`
-	const x = 10;
-	print(x, x);
-	`);
-	if (script.result === ZrScriptCreateResult.OK) {
-		const { current } = script;
-		current.executeOrThrow();
-	} else {
-		const [error] = script.errors;
-		if (error) {
-			warn(error.message, error.node?.startPos ?? error.token?.value);
-		}
-
-		warn(error?.message ?? script.message);
-	}
+	const sourceResult = playerContext.parseSource(`print(undefined)`);
+	sourceResult.match(
+		(sourceFile) => {
+			const script = playerContext.createScript(sourceFile);
+			script._printScriptGlobals();
+			script.executeOrThrow();
+		},
+		(err) => {
+			const { message } = err;
+			warn(message);
+		},
+	);
 });

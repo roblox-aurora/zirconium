@@ -8,6 +8,8 @@ function example($message) {
     print "The message was: $message"
 }
 
+example "Hello, World!" vorlias
+
 example("Hello, World!"); # YEET
 let x = undefined;
 

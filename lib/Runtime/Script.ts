@@ -6,9 +6,9 @@ import ZrRuntime, { ZrRuntimeError } from "./Runtime";
 export default class ZrScript {
 	private runtime: ZrRuntime;
 
-	public constructor(source: SourceFile, globalVariables: Map<string, ZrValue>) {
+	public constructor(source: SourceFile, globalVariables: Map<string, ZrValue>, player?: Player) {
 		const globals = new ZrLocalStack(globalVariables);
-		this.runtime = new ZrRuntime(source, globals);
+		this.runtime = new ZrRuntime(source, globals, player);
 	}
 
 	public registerFunction(name: string, func: ZrLuauFunction) {

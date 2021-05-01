@@ -69,7 +69,11 @@ export default class ZrRuntime {
 	private errors = new Array<ZrRuntimeError>();
 	private functions = new Map<string, ZrLuauFunction>();
 	private context: ZrContext;
-	public constructor(private source: SourceFile | SourceBlock, private locals = new ZrLocalStack()) {
+	public constructor(
+		private source: SourceFile | SourceBlock,
+		private locals = new ZrLocalStack(),
+		private executingPlayer?: Player,
+	) {
 		this.context = new ZrContext(this);
 	}
 
@@ -486,6 +490,8 @@ export default class ZrRuntime {
 			if (node.operator === "!") {
 				return !this.evaluateNode(node.expression);
 			}
+		} else if (isNode(node, ZrNodeKind.UndefinedKeyword)) {
+			return ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ExpressionStatement)) {
 			this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
@@ -513,6 +519,10 @@ export default class ZrRuntime {
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);
 		}
+	}
+
+	public getExecutingPlayer() {
+		return this.executingPlayer;
 	}
 
 	public execute() {
