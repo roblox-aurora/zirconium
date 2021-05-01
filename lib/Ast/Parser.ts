@@ -631,7 +631,7 @@ export default class ZrParser {
 	private parseListExpression<K extends Node = Node>(
 		start: string,
 		stop: string,
-		next: () => K,
+		nextItem: () => K,
 		separator = ",",
 		strict = this.strict,
 	): K[] {
@@ -658,7 +658,7 @@ export default class ZrParser {
 
 			this.skipIf(ZrTokenKind.EndOfStatement, "\n");
 
-			values.push(next());
+			values.push(nextItem());
 
 			index++;
 		}
@@ -847,14 +847,14 @@ export default class ZrParser {
 		}
 	}
 
-	private parseNewVariableDeclaration(keyword: string, exports?: boolean) {
+	private parseNewVariableDeclaration(keyword: string, exportKeyword?: boolean) {
 		this.skip(ZrTokenKind.Keyword, keyword);
 		const word = this.lexer.next();
 		if (word && (word.kind === ZrTokenKind.String || word.kind === ZrTokenKind.Identifier)) {
 			return this.parseVariableDeclaration(
 				createIdentifier(word.value),
 				keyword === "const" ? ZrNodeFlag.Const : ZrNodeFlag.Let,
-				exports ? [createExportKeyword()] : undefined,
+				exportKeyword ? [createExportKeyword()] : undefined,
 			);
 		} else {
 			this.throwParserError(

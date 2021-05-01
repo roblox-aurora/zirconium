@@ -21,23 +21,23 @@ export interface AstCommandDefinition {
 }
 export type AstCommandDefinitions = readonly AstCommandDefinition[];
 
-export function nodeMatchAstDefinitionType(node: Node, type: AstPrimitiveType): MatchResult {
-	if (type === "string" && isStringExpression(node)) {
-		return { matches: true, matchType: type };
-	} else if (type === "number" && isNumberLiteral(node)) {
-		return { matches: true, matchType: type };
-	} else if (type === "boolean" && isBooleanLiteral(node)) {
-		return { matches: true, matchType: type };
-	} else if (type === "switch") {
-		return { matches: true, matchType: type };
+export function nodeMatchAstDefinitionType(node: Node, typeName: AstPrimitiveType): MatchResult {
+	if (typeName === "string" && isStringExpression(node)) {
+		return { matches: true, matchType: typeName };
+	} else if (typeName === "number" && isNumberLiteral(node)) {
+		return { matches: true, matchType: typeName };
+	} else if (typeName === "boolean" && isBooleanLiteral(node)) {
+		return { matches: true, matchType: typeName };
+	} else if (typeName === "switch") {
+		return { matches: true, matchType: typeName };
 	}
 	return { matches: false };
 }
 
 type MatchResult = { matches: true; matchType: AstPrimitiveType } | { matches: false };
 export function nodeMatchesAstDefinitionTypes(node: Node, types: readonly AstPrimitiveType[]): MatchResult {
-	for (const type of types) {
-		const result = nodeMatchAstDefinitionType(node, type);
+	for (const typeName of types) {
+		const result = nodeMatchAstDefinitionType(node, typeName);
 		if (result.matches) {
 			return result;
 		}
