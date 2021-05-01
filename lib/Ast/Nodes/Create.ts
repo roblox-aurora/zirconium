@@ -229,10 +229,10 @@ export function createKeywordTypeNode(keyword: ZrTypeKeyword) {
 	return createTypeReference(createIdentifier(keyword));
 }
 
-export function createParameter(name: ParameterDeclaration["name"], type?: ParameterDeclaration["type"]) {
+export function createParameter(name: ParameterDeclaration["name"], typeName?: ParameterDeclaration["type"]) {
 	const node = createNode(ZrNodeKind.Parameter);
 	node.name = name;
-	node.type = type;
+	node.type = typeName;
 	node.children = [name];
 	return node;
 }

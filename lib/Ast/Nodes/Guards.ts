@@ -38,30 +38,30 @@ import {
 import { ZrNodeFlag, ZrNodeKind } from "./Enum";
 import { getKindName, getNodeKindName } from "./Functions";
 
-export function isNode<K extends keyof NodeTypes>(node: Node, type: K): node is NodeTypes[K] {
-	return node !== undefined && node.kind === type;
+export function isNode<K extends keyof NodeTypes>(node: Node, typeName: K): node is NodeTypes[K] {
+	return node !== undefined && node.kind === typeName;
 }
 
 export function hasNodeFlag<F extends ZrNodeFlag>(node: Node, flag: F) {
 	return node.flags !== undefined && (node.flags & flag) !== 0;
 }
 
-export function assertIsNode<K extends keyof NodeTypes>(node: Node, type: K): asserts node is NodeTypes[K] {
-	if (!isNode(node, type)) {
-		error(`Expected ${getKindName(type)}, got ${getNodeKindName(node)}`);
+export function assertIsNode<K extends keyof NodeTypes>(node: Node, typeName: K): asserts node is NodeTypes[K] {
+	if (!isNode(node, typeName)) {
+		error(`Expected ${getKindName(typeName)}, got ${getNodeKindName(node)}`);
 	}
 }
 
-export function getNodesOfType<K extends keyof NodeTypes>(nodes: Node[], type: K): Array<NodeTypes[K]> {
-	return nodes.filter((node): node is NodeTypes[K] => isNode(node, type));
+export function getNodesOfType<K extends keyof NodeTypes>(nodes: Node[], typeName: K): Array<NodeTypes[K]> {
+	return nodes.filter((node): node is NodeTypes[K] => isNode(node, typeName));
 }
 
 export function getSiblingNode(nodes: Node[], kind: ZrNodeKind) {
 	return nodes.find((f) => f.kind === kind);
 }
 
-export function isNodeIn<K extends keyof NodeTypes>(node: Node, type: readonly K[]): node is NodeTypes[K] {
-	return node !== undefined && (type as ReadonlyArray<ZrNodeKind>).includes(node.kind);
+export function isNodeIn<K extends keyof NodeTypes>(node: Node, typeName: readonly K[]): node is NodeTypes[K] {
+	return node !== undefined && (typeName as ReadonlyArray<ZrNodeKind>).includes(node.kind);
 }
 
 export function isValidPrefixCharacter(input: string): input is typeof VALID_PREFIX_CHARS[number] {
