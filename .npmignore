@@ -3,4 +3,5 @@
 !out/**/*.lua
 !out/*.d.ts
 !out/**/*.d.ts
+!out/**/*.json
 out/Test/**/*
