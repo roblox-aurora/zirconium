@@ -18,7 +18,7 @@ import {
 	OptionExpression,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
-import ZrLocalStack, { ZrValue } from "../Data/Locals";
+import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
 import { isArray, isMap } from "../Util";
 import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction from "../Data/LuauFunction";
@@ -27,6 +27,7 @@ import { types } from "../Ast";
 import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
+import { ZrNodeFlag } from "Ast/Nodes/Enum";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -42,6 +43,7 @@ export enum ZrRuntimeErrorCode {
 	InstanceSetViolation,
 	InstanceGetViolation,
 	InvalidIterator,
+	ReassignConstant,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -143,13 +145,30 @@ export default class ZrRuntime {
 	}
 
 	private executeSetVariable(node: VariableDeclaration) {
-		const { identifier, expression } = node;
+		const { identifier, expression, flags } = node;
 		const value = this.evaluateNode(expression);
 		if (types.isIdentifier(identifier)) {
-			if (value === ZrUndefined) {
-				this.getLocals().setUpValueOrLocal(identifier.name, undefined);
+			const isConstant = (flags & ZrNodeFlag.Const) !== 0;
+			const isLocalAssignment = isConstant || (flags & ZrNodeFlag.Let) !== 0;
+
+			if (isLocalAssignment) {
+				this.getLocals().setLocal(identifier.name, value === ZrUndefined ? undefined : value, isConstant);
 			} else {
-				this.getLocals().setUpValueOrLocal(identifier.name, value);
+				const result = this.getLocals().setUpValueOrLocal(
+					identifier.name,
+					value === ZrUndefined ? undefined : value,
+					isConstant,
+				);
+				if (result.isErr()) {
+					const { errValue } = result;
+					if (errValue === StackValueAssignmentError.ReassignConstant) {
+						this.runtimeError(
+							`Unable to reassign constant or readonly '${identifier.name}'`,
+							ZrRuntimeErrorCode.ReassignConstant,
+							node,
+						);
+					}
+				}
 			}
 		} else {
 			this.runtimeError("Not yet implemented", ZrRuntimeErrorCode.EvaluationError); // TODO implement
@@ -170,7 +189,7 @@ export default class ZrRuntime {
 
 	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
 		const declaration = new ZrUserFunction(node);
-		this.locals.setLocal(node.name.name, declaration);
+		this.locals.setLocal(node.name.name, declaration, true);
 		return declaration;
 	}
 
@@ -223,7 +242,7 @@ export default class ZrRuntime {
 		let value: ZrValue | ZrUndefined | undefined;
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
-			value = this.locals.getLocalOrUpValue(expression.name) ?? ZrUndefined;
+			value = this.locals.getLocalOrUpValue(expression.name)?.[0] ?? ZrUndefined;
 		} else if (
 			types.isCallableExpression(expression) ||
 			isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
@@ -366,7 +385,7 @@ export default class ZrRuntime {
 			({ options } = node);
 		}
 
-		const matching = this.locals.getLocalOrUpValue(name);
+		const matching = this.locals.getLocalOrUpValue(name)?.[0];
 		if (matching instanceof ZrUserFunction) {
 			this.push();
 			const params = matching.getParameters();
@@ -475,7 +494,7 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
 		} else if (isNode(node, ZrNodeKind.Identifier)) {
-			return this.getLocals().getLocalOrUpValue(node.name) ?? ZrUndefined;
+			return this.getLocals().getLocalOrUpValue(node.name)?.[0] ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
 		} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
@@ -493,7 +512,10 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.UndefinedKeyword)) {
 			return ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ExpressionStatement)) {
-			this.evaluateNode(node.expression);
+			const value = this.evaluateNode(node.expression);
+			if (value) {
+				this.context.getOutput().write(value);
+			}
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {
 			this.evaluateForInStatement(node);
 		} else if (isNode(node, ZrNodeKind.IfStatement)) {

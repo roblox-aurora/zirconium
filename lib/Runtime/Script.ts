@@ -12,7 +12,7 @@ export default class ZrScript {
 	}
 
 	public registerFunction(name: string, func: ZrLuauFunction) {
-		this.runtime.getLocals().setGlobal(name, func); //?
+		this.runtime.getLocals().setGlobal(name, func, true); //?
 	}
 
 	public async execute() {

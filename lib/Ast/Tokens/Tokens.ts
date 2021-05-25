@@ -43,6 +43,7 @@ export const enum ZrTokenFlag {
 	Label = 1 << 3,
 	InvalidIdentifier = 1 << 4,
 	VariableDeclaration = 1 << 5,
+	VariableDollarIdentifier = 1 << 6,
 }
 
 export interface TokenBase {

@@ -1,5 +1,7 @@
 import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
+import { prettyPrintNodes } from "Ast";
+import { ZrScriptVersion } from "Ast/Parser";
 import ZrLuauFunction from "Data/LuauFunction";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
@@ -24,9 +26,24 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const sourceResult = playerContext.parseSource(`print(undefined)`);
+	const sourceResult = playerContext.parseSource(
+		`# Test using identifiers
+	const x = 10
+	$y = 20
+	print $x x
+	{
+		const x = 20
+		$y = 100
+		print $x $y
+	}
+	print $x $y
+	k = {}`,
+		ZrScriptVersion.Zr2021,
+	);
 	sourceResult.match(
 		(sourceFile) => {
+			prettyPrintNodes([sourceFile]);
+
 			const script = playerContext.createScript(sourceFile);
 			script._printScriptGlobals();
 			script.executeOrThrow();

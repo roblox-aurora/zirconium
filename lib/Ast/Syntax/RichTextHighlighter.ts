@@ -61,7 +61,7 @@ export default class ZrRichTextHighlighter {
 				const { value, flags, startCharacter, endCharacter } = token;
 				if (startCharacter !== undefined) {
 					str += font(
-						`${startCharacter}${font(value, options.StringColor)}${endCharacter}`,
+						`${startCharacter}${font(value, options.StringColor)}${endCharacter ?? ""}`,
 						options.OperatorColor,
 					);
 				} else {

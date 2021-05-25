@@ -4,18 +4,8 @@ import { ZrRichTextHighlighter } from "@rbxts/zirconium-ast";
 export {};
 
 const source = `# it does functions
-function example($message) {
-    print "The message was: $message"
-}
-
-example "Hello, World!" vorlias
-
-example("Hello, World!"); # YEET
-let x = undefined;
-
-export function test() {
-	return 10
-}
+x = 10
+$y = 20
 `;
 const res = new ZrRichTextHighlighter(source);
 

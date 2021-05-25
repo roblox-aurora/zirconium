@@ -1,5 +1,6 @@
 import { stringify } from "Functions/BuiltInFunctions";
 import { ZrValue } from "./Locals";
+import ZrUndefined from "./Undefined";
 
 export class ZrInputStream {
 	public constructor(private readonly input: ReadonlyArray<ZrValue>) {}
@@ -51,19 +52,19 @@ export class ZrInputStream {
 }
 
 export class ZrOutputStream {
-	private output = new Array<ZrValue>();
+	private output = new Array<ZrValue | ZrUndefined>();
 
 	/**
 	 * Returns the output stream as an array
 	 */
-	public toArray(): ReadonlyArray<ZrValue> {
+	public toArray(): ReadonlyArray<ZrValue | ZrUndefined> {
 		return this.output;
 	}
 
 	/**
 	 * Writes the specified message to the output stream
 	 */
-	public write(message: ZrValue) {
+	public write(message: ZrValue | ZrUndefined) {
 		this.output.push(message);
 	}
 

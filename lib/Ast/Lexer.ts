@@ -28,6 +28,7 @@ const enum TokenCharacter {
 	SingleQuote = "'",
 	Dot = ".",
 	Dash = "-",
+	Bang = "!",
 }
 
 export interface ZrLexerOptions {
@@ -53,6 +54,11 @@ export default class ZrLexer {
 	private static readonly ENDOFSTATEMENT = Grammar.EndOfStatement;
 	private static readonly SPECIAL = Grammar.Punctuation;
 	private static readonly BOOLEAN = Grammar.BooleanLiterals;
+
+	public static IsPrimitiveValueToken = (token: Token): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
+		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean;
+	};
+
 	private options: ZrLexerOptions;
 
 	public constructor(private stream: ZrTextStream, options?: Partial<ZrLexerOptions>) {
@@ -193,6 +199,7 @@ export default class ZrLexer {
 				!this.isSpecial(c) &&
 				c !== TokenCharacter.DoubleQuote &&
 				c !== TokenCharacter.SingleQuote &&
+				c !== TokenCharacter.Bang &&
 				c !== "\n",
 		);
 		const endPos = this.stream.getPtr() - 1;
@@ -268,12 +275,12 @@ export default class ZrLexer {
 			}
 		}
 
-		return identity<StringToken>({
-			kind: ZrTokenKind.String,
+		return identity<IdentifierToken>({
+			kind: ZrTokenKind.Identifier,
 			startPos,
 			endPos,
-			closed: true,
-			flags: ZrTokenFlag.None,
+			// closed: true,
+			flags: ZrTokenFlag.FunctionName,
 			value: literal,
 		});
 	}
@@ -308,7 +315,7 @@ export default class ZrLexer {
 	private readVariableToken() {
 		const startPos = this.stream.getPtr();
 		const properties = new Array<string>();
-		let flags = ZrTokenFlag.None;
+		let flags = ZrTokenFlag.VariableDollarIdentifier;
 
 		// skip $
 		this.stream.next();
@@ -341,7 +348,7 @@ export default class ZrLexer {
 			return identity<IdentifierToken>({
 				kind: ZrTokenKind.Identifier,
 				startPos,
-				flags: ZrTokenFlag.None,
+				flags: ZrTokenFlag.VariableDollarIdentifier,
 				endPos,
 				value: id,
 			});
@@ -466,7 +473,6 @@ export default class ZrLexer {
 			if (char === ":") {
 				const prev = this.prevSkipWhitespace();
 				if (prev) {
-					print(prev.kind, prev.value)
 					prev.flags |= ZrTokenFlag.Label;
 				}
 			}

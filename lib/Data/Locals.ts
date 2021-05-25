@@ -1,7 +1,9 @@
+import { Result } from "@rbxts/rust-classes";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
+import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
 
@@ -16,14 +18,26 @@ export type ZrValue =
 	| ZrLuauFunction
 	| ZrUserdata<defined>;
 
+export const enum StackValueType {
+	Constant,
+	Function,
+}
+
+type StackValue = [value: ZrValue | ZrUndefined, constant?: boolean, exports?: StackValueType];
+
+export const enum StackValueAssignmentError {
+	ReassignConstant,
+	VariableNotDeclared,
+}
+
 export default class ZrLocalStack {
-	private locals = new Array<Map<string, ZrValue>>();
+	private locals = new Array<Map<string, StackValue>>();
 
 	constructor(inject?: ReadonlyMap<string, ZrValue>) {
 		if (inject) {
-			const newLocals = new Map<string, ZrValue>();
+			const newLocals = new Map<string, StackValue>();
 			for (const [name, value] of pairs(inject)) {
-				newLocals.set(name, value);
+				newLocals.set(name, [value, value instanceof ZrLuauFunction]);
 			}
 			this.locals.push(newLocals);
 		}
@@ -47,9 +61,9 @@ export default class ZrLocalStack {
 	 * Will set the value on the first stack
 	 * @internal
 	 */
-	public setGlobal(name: string, value: ZrValue) {
+	public setGlobal(name: string, value: ZrValue, constant?: boolean) {
 		const first = this.locals[0];
-		first.set(name, value);
+		first.set(name, [value, constant]);
 	}
 
 	/**
@@ -64,12 +78,32 @@ export default class ZrLocalStack {
 	 * Will set the value at the stack it was first declared
 	 * @internal
 	 */
-	public setUpValueOrLocal(name: string, value: ZrValue | undefined) {
+	public setUpValueOrLocal(name: string, value: ZrValue | undefined, constant?: boolean): Result<void, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
+		const stackValue = stack.get(name);
+		if (stackValue) {
+			const [, constant] = stackValue;
+			if (constant) {
+				return Result.err(StackValueAssignmentError.ReassignConstant);
+			}
+		}
+
 		if (value !== undefined) {
-			stack.set(name, value);
+			stack.set(name, [value, constant]);
 		} else {
 			stack.delete(name);
+		}
+
+		return Result.ok(undefined);
+	}
+
+	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | undefined): Result<void, StackValueAssignmentError> {
+		const stack = this.getUpValueStack(name) ?? this.current();
+		const existingValue = stack.get(name);
+		if (existingValue !== undefined) {
+			return this.setUpValueOrLocal(name, value);
+		} else {
+			return Result.err(StackValueAssignmentError.VariableNotDeclared);
 		}
 	}
 
@@ -77,9 +111,13 @@ export default class ZrLocalStack {
 	 * Will set the value on the last stack
 	 * @internal
 	 */
-	public setLocal(name: string, value: ZrValue) {
+	public setLocal(name: string, value: ZrValue | undefined, constant?: boolean) {
 		const last = this.current();
-		last.set(name, value);
+		if (value === undefined) {
+			last.set(name, [ZrUndefined, constant]);
+		} else {
+			last.set(name, [value, constant]);
+		}
 	}
 
 	/**
@@ -95,9 +133,13 @@ export default class ZrLocalStack {
 	 * @internal
 	 */
 	public getLocalOrUpValue(name: string) {
-		for (const currentLocals of this.locals) {
-			if (currentLocals.has(name)) return currentLocals.get(name);
+		for (let i = this.locals.size() - 1; i >= 0; i--) {
+			const stack = this.locals[i];
+			if (stack.has(name)) {
+				return stack.get(name);
+			}
 		}
+
 		return undefined;
 	}
 
@@ -108,13 +150,13 @@ export default class ZrLocalStack {
 
 	/** @internal */
 	public push() {
-		this.locals.push(new Map<string, ZrValue>());
+		this.locals.push(new Map<string, StackValue>());
 	}
 
 	public toMap() {
-		const map = new Map<string, ZrValue>();
+		const map = new Map<string, ZrValue | ZrUndefined>();
 		for (const currentLocals of this.locals) {
-			currentLocals.forEach((v, k) => map.set(k, v));
+			currentLocals.forEach((v, k) => map.set(k, v[0]));
 		}
 		return map as ReadonlyMap<string, ZrValue>;
 	}

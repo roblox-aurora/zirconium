@@ -524,7 +524,7 @@ export default class ZrParser {
 	}
 
 	private functionCallScope = 0;
-	private parseCallExpression(token: StringToken, isStrictFunctionCall = this.strict) {
+	private parseCallExpression(token: StringToken | IdentifierToken, isStrictFunctionCall = this.strict) {
 		this.functionCallScope += 1;
 		const startPos = token.startPos;
 		let endPos = token.startPos;
@@ -568,7 +568,7 @@ export default class ZrParser {
 				this.skipIf(ZrTokenKind.EndOfStatement, "\n");
 				arg = this.mutateExpression(this.parseExpression());
 			} else {
-				arg = this.parseExpression();
+				arg = this.parseExpression(undefined, true);
 			}
 
 			if (isOptionExpression(arg)) {
@@ -711,7 +711,7 @@ export default class ZrParser {
 		return createOptionExpression(createOptionKey(option), this.mutateExpression(this.parseExpression()));
 	}
 
-	private parseExpression(token?: Token): Expression {
+	private parseExpression(token?: Token, treatIdentifiersAsStrings = false): Expression {
 		if (this.is(ZrTokenKind.Special, "{")) {
 			return this.parseObjectExpression();
 		}
@@ -776,9 +776,14 @@ export default class ZrParser {
 		}
 
 		if (isToken(token, ZrTokenKind.Identifier)) {
+			if (treatIdentifiersAsStrings && (token.flags & ZrTokenFlag.VariableDollarIdentifier) === 0) {
+				return createStringNode(token.value);
+			}
+
 			if (token.value === undefined || token.value.size() === 0) {
 				this.throwParserError("Unexpected empty identifier", ZrParserErrorCode.Unexpected, token);
 			}
+
 			return updateNodeInternal(createIdentifier(token.value), {
 				startPos: token.startPos,
 				endPos: token.endPos,
@@ -839,10 +844,6 @@ export default class ZrParser {
 				token,
 			);
 		} else {
-			if (token.value === ")") {
-				print(this.lexer.prev());
-			}
-
 			this.throwParserError(`Unexpected '${token.value}' (${token.kind})`, ZrParserErrorCode.Unexpected, token);
 		}
 	}
@@ -932,10 +933,24 @@ export default class ZrParser {
 			}
 
 			this.lexer.next();
+			const nextToken = this.lexer.peek();
 			if (this.is(ZrTokenKind.Operator, "=")) {
 				return this.parseVariableDeclaration(createIdentifier(id.value));
+			} else if (this.is(ZrTokenKind.Special, "(")) {
+				return createExpressionStatement(this.parseCallExpression(id, true));
+			} else if (nextToken && ZrLexer.IsPrimitiveValueToken(nextToken)) {
+				return createExpressionStatement(this.parseCallExpression(id, false));
+			} else if (nextToken?.kind === ZrTokenKind.Identifier) {
+				return createExpressionStatement(this.parseCallExpression(id, false));
+			} else if (
+				nextToken?.kind === ZrTokenKind.Operator &&
+				nextToken.value === "!" &&
+				this.experimentalFeaturesEnabled
+			) {
+				this.lexer.next();
+				return createExpressionStatement(createCallExpression(createIdentifier(id.value), []));
 			} else {
-				return createExpressionStatement(createIdentifier(id.value));
+				//return createExpressionStatement(createIdentifier(id.value));
 			}
 		}
 
