@@ -381,14 +381,9 @@ export default class ZrRuntime {
 		} else if (isMap<ZrValue>(value)) {
 			return value.get(id);
 		} else if (value instanceof ZrRange) {
-			if (id === "min") {
-				return value.GetMin();
-			} else if (id === "max") {
-				return value.GetMax();
-			} else if (id === "random_int") {
-				return value.GetRandomInteger();
-			} else if (id === "random") {
-				return value.GetRandomNumber();
+			const property = ZrRange.properties[id];
+			if (property) {
+				return property(value);
 			} else {
 				this.runtimeError(
 					`${id} is not a valid member of Range`,

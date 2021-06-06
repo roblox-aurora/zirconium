@@ -1,5 +1,16 @@
+import { ZrValue } from "./Locals";
+
 export default class ZrRange {
 	private rng = new Random();
+
+	public static properties: Record<string, (range: ZrRange) => ZrValue> = {
+		random_int: (range) => {
+			return range.GetRandomInteger();
+		},
+		random: (range) => range.GetRandomNumber(),
+		min: (range) => range.GetMin(),
+		max: (range) => range.GetMax(),
+	};
 
 	public constructor(private range: NumberRange) {}
 	public GetValue() {
