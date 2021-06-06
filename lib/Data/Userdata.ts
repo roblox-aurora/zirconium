@@ -14,6 +14,10 @@ export abstract class ZrUserdata<T> {
 		return new ZrInstanceUserdata(lazyFn);
 	}
 
+	public static fromRecord<T extends Record<string, ZrValue>>(record: T) {
+		return new ZrObjectUserdata(record);
+	}
+
 	public static fromObject<TObject extends defined>(object: TObject) {
 		return new ZrObjectUserdata(object);
 	}

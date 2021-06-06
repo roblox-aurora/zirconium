@@ -276,14 +276,16 @@ export default class ZrLexer {
 		}
 
 		
-		return identity<IdentifierToken>({
-			kind: ZrTokenKind.Identifier,
-			startPos,
-			endPos,
-			// closed: true,
-			flags: ZrTokenFlag.FunctionName,
-			value: literal,
-		});
+		// return identity<IdentifierToken>({
+		// 	kind: ZrTokenKind.Identifier,
+		// 	startPos,
+		// 	endPos,
+		// 	// closed: true,
+		// 	flags: ZrTokenFlag.FunctionName,
+		// 	value: literal,
+		// });
+		this.stream.setPtr(startPos);
+		return this.readIdentifier(ZrTokenFlag.FunctionName, startPos);
 	}
 
 	private readNumber() {
@@ -454,7 +456,8 @@ export default class ZrLexer {
 			});
 		}
 
-		return this.readIdentifier(0);
+		return this.readLiteralString();
+
 	}
 
 	public readIdentifier(flags: ZrTokenFlag, startPos = this.stream.getPtr()) {
@@ -488,7 +491,7 @@ export default class ZrLexer {
 			return identity<IdentifierToken>({
 				kind: ZrTokenKind.Identifier,
 				startPos,
-				flags: ZrTokenFlag.VariableDollarIdentifier,
+				flags,
 				endPos,
 				value: id,
 			});

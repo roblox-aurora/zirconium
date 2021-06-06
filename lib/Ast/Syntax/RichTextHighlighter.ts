@@ -98,7 +98,10 @@ export default class ZrRichTextHighlighter {
 				} else if ((token.flags & ZrTokenFlag.VariableDeclaration) !== 0) {
 					str += font(`${token.value}`, options.VariableColor);
 				} else {
-					str += font(`$${token.value}`, options.VariableColor);
+					str += font(
+						(token.flags & ZrTokenFlag.VariableDollarIdentifier) !== 0 ? `$${token.value}` : token.value,
+						options.VariableColor,
+					);
 				}
 			else if (isToken(token, ZrTokenKind.Operator) || isToken(token, ZrTokenKind.Special))
 				str += font(token.value, options.OperatorColor);
@@ -119,7 +122,10 @@ export default class ZrRichTextHighlighter {
 			} else if (isToken(token, ZrTokenKind.Option))
 				str += font(`${token.prefix ?? ""}${token.value}`, options.KeywordColor);
 			else if (isToken(token, ZrTokenKind.PropertyAccess)) {
-				str += font(`$${token.value}`, options.VariableColor);
+				str += font(
+					(token.flags & ZrTokenFlag.VariableDollarIdentifier) !== 0 ? `$${token.value}` : token.value,
+					options.VariableColor,
+				);
 				for (const prop of token.properties) {
 					str +=
 						font(".", options.OperatorColor) +

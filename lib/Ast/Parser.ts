@@ -72,6 +72,7 @@ import {
 	ZrTokenFlag,
 	ZrTokenKind,
 } from "./Tokens/Tokens";
+import prettyPrintNodes from "./Utility/PrettyPrintNodes";
 
 export const enum ZrParserErrorCode {
 	Unexpected = 1001,
@@ -784,7 +785,7 @@ export default class ZrParser {
 			}
 		}
 
-		if (isToken(token, ZrTokenKind.Identifier)) {
+		if (isToken(token, ZrTokenKind.Identifier) || isToken(token, ZrTokenKind.PropertyAccess)) {
 			if (treatIdentifiersAsStrings && (token.flags & ZrTokenFlag.VariableDollarIdentifier) === 0) {
 				return createStringNode(token.value);
 			}
@@ -793,21 +794,39 @@ export default class ZrParser {
 				this.throwParserError("Unexpected empty identifier", ZrParserErrorCode.Unexpected, token);
 			}
 
+			const nextToken = this.lexer.peek();
+
+			if (this.is(ZrTokenKind.Special, "(")) {
+				// Handle bracketed "strict" calls e.g. `x()`
+				return this.parseCallExpression(token, true);
+			} else if (nextToken) {
+				// Handle any `x "y"` calls as well as `x!`
+				if (nextToken.kind === ZrTokenKind.Identifier || ZrLexer.IsPrimitiveValueToken(nextToken)) {
+					return this.parseCallExpression(token, false);
+				} else if (
+					nextToken.kind === ZrTokenKind.Operator &&
+					nextToken.value === "!" &&
+					this.experimentalFeaturesEnabled
+				) {
+					return createCallExpression(createIdentifier(nextToken.value), []);
+				}
+			}
+
 			return updateNodeInternal(createIdentifier(token.value), {
 				startPos: token.startPos,
 				endPos: token.endPos,
 				rawText: token.value,
 			});
 		} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
-			let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
-			for (const name of token.properties) {
-				if (name.match("%d+")[0]) {
-					expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
-				} else {
-					expr = createPropertyAccessExpression(expr, createIdentifier(name));
-				}
-			}
-			return expr;
+			// let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
+			// for (const name of token.properties) {
+			// 	if (name.match("%d+")[0]) {
+			// 		expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
+			// 	} else {
+			// 		expr = createPropertyAccessExpression(expr, createIdentifier(name));
+			// 	}
+			// }
+			// return expr;
 		} else if (isToken(token, ZrTokenKind.Number)) {
 			return updateNodeInternal(createNumberNode(token.value), {
 				startPos: token.startPos,
@@ -930,69 +949,6 @@ export default class ZrParser {
 			}
 		}
 
-		if (this.is(ZrTokenKind.Identifier) || this.is(ZrTokenKind.PropertyAccess)) {
-			const id = this.get(ZrTokenKind.Identifier) ?? this.get(ZrTokenKind.PropertyAccess);
-			assert(id);
-
-			if (id.value === "") {
-				this.throwParserError("Expected identifier name", ZrParserErrorCode.Unexpected, id);
-			}
-			if (!id.value.match("^[_A-Za-z][_A-Za-z0-9]*$")[0]) {
-				this.throwParserError(
-					ErrorStrings.INVALID_IDENTIFIER.format(id.value),
-					ZrParserErrorCode.InvalidIdentifier,
-					id,
-				);
-			}
-
-			this.lexer.next();
-			const nextToken = this.lexer.peek();
-			if (this.is(ZrTokenKind.Operator, "=")) {
-				return this.parseVariableDeclaration(createIdentifier(id.value));
-			} else if (this.is(ZrTokenKind.Special, "(")) {
-				return createExpressionStatement(this.parseCallExpression(id, true));
-			} else if (nextToken && ZrLexer.IsPrimitiveValueToken(nextToken)) {
-				return createExpressionStatement(this.parseCallExpression(id, false));
-			} else if (nextToken?.kind === ZrTokenKind.Identifier) {
-				return createExpressionStatement(this.parseCallExpression(id, false));
-			} else if (
-				nextToken?.kind === ZrTokenKind.Operator &&
-				nextToken.value === "!" &&
-				this.experimentalFeaturesEnabled
-			) {
-				this.lexer.next();
-				return createExpressionStatement(createCallExpression(createIdentifier(id.value), []));
-			} else {
-				//return createExpressionStatement(createIdentifier(id.value));
-			}
-		}
-
-		if (this.is(ZrTokenKind.PropertyAccess)) {
-			const id = this.get(ZrTokenKind.PropertyAccess);
-			assert(id);
-
-			if (!id.value.match("^[_A-Za-z][_A-Za-z0-9]*$")[0]) {
-				this.throwParserError(
-					ErrorStrings.PROPERTY_ACCESS_IDENTIFIER_INVALID.format(id.properties.join("."), id.value),
-					ZrParserErrorCode.InvalidIdentifier,
-					id,
-				);
-			} else if ((id.flags & ZrTokenFlag.InvalidIdentifier) !== 0) {
-				this.throwParserError(
-					ErrorStrings.PROPERTY_ACCESS_PROPERTY_INVALID.format(id.properties.join("."), id.value),
-					ZrParserErrorCode.InvalidPropertyAccess,
-					id,
-				);
-			}
-
-			this.lexer.next();
-			if (this.is(ZrTokenKind.Operator, "=")) {
-				return this.parseVariableDeclaration(this.parsePropertyAccess(id));
-			} else {
-				return createExpressionStatement(this.parsePropertyAccess(id));
-			}
-		}
-
 		const token = this.lexer.next();
 		assert(token);
 
@@ -1066,10 +1022,10 @@ export default class ZrParser {
 
 				if (token.value === "=") {
 					if (!isNode(left, ZrNodeKind.Identifier) && !isNode(left, ZrNodeKind.PropertyAccessExpression)) {
-						this.throwParserError(
+						this.throwParserNodeError(
 							"Unexpected '=' (Assignment to " + ZrNodeKind[left.kind] + ")",
 							ZrParserErrorCode.Unexpected,
-							token,
+							left,
 						);
 					}
 					return this.parseVariableDeclaration(left);
