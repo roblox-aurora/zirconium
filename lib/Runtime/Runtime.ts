@@ -374,18 +374,23 @@ export default class ZrRuntime {
 	}
 
 	private evaluateFunctionCall(node: CallExpression | SimpleCallExpression, context: ZrContext) {
-		const {
-			expression: { name },
-			children,
-			arguments: callArgs,
-		} = node;
+		const { expression, children, arguments: callArgs } = node;
 
 		let options = new Array<OptionExpression>();
 		if (types.isCallExpression(node)) {
 			({ options } = node);
 		}
 
-		const matching = this.locals.getLocalOrUpValue(name)?.[0];
+		let matching: ZrValue | ZrUndefined | undefined;
+		if (types.isArrayIndexExpression(expression)) {
+			throw `Not supported yet`;
+		} else if (types.isPropertyAccessExpression(expression)) {
+			matching = this.evaluateNode(expression);
+		} else {
+			matching = this.locals.getLocalOrUpValue(expression.name)?.[0];
+		}
+
+		// const matching = this.locals.getLocalOrUpValue(name)?.[0];
 		if (matching instanceof ZrUserFunction) {
 			this.push();
 			const params = matching.getParameters();
@@ -427,7 +432,7 @@ export default class ZrRuntime {
 				return result;
 			}
 		} else {
-			this.runtimeError(name + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
+			this.runtimeError(expression.name + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
 		}
 	}
 

@@ -3,7 +3,7 @@ import { ZrValue } from "./Locals";
 import ZrUndefined from "./Undefined";
 
 export class ZrInputStream {
-	public constructor(private readonly input: ReadonlyArray<ZrValue>) {}
+	public constructor(private readonly input: ReadonlyArray<ZrValue | ZrUndefined>) {}
 	public static empty() {
 		return new ZrInputStream([]);
 	}

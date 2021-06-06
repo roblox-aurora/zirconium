@@ -524,11 +524,20 @@ export default class ZrParser {
 	}
 
 	private functionCallScope = 0;
-	private parseCallExpression(token: StringToken | IdentifierToken, isStrictFunctionCall = this.strict) {
+	private parseCallExpression(
+		token: StringToken | IdentifierToken | PropertyAccessToken,
+		isStrictFunctionCall = this.strict,
+	) {
 		this.functionCallScope += 1;
 		const startPos = token.startPos;
 		let endPos = token.startPos;
-		const callee = createIdentifier(token.value);
+
+		let callee: Identifier | PropertyAccessExpression | ArrayIndexExpression;
+		if (token.kind === ZrTokenKind.PropertyAccess) {
+			callee = this.parsePropertyAccess(token);
+		} else {
+			callee = createIdentifier(token.value);
+		}
 
 		const options = new Array<OptionExpression>();
 		const args = new Array<Expression>();
@@ -844,7 +853,11 @@ export default class ZrParser {
 				token,
 			);
 		} else {
-			this.throwParserError(`Unexpected '${token.value}' (${token.kind})`, ZrParserErrorCode.Unexpected, token);
+			this.throwParserError(
+				`Unexpected '${token.value}' (${token.kind}) preceded by token ${this.lexer.prev().kind}`,
+				ZrParserErrorCode.Unexpected,
+				token,
+			);
 		}
 	}
 
@@ -917,8 +930,8 @@ export default class ZrParser {
 			}
 		}
 
-		if (this.is(ZrTokenKind.Identifier)) {
-			const id = this.get(ZrTokenKind.Identifier);
+		if (this.is(ZrTokenKind.Identifier) || this.is(ZrTokenKind.PropertyAccess)) {
+			const id = this.get(ZrTokenKind.Identifier) ?? this.get(ZrTokenKind.PropertyAccess);
 			assert(id);
 
 			if (id.value === "") {

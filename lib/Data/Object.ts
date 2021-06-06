@@ -7,6 +7,15 @@ import ZrUndefined from "./Undefined";
  */
 export default class ZrObject {
 	private map = new Map<string, ZrValue>();
+
+	public static fromRecord(record: Record<string, ZrValue>) {
+		const obj = new ZrObject();
+		for (const [key, value] of pairs(record)) {
+			obj.set(key, value);
+		}
+		return obj;
+	}
+
 	public set(name: string, value: ZrValue | ZrUndefined) {
 		if (ZrIsUndefined(value)) {
 			this.map.delete(name);

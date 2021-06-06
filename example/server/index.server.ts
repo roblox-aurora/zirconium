@@ -3,6 +3,7 @@ import Zr from "@zirconium";
 import { prettyPrintNodes } from "Ast";
 import { ZrScriptVersion } from "Ast/Parser";
 import ZrLuauFunction from "Data/LuauFunction";
+import ZrObject from "Data/Object";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
 import { ZrUserdata } from "./Data/Userdata";
@@ -20,33 +21,28 @@ globals.registerGlobal(
 	}),
 );
 globals.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
+globals.registerGlobal(
+	"test",
+	ZrObject.fromRecord({
+		example: new ZrLuauFunction((_, input) => {
+			print("Example worked", input);
+		}),
+	}),
+);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	const playerContext = Zr.createPlayerContext(player);
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const sourceResult = playerContext.parseSource(
-		`# Test using identifiers
-	const x = 10
-	$y = 20
-	print $x x
-	{
-		const x = 20
-		$y = 100
-		print $x $y
-	}
-	print $x $y
-	k = {}`,
-		ZrScriptVersion.Zr2021,
-	);
+	const sourceResult = playerContext.parseSource(`test.example "Hello, World!"`, ZrScriptVersion.Zr2021);
 	sourceResult.match(
 		(sourceFile) => {
 			prettyPrintNodes([sourceFile]);
 
-			const script = playerContext.createScript(sourceFile);
-			script._printScriptGlobals();
-			script.executeOrThrow();
+			const sourceScript = playerContext.createScript(sourceFile);
+			sourceScript._printScriptGlobals();
+			sourceScript.executeOrThrow();
 		},
 		(err) => {
 			const { message } = err;

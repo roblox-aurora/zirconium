@@ -275,6 +275,7 @@ export default class ZrLexer {
 			}
 		}
 
+		
 		return identity<IdentifierToken>({
 			kind: ZrTokenKind.Identifier,
 			startPos,
@@ -314,45 +315,12 @@ export default class ZrLexer {
 
 	private readVariableToken() {
 		const startPos = this.stream.getPtr();
-		const properties = new Array<string>();
-		let flags = ZrTokenFlag.VariableDollarIdentifier;
+		const flags = ZrTokenFlag.VariableDollarIdentifier;
 
 		// skip $
 		this.stream.next();
 
-		// read the id
-		const id = this.readWhile(this.isId);
-
-		// read any property access
-		while (this.stream.hasNext() && this.stream.peek() === ".") {
-			this.stream.next();
-			const id = this.readWhile(this.isId);
-			if (id === "") {
-				flags = ZrTokenFlag.InvalidIdentifier;
-			}
-			properties.push(id);
-		}
-
-		const endPos = this.stream.getPtr() - 1;
-
-		if (properties.size() > 0) {
-			return identity<PropertyAccessToken>({
-				kind: ZrTokenKind.PropertyAccess,
-				startPos,
-				endPos,
-				flags,
-				properties,
-				value: id,
-			});
-		} else {
-			return identity<IdentifierToken>({
-				kind: ZrTokenKind.Identifier,
-				startPos,
-				flags: ZrTokenFlag.VariableDollarIdentifier,
-				endPos,
-				value: id,
-			});
-		}
+		return this.readIdentifier(flags,startPos);
 	}
 
 	private readOption(prefix: string) {
@@ -486,7 +454,45 @@ export default class ZrLexer {
 			});
 		}
 
-		return this.readLiteralString();
+		return this.readIdentifier(0);
+	}
+
+	public readIdentifier(flags: ZrTokenFlag, startPos = this.stream.getPtr()) {
+		const properties = new Array<string>();
+
+		// read the id
+		const id = this.readWhile(this.isId);
+
+		// read any property access
+		while (this.stream.hasNext() && this.stream.peek() === ".") {
+			this.stream.next();
+			const id = this.readWhile(this.isId);
+			if (id === "") {
+				flags = ZrTokenFlag.InvalidIdentifier;
+			}
+			properties.push(id);
+		}
+
+		const endPos = this.stream.getPtr() - 1;
+
+		if (properties.size() > 0) {
+			return identity<PropertyAccessToken>({
+				kind: ZrTokenKind.PropertyAccess,
+				startPos,
+				endPos,
+				flags,
+				properties,
+				value: id,
+			});
+		} else {
+			return identity<IdentifierToken>({
+				kind: ZrTokenKind.Identifier,
+				startPos,
+				flags: ZrTokenFlag.VariableDollarIdentifier,
+				endPos,
+				value: id,
+			});
+		}
 	}
 
 	public isNextOfKind(kind: ZrTokenKind) {

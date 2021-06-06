@@ -267,7 +267,7 @@ export interface NumberLiteral extends LiteralExpression {
  */
 export interface CallExpression extends Expression {
 	readonly kind: ZrNodeKind.CallExpression;
-	readonly expression: Identifier;
+	readonly expression: Identifier | PropertyAccessExpression | ArrayIndexExpression;
 	readonly options: OptionExpression[];
 	readonly isUnterminated?: boolean;
 	readonly arguments: Node[];
@@ -278,7 +278,7 @@ export interface CallExpression extends Expression {
  */
 export interface SimpleCallExpression extends Expression {
 	kind: ZrNodeKind.SimpleCallExpression;
-	expression: Identifier;
+	expression: Identifier | ArrayIndexExpression | PropertyAccessExpression;
 	isUnterminated?: boolean;
 	arguments: Node[];
 }
