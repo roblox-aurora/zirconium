@@ -60,6 +60,7 @@ import {
 } from "./Nodes/NodeTypes";
 import Grammar, { OperatorTokens, UnaryOperatorsTokens } from "./Tokens/Grammar";
 import {
+	ArrayIndexToken,
 	IdentifierToken,
 	InterpolatedStringToken,
 	isToken,
@@ -524,6 +525,16 @@ export default class ZrParser {
 		);
 	}
 
+	private getFunctionCallee(token: StringToken | IdentifierToken | ArrayIndexToken | PropertyAccessToken) {
+		let callee: Identifier | PropertyAccessExpression | ArrayIndexExpression;
+		if (token.kind === ZrTokenKind.PropertyAccess) {
+			callee = this.parsePropertyAccess(token);
+		} else {
+			callee = createIdentifier(token.value);
+		}
+		return callee;
+	}
+
 	private functionCallScope = 0;
 	private parseCallExpression(
 		token: StringToken | IdentifierToken | PropertyAccessToken,
@@ -533,12 +544,7 @@ export default class ZrParser {
 		const startPos = token.startPos;
 		let endPos = token.startPos;
 
-		let callee: Identifier | PropertyAccessExpression | ArrayIndexExpression;
-		if (token.kind === ZrTokenKind.PropertyAccess) {
-			callee = this.parsePropertyAccess(token);
-		} else {
-			callee = createIdentifier(token.value);
-		}
+		const callee = this.getFunctionCallee(token);
 
 		const options = new Array<OptionExpression>();
 		const args = new Array<Expression>();
@@ -808,25 +814,31 @@ export default class ZrParser {
 					nextToken.value === "!" &&
 					this.experimentalFeaturesEnabled
 				) {
-					return createCallExpression(createIdentifier(nextToken.value), []);
+					this.lexer.next();
+
+					const callee = this.getFunctionCallee(token);
+
+					return createCallExpression(callee, []);
 				}
 			}
 
-			return updateNodeInternal(createIdentifier(token.value), {
-				startPos: token.startPos,
-				endPos: token.endPos,
-				rawText: token.value,
-			});
-		} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
-			// let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
-			// for (const name of token.properties) {
-			// 	if (name.match("%d+")[0]) {
-			// 		expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
-			// 	} else {
-			// 		expr = createPropertyAccessExpression(expr, createIdentifier(name));
-			// 	}
-			// }
-			// return expr;
+			if (isToken(token, ZrTokenKind.Identifier)) {
+				return updateNodeInternal(createIdentifier(token.value), {
+					startPos: token.startPos,
+					endPos: token.endPos,
+					rawText: token.value,
+				});
+			} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
+				let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
+				for (const name of token.properties) {
+					if (name.match("%d+")[0]) {
+						expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
+					} else {
+						expr = createPropertyAccessExpression(expr, createIdentifier(name));
+					}
+				}
+				return expr;
+			}
 		} else if (isToken(token, ZrTokenKind.Number)) {
 			return updateNodeInternal(createNumberNode(token.value), {
 				startPos: token.startPos,
