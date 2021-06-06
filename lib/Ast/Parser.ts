@@ -378,13 +378,14 @@ export default class ZrParser {
 				isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
 				isNode(expression, ZrNodeKind.ObjectLiteralExpression) ||
 				isNode(expression, ZrNodeKind.ArrayIndexExpression) ||
-				isNode(expression, ZrNodeKind.ParenthesizedExpression)
+				isNode(expression, ZrNodeKind.ParenthesizedExpression) ||
+				isNode(expression, ZrNodeKind.BinaryExpression)
 			) {
 				forStatement.expression = expression;
 				forStatement.statement = this.parseBlockOrInlineStatement();
 			} else {
 				return this.parserErrorNode(
-					"ForIn statement expects a valid expression",
+					"ForIn statement expects a valid expression after 'in' got " + ZrNodeKind[expression.kind],
 					ZrParserErrorCode.IdentifierExpected,
 					forStatement,
 				);

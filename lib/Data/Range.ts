@@ -12,6 +12,11 @@ export default class ZrRange {
 	public GetRandomNumber() {
 		return this.rng.NextNumber(this.range.Min, this.range.Max);
 	}
+	public *Iterator() {
+		for (let i = this.range.Min; i <= this.range.Max; i++) {
+			yield i;
+		}
+	}
 
 	public GetMin() {
 		return this.range.Min;

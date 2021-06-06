@@ -254,7 +254,8 @@ export default class ZrRuntime {
 		} else if (
 			types.isCallableExpression(expression) ||
 			isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
-			isNode(expression, ZrNodeKind.ObjectLiteralExpression)
+			isNode(expression, ZrNodeKind.ObjectLiteralExpression) ||
+			isNode(expression, ZrNodeKind.BinaryExpression)
 		) {
 			value = this.evaluateNode(expression);
 		} else {
@@ -276,7 +277,7 @@ export default class ZrRuntime {
 			expression,
 		);
 		this.runtimeAssert(
-			isArray(value) || value instanceof ZrObject,
+			isArray(value) || value instanceof ZrObject || value instanceof ZrRange,
 			"Array, Map or Object expected",
 			ZrRuntimeErrorCode.InvalidType,
 			expression,
@@ -285,6 +286,13 @@ export default class ZrRuntime {
 			for (const [k, v] of value.toMap()) {
 				this.push();
 				this.locals.setLocal(initializer.name, [k, v]);
+				this.evaluateNode(statement);
+				this.pop();
+			}
+		} else if (value instanceof ZrRange) {
+			for (const item of value.Iterator()) {
+				this.push();
+				this.locals.setLocal(initializer.name, item);
 				this.evaluateNode(statement);
 				this.pop();
 			}
