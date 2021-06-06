@@ -93,9 +93,9 @@ export default class ZrLexer {
 	/**
 	 * Reads while the specified condition is met, or the end of stream
 	 */
-	private readWhile(condition: (str: string) => boolean) {
+	private readWhile(condition: (str: string, nextStr: string) => boolean) {
 		let src = "";
-		while (this.stream.hasNext() === true && condition(this.stream.peek()) === true) {
+		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1)) === true) {
 			src += this.stream.next();
 		}
 		return src;
@@ -275,15 +275,6 @@ export default class ZrLexer {
 			}
 		}
 
-		
-		// return identity<IdentifierToken>({
-		// 	kind: ZrTokenKind.Identifier,
-		// 	startPos,
-		// 	endPos,
-		// 	// closed: true,
-		// 	flags: ZrTokenFlag.FunctionName,
-		// 	value: literal,
-		// });
 		this.stream.setPtr(startPos);
 		return this.readIdentifier(ZrTokenFlag.FunctionName, startPos);
 	}
@@ -292,8 +283,8 @@ export default class ZrLexer {
 		const startPos = this.stream.getPtr();
 
 		let isDecimal = false;
-		const number = this.readWhile((c) => {
-			if (c === ".") {
+		const number = this.readWhile((c, c1) => {
+			if (c === "." && this.isNumeric(c1)) {
 				if (isDecimal) {
 					return false;
 				}
@@ -440,10 +431,23 @@ export default class ZrLexer {
 		}
 
 		if (ZrLexer.SPECIAL.includes(char as PunctuationTokens)) {
+
 			if (char === ":") {
 				const prev = this.prevSkipWhitespace();
 				if (prev) {
 					prev.flags |= ZrTokenFlag.Label;
+				}
+			} 
+			if (char === ".") {
+				const followedBy = this.stream.peek(1);
+				if (followedBy === ".") {
+					return identity<OperatorToken>({
+						kind: ZrTokenKind.Operator,
+						startPos,
+						endPos: startPos + 1,
+						value: this.stream.next(2).rep(2),
+						flags: 0,
+					})
 				}
 			}
 

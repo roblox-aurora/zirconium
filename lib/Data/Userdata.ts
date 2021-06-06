@@ -40,7 +40,7 @@ export class ZrObjectUserdata<T extends defined> extends ZrUserdata<T> {
 	}
 
 	public toString() {
-		return tostring(this.object);
+		return "toString" in this.object ? tostring(this.object) : "[ZrObjectUserdata]";
 	}
 
 	public value() {

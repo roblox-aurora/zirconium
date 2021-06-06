@@ -1001,6 +1001,7 @@ export default class ZrParser {
 		const token = this.get(ZrTokenKind.Operator);
 		if (token) {
 			const otherPrecedence = Grammar.OperatorPrecedence[token.value];
+			assert(otherPrecedence !== undefined, `No precedence for '${token.value}'`);
 			if (otherPrecedence > precedence) {
 				const prev = this.lexer.prev();
 				this.lexer.next();

@@ -40,6 +40,7 @@ export interface NodeTypes {
 	[ZrNodeKind.ExportKeyword]: ExportKeyword;
 	[ZrNodeKind.FunctionExpression]: FunctionExpression;
 	[ZrNodeKind.ReturnStatement]: ReturnStatement;
+	[ZrNodeKind.RangeExpression]: RangeExpression;
 }
 
 export interface Node {
@@ -118,6 +119,12 @@ export interface UndefinedKeyword extends Keyword, Expression {
 export interface ParenthesizedExpression extends Expression {
 	kind: ZrNodeKind.ParenthesizedExpression;
 	expression: Expression;
+}
+
+export interface RangeExpression extends Expression {
+	kind: ZrNodeKind.RangeExpression;
+	left: Expression;
+	right: Expression;
 }
 
 export interface TypeReference extends Node {

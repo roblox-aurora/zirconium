@@ -165,6 +165,13 @@ export function createExpressionStatement(expression: Expression) {
 	return node;
 }
 
+export function createRangeExpression(left: Expression, right: Expression) {
+	const node = createNode(ZrNodeKind.RangeExpression);
+	node.left = left;
+	node.right = right;
+	return node;
+}
+
 export function createForInStatement(
 	initializer: ForInStatement["initializer"],
 	expression: ForInStatement["expression"] | undefined,

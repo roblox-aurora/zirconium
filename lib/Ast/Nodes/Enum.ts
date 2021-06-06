@@ -85,6 +85,9 @@ export enum ZrNodeKind {
 	 */
 	ExportKeyword,
 
+	/** Range expression */
+	RangeExpression,
+
 	/**
 	 * `return <expression>`
 	 */

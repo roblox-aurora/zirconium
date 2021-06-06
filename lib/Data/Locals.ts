@@ -3,6 +3,7 @@ import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
+import ZrRange from "./Range";
 import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
@@ -16,7 +17,7 @@ export type ZrValue =
 	| Map<string, ZrValue>
 	| ZrUserFunction
 	| ZrLuauFunction
-	| ZrUserdata<defined>;
+	| ZrUserdata<defined> | ZrRange;
 
 export const enum StackValueType {
 	Constant,

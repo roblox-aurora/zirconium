@@ -29,6 +29,7 @@ import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userd
 import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
+import ZrRange from "Data/Range";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -45,6 +46,7 @@ export enum ZrRuntimeErrorCode {
 	InstanceGetViolation,
 	InvalidIterator,
 	ReassignConstant,
+	InvalidRangeError,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -370,6 +372,22 @@ export default class ZrRuntime {
 			return this.getUserdata(expression, value, id);
 		} else if (isMap<ZrValue>(value)) {
 			return value.get(id);
+		} else if (value instanceof ZrRange) {
+			if (id === "min") {
+				return value.GetMin();
+			} else if (id === "max") {
+				return value.GetMax();
+			} else if (id === "random_int") {
+				return value.GetRandomInteger();
+			} else if (id === "random") {
+				return value.GetRandomNumber();
+			} else {
+				this.runtimeError(
+					`${id} is not a valid member of Range`,
+					ZrRuntimeErrorCode.InvalidPropertyAccess,
+					name,
+				);
+			}
 		} else {
 			this.runtimeError(
 				`Attempt to index ${getTypeName(value)} with '${id}'`,
@@ -487,7 +505,15 @@ export default class ZrRuntime {
 					return this.evaluateNode(right);
 				}
 			} else {
-				this.runtimeError("NotHandled", ZrRuntimeErrorCode.EvaluationError);
+				this.runtimeError("Binary OR not handled", ZrRuntimeErrorCode.EvaluationError);
+			}
+		} else if (operator === "..") {
+			const leftValue = this.evaluateNode(left);
+			const rightValue = this.evaluateNode(right);
+			if (typeIs(leftValue, "number") && typeIs(rightValue, "number")) {
+				return new ZrRange(new NumberRange(leftValue, rightValue));
+			} else {
+				this.runtimeError("Range operator expects two numbers", ZrRuntimeErrorCode.InvalidRangeError, node);
 			}
 		} else {
 			this.runtimeError(`Unhandled expression '${operator}'`, ZrRuntimeErrorCode.EvaluationError);
