@@ -1,4 +1,6 @@
-import { FunctionDeclaration, ParameterDeclaration, SourceBlock } from "../Ast/Nodes/NodeTypes";
+import { isNode } from "Ast";
+import { ZrNodeKind } from "Ast/Nodes";
+import { FunctionDeclaration, FunctionExpression, ParameterDeclaration, SourceBlock } from "../Ast/Nodes/NodeTypes";
 import ZrRuntime, { ZrRuntimeErrorCode } from "../Runtime/Runtime";
 import ZrLocalStack, { ZrValue } from "./Locals";
 
@@ -8,12 +10,14 @@ import ZrLocalStack, { ZrValue } from "./Locals";
 export default class ZrUserFunction {
 	private parameters: ParameterDeclaration[];
 	private body: SourceBlock;
-	private name: string;
+	private name?: string;
 
-	constructor(declaration: FunctionDeclaration) {
+	constructor(declaration: FunctionDeclaration | FunctionExpression) {
 		this.parameters = declaration.parameters;
 		this.body = declaration.body;
-		this.name = declaration.name.name;
+		if (isNode(declaration, ZrNodeKind.FunctionDeclaration)) {
+			this.name = declaration.name.name;
+		}
 	}
 
 	public getParameters() {
@@ -25,6 +29,6 @@ export default class ZrUserFunction {
 	}
 
 	public toString() {
-		return `function ${this.name}(${this.parameters.map((p) => p.name.name).join(", ")}) {...}`;
+		return `function ${this.name ?? ""}(${this.parameters.map((p) => p.name.name).join(", ")}) {...}`;
 	}
 }

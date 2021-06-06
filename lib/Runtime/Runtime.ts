@@ -16,6 +16,7 @@ import {
 	SourceBlock,
 	VariableDeclaration,
 	OptionExpression,
+	FunctionExpression,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
@@ -190,6 +191,11 @@ export default class ZrRuntime {
 	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
 		const declaration = new ZrUserFunction(node);
 		this.locals.setLocal(node.name.name, declaration, true);
+		return declaration;
+	}
+
+	private evaluateFunctionExpression(node: FunctionExpression) {
+		const declaration = new ZrUserFunction(node);
 		return declaration;
 	}
 
@@ -535,6 +541,8 @@ export default class ZrRuntime {
 			return this.getLocals().evaluateInterpolatedString(node);
 		} else if (isNode(node, ZrNodeKind.VariableStatement)) {
 			return this.executeSetVariable(node.declaration);
+		} else if (isNode(node, ZrNodeKind.FunctionExpression)) {
+			return this.evaluateFunctionExpression(node);
 		} else if (isNode(node, ZrNodeKind.Block)) {
 			this.push();
 			for (const statement of node.statements) {

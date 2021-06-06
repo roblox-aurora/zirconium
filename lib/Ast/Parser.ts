@@ -152,7 +152,7 @@ export default class ZrParser {
 
 	public constructor(private lexer: ZrLexer, options?: Partial<ZrParserOptions>) {
 		this.options = {
-			version: ZrScriptVersion.Zr2020,
+			version: ZrScriptVersion.Zr2021,
 			mode: ZrScriptMode.CommandLike,
 			enableExport: false,
 			...options,
