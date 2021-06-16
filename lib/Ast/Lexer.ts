@@ -21,6 +21,7 @@ import {
 	ZrTokenKind,
 } from "./Tokens/Tokens";
 
+
 const enum TokenCharacter {
 	Hash = "#",
 	Dollar = "$",
@@ -29,6 +30,7 @@ const enum TokenCharacter {
 	Dot = ".",
 	Dash = "-",
 	Bang = "!",
+	Slash = "/"
 }
 
 export interface ZrLexerOptions {
@@ -374,7 +376,7 @@ export default class ZrLexer {
 			});
 		}
 
-		if (char === TokenCharacter.Hash) {
+		if (char === TokenCharacter.Hash || (char === TokenCharacter.Slash && this.stream.peek(1) === TokenCharacter.Slash)) {
 			const value = this.readComment();
 			if (options.SyntaxHighlighterLexer) {
 				return identity<CommentToken>({

@@ -73,6 +73,7 @@ import {
 	ZrTokenFlag,
 	ZrTokenKind,
 } from "./Tokens/Tokens";
+import { $dbg, $print, $warn } from "rbxts-transform-debug";
 import prettyPrintNodes from "./Utility/PrettyPrintNodes";
 
 export const enum ZrParserErrorCode {
@@ -161,7 +162,7 @@ export default class ZrParser {
 		this.enableExportKeyword = this.options.enableExport;
 
 		if (this.options.version >= ZrScriptVersion.Zr2021) {
-			warn("[ZrParser] Using `next` version of the parser.");
+			$warn("[ZrParser] Using `next` version of the parser.");
 			this.experimentalFeaturesEnabled = true;
 		}
 	}
@@ -567,6 +568,7 @@ export default class ZrParser {
 			!this.isOperatorToken() &&
 			!this.isEndBracketOrBlockToken()
 		) {
+			$print("parse Argument", argumentIndex, this.lexer.peek(), this.lexer.hasNext());
 			if (isStrictFunctionCall && this.is(ZrTokenKind.Special, ")")) {
 				break;
 			}
@@ -744,7 +746,10 @@ export default class ZrParser {
 		// Handle literals
 		token = token ?? this.lexer.next();
 		if (!token) {
-			this.throwParserError("Expression expected", ZrParserErrorCode.ExpressionExpected, this.lexer.prev());
+			this.throwParserError(
+				"Expression expected, got EOF after " + this.lexer.prev().kind + " - " + debug.traceback(),
+				ZrParserErrorCode.ExpressionExpected,
+			);
 		}
 
 		if (isToken(token, ZrTokenKind.String)) {
@@ -1059,7 +1064,11 @@ export default class ZrParser {
 	}
 
 	private isNextEndOfStatement() {
-		return this.is(ZrTokenKind.EndOfStatement, ";") || this.is(ZrTokenKind.EndOfStatement, "\n");
+		return (
+			this.is(ZrTokenKind.EndOfStatement, ";") ||
+			this.is(ZrTokenKind.EndOfStatement, "\n") ||
+			!this.lexer.hasNext()
+		);
 	}
 
 	private skipNextEndOfStatement() {
