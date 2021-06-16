@@ -13,7 +13,7 @@
 		"stripInternal": true,
 
 		// required, configurable
-		"rootDirs": ["lib"],
+		"rootDir": "lib",
 		"outDir": "out",
 
 		// optional
@@ -25,20 +25,17 @@
 		"jsxFactory": "Roact.createElement",
 		"plugins": [
 			{
-				"transform": "rbxts-transform-debug",
-				"environmentRequires": {
-					"NODE_ENV": "development"
-				}
+			  "transform": "rbxts-transform-debug",
+			  "verbose": true,
+			  "enabled": true,
+			  "environmentRequires": {
+				"NODE_ENV": "development"
+			  }
 			}
-		]
+		  ]
 	},
-	"include": [
-		"**/*"
-	],
 	"exclude": [
-		"core/example/**",
-		"example/**",
-		"core/**",
+		"example/**/*",
         "out"
 	]
 }

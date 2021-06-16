@@ -73,7 +73,6 @@ import {
 	ZrTokenFlag,
 	ZrTokenKind,
 } from "./Tokens/Tokens";
-import { $dbg, $print, $warn } from "rbxts-transform-debug";
 import prettyPrintNodes from "./Utility/PrettyPrintNodes";
 
 export const enum ZrParserErrorCode {
@@ -162,7 +161,6 @@ export default class ZrParser {
 		this.enableExportKeyword = this.options.enableExport;
 
 		if (this.options.version >= ZrScriptVersion.Zr2021) {
-			$warn("[ZrParser] Using `next` version of the parser.");
 			this.experimentalFeaturesEnabled = true;
 		}
 	}
@@ -568,7 +566,6 @@ export default class ZrParser {
 			!this.isOperatorToken() &&
 			!this.isEndBracketOrBlockToken()
 		) {
-			$print("parse Argument", argumentIndex, this.lexer.peek(), this.lexer.hasNext());
 			if (isStrictFunctionCall && this.is(ZrTokenKind.Special, ")")) {
 				break;
 			}
