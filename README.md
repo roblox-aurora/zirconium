@@ -1,5 +1,5 @@
 <div align="center">
-	<img src="https://assets.vorlias.com/i1/zirconium.png"/>
+	<img src="https://i.imgur.com/pPwm8wc.png"/>
 </div>
 <div align="center">
 	<h1>Zirconium</h1>
