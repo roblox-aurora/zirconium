@@ -1,4 +1,4 @@
-import { Result } from "@rbxts/rust-classes";
+import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "./LuauFunction";
@@ -79,7 +79,7 @@ export default class ZrLocalStack {
 	 * Will set the value at the stack it was first declared
 	 * @internal
 	 */
-	public setUpValueOrLocal(name: string, value: ZrValue | undefined, constant?: boolean): Result<void, StackValueAssignmentError> {
+	public setUpValueOrLocal(name: string, value: ZrValue | undefined, constant?: boolean): Result<UnitType, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const stackValue = stack.get(name);
 		if (stackValue) {
@@ -95,10 +95,10 @@ export default class ZrLocalStack {
 			stack.delete(name);
 		}
 
-		return Result.ok(undefined);
+		return Result.ok(unit());
 	}
 
-	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | undefined): Result<void, StackValueAssignmentError> {
+	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | undefined): Result<UnitType, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const existingValue = stack.get(name);
 		if (existingValue !== undefined) {
