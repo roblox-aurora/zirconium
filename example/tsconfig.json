@@ -1,39 +1,39 @@
 {
-    "compilerOptions": {
-        // required
-        "allowSyntheticDefaultImports": true,
-        "downlevelIteration": true,
-        "noLib": true,
-        "strict": true,
-        "module": "CommonJS",
-        "target": "ESNext",
-        "moduleResolution": "Node",
-        "typeRoots": [
-            "../node_modules/@rbxts"
-        ],
-        "removeComments": true,
-        "resolveJsonModule": true,
+  "compilerOptions": {
+    // required
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
+    "noLib": true,
+    "strict": true,
+    "module": "CommonJS",
+    "target": "ESNext",
+    "moduleResolution": "Node",
+    "typeRoots": ["../node_modules/@rbxts"],
+    "removeComments": true,
+    "resolveJsonModule": true,
 
-        "rootDirs": [
-            "server",
-            "client",
-            "../lib",
-        ],
+    "rootDirs": ["server", "client", "../lib"],
 
-        "outDir": "build",
-        "baseUrl": "../lib",
+    "outDir": "build",
+    "baseUrl": "../lib",
 
-        "paths": {
-            "@zirconium": ["../lib"],
-            "@zirconium/*": ["../lib/*"],
-            "@rbxts/zirconium-ast": ["../lib/Ast"],
-            "@rbxts/zirconium-ast/*": ["../lib/Ast/*"]
-        },
-        "jsx": "react",
-        "jsxFactory": "Roact.createElement"
+    "paths": {
+      "@zirconium": ["../lib"],
+      "@zirconium/*": ["../lib/*"],
+      "@rbxts/zirconium-ast": ["../lib/Ast"],
+      "@rbxts/zirconium-ast/*": ["../lib/Ast/*"]
     },
-    "include": [
-        "**/*",
-        "../lib/**/*"
+    "jsx": "react",
+    "jsxFactory": "Roact.createElement",
+
+    "plugins": [
+      {
+        "transform": "rbxts-transform-debug",
+        "environmentRequires": {
+          "NODE_ENV": "development"
+        }
+      }
     ]
+  },
+  "include": ["**/*", "../lib/**/*"]
 }

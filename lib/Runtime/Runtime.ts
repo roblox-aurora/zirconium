@@ -231,9 +231,13 @@ export default class ZrRuntime {
 			ZrRuntimeErrorCode.EvaluationError,
 			condition,
 		);
-		if (resultOfCondition && thenStatement) {
+
+		const isTruthy =
+			resultOfCondition !== undefined && resultOfCondition !== false && resultOfCondition !== ZrUndefined;
+
+		if (isTruthy && thenStatement !== undefined) {
 			this.evaluateNode(thenStatement);
-		} else if (!resultOfCondition && elseStatement) {
+		} else if (elseStatement !== undefined) {
 			this.evaluateNode(elseStatement);
 		}
 	}
@@ -382,7 +386,7 @@ export default class ZrRuntime {
 			return value.get(id);
 		} else if (value instanceof ZrRange) {
 			const property = ZrRange.properties[id];
-			if (property) {
+			if (property !== undefined) {
 				return property(value);
 			} else {
 				this.runtimeError(
@@ -435,10 +439,8 @@ export default class ZrRuntime {
 			}
 			for (const option of options) {
 				const value = this.evaluateNode(option.expression);
-				if (value) {
-					if (value !== ZrUndefined) {
-						this.locals.setLocal(option.option.flag, value);
-					}
+				if (value !== undefined && value !== ZrUndefined) {
+					this.locals.setLocal(option.option.flag, value);
 				}
 			}
 
@@ -449,13 +451,13 @@ export default class ZrRuntime {
 			let i = 0;
 			for (const child of callArgs) {
 				const value = this.evaluateNode(child);
-				if (value) {
+				if (value !== undefined) {
 					args[i] = value;
 				}
 				i++;
 			}
 			const result = matching.call(context, ...args);
-			if (result) {
+			if (result !== undefined) {
 				return result;
 			}
 		} else {
@@ -476,7 +478,7 @@ export default class ZrRuntime {
 			const context = ZrContext.createPipedContext(this, input, output);
 			const result = this.evaluateFunctionCall(left, context);
 
-			if (result && result !== ZrUndefined) {
+			if (result !== undefined && result !== ZrUndefined) {
 				output.write(result);
 			}
 
@@ -491,20 +493,19 @@ export default class ZrRuntime {
 		} else if (operator === "&&") {
 			if (types.isCallableExpression(left)) {
 				const result = this.evaluateFunctionCall(left, this.context);
-				if (result === undefined || result) {
+				if (result === undefined || (result !== undefined && result !== ZrUndefined)) {
 					return this.evaluateNode(right);
 				}
 			} else {
 				const result = this.evaluateNode(left);
-				if (result === undefined || result) {
+				if (result !== undefined && result !== ZrUndefined) {
 					return this.evaluateNode(right);
 				}
-				// this.runtimeError(`Unable to handle ${getFriendlyName(left)}`, ZrRuntimeErrorCode.EvaluationError);
 			}
 		} else if (operator === "||") {
 			if (types.isCallableExpression(left)) {
 				const result = this.evaluateFunctionCall(left, this.context);
-				if (!result && result !== undefined) {
+				if (result !== undefined || result === ZrUndefined) {
 					return this.evaluateNode(right);
 				}
 			} else {
@@ -547,13 +548,14 @@ export default class ZrRuntime {
 			return this.evaluateBinaryExpression(node);
 		} else if (isNode(node, ZrNodeKind.UnaryExpression)) {
 			if (node.operator === "!") {
-				return !this.evaluateNode(node.expression);
+				const result = this.evaluateNode(node.expression);
+				return result === false || result === undefined || result === ZrUndefined;
 			}
 		} else if (isNode(node, ZrNodeKind.UndefinedKeyword)) {
 			return ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ExpressionStatement)) {
 			const value = this.evaluateNode(node.expression);
-			if (value) {
+			if (value !== undefined) {
 				this.context.getOutput().write(value);
 			}
 		} else if (isNode(node, ZrNodeKind.ForInStatement)) {

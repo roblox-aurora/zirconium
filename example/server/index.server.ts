@@ -35,7 +35,13 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const sourceResult = playerContext.parseSource(`test.example "Hello, World!"`, ZrScriptVersion.Zr2021);
+	const sourceResult = playerContext.parseSource(
+		`test.example "Hello, World!" // this is a comment!
+		test.example
+		test
+		test.example 0`,
+		ZrScriptVersion.Zr2021,
+	);
 	sourceResult.match(
 		(sourceFile) => {
 			prettyPrintNodes([sourceFile]);
@@ -45,8 +51,21 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 			sourceScript.executeOrThrow();
 		},
 		(err) => {
-			const { message } = err;
-			warn(message);
+			const { message, errors } = err;
+			warn(
+				`${message} - ` +
+					errors
+						.map((e) => {
+							if (e.token) {
+								return `[${e.token.startPos}:${e.token.endPos}] ${e.message} '${e.token.value}'`;
+							} else if (e.node) {
+								return `<${e.node.kind}> ${e.message}`;
+							}
+
+							return e.message;
+						})
+						.join(", "),
+			);
 		},
 	);
 });
