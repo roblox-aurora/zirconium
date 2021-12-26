@@ -13,6 +13,8 @@ enum Test {
     ItemB,
     ItemC,
 }
+
+function Test() {}
 `;
 const res = new ZrRichTextHighlighter(source);
 

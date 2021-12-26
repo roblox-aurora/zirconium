@@ -41,6 +41,8 @@ export interface NodeTypes {
 	[ZrNodeKind.FunctionExpression]: FunctionExpression;
 	[ZrNodeKind.ReturnStatement]: ReturnStatement;
 	[ZrNodeKind.RangeExpression]: RangeExpression;
+	[ZrNodeKind.EnumDeclaration]: EnumDeclarationStatement;
+	[ZrNodeKind.EnumItemExpression]: EnumItemExpression;
 }
 
 export interface Node {
@@ -185,6 +187,17 @@ export interface BinaryExpression extends Expression, Declaration {
 	operator: string;
 	right: Expression;
 	children: Node[];
+}
+
+export interface EnumItemExpression extends Expression {
+	kind: ZrNodeKind.EnumItemExpression;
+	name: Identifier;
+}
+
+export interface EnumDeclarationStatement extends Statement {
+	kind: ZrNodeKind.EnumDeclaration;
+	name: Identifier;
+	values: EnumItemExpression[];
 }
 
 export interface ArrayLiteralExpression extends ValuesExpression {

@@ -38,6 +38,7 @@ import {
 	Expression,
 	UndefinedKeyword,
 	ExportKeyword,
+	EnumDeclarationStatement,
 } from "./NodeTypes";
 import { isNode } from "./Guards";
 
@@ -77,6 +78,20 @@ export function createArrayLiteral(values: ArrayLiteralExpression["values"]) {
 	const node = createNode(ZrNodeKind.ArrayLiteralExpression);
 	node.values = values;
 	node.children = values;
+	return node;
+}
+
+export function createEnumDeclaration(name: Identifier, values: EnumDeclarationStatement["values"]) {
+	const node = createNode(ZrNodeKind.EnumDeclaration);
+	node.name = name;
+	node.values = values;
+	node.children = values;
+	return node;
+}
+
+export function createEnumItemExpression(name: Identifier) {
+	const node = createNode(ZrNodeKind.EnumItemExpression);
+	node.name = name;
 	return node;
 }
 

@@ -239,6 +239,16 @@ export default class ZrLexer {
 			});
 		}
 
+		if (previous && this.prevIs(ZrTokenKind.Keyword, 1) && previous.value === "enum") {
+			return identity<IdentifierToken>({
+				kind: ZrTokenKind.Identifier,
+				startPos,
+				endPos,
+				flags: ZrTokenFlag.EnumName,
+				value: literal,
+			});
+		}
+
 		if (previous && this.prevIs(ZrTokenKind.Keyword, 2) && (previous.value === "let" || previous.value === "const")) {
 
 			if (this.options.SyntaxHighlighterLexer && this.options.ExperimentalSyntaxHighlighter) {

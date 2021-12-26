@@ -92,6 +92,20 @@ export enum ZrNodeKind {
 	 * `return <expression>`
 	 */
 	ReturnStatement,
+
+	/**
+	 * ```ts
+	 * enum EnumName {
+	 * 	[EnumItemExpression, ...]
+	 * }
+	 * ```
+	 */
+	EnumDeclaration,
+
+	/**
+	 * `EnumItem`
+	 */
+	EnumItemExpression,
 }
 
 export enum ZrTypeKeyword {

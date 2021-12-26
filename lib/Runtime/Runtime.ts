@@ -18,6 +18,7 @@ import {
 	OptionExpression,
 	FunctionExpression,
 	Identifier,
+	EnumDeclarationStatement,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
@@ -197,6 +198,19 @@ export default class ZrRuntime {
 	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
 		const declaration = new ZrUserFunction(node);
 		this.locals.setLocal(node.name.name, declaration, true);
+		return declaration;
+	}
+
+	private evaluateEnumDeclaration(node: EnumDeclarationStatement) {
+		const name = node.name.name;
+
+		const declaration = new ZrEnum(
+			node.values.map((v) => v.name.name),
+			node.name.name,
+		);
+
+		print(declaration.getItems(), "declaration");
+		this.locals.setLocal(name, declaration, true);
 		return declaration;
 	}
 
@@ -603,6 +617,8 @@ export default class ZrRuntime {
 			return this.evaluatePropertyAccessExpression(node) ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			return this.evaluateFunctionDeclaration(node);
+		} else if (isNode(node, ZrNodeKind.EnumDeclaration)) {
+			return this.evaluateEnumDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ParenthesizedExpression)) {
 			return this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.BinaryExpression)) {

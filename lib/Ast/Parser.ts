@@ -37,6 +37,8 @@ import {
 	createReturnStatement,
 	withError,
 	updateNodeInternal,
+	createEnumDeclaration,
+	createEnumItemExpression,
 } from "./Nodes/Create";
 import { ZrNodeFlag, ZrTypeKeyword } from "./Nodes/Enum";
 import { getFriendlyName, getVariableName } from "./Nodes/Functions";
@@ -44,6 +46,7 @@ import { isAssignableExpression, isOptionExpression } from "./Nodes/Guards";
 import {
 	ArrayIndexExpression,
 	CallExpression,
+	EnumItemExpression,
 	Expression,
 	ForInStatement,
 	Identifier,
@@ -128,9 +131,14 @@ export const enum ZrScriptVersion {
 	Zr2020 = 0,
 
 	/**
-	 * Enables `export`, `let`, `const`
+	 * Enables `let`, `const`
 	 */
 	Zr2021 = 1000,
+
+	/**
+	 * Enables `enum`, `export`
+	 */
+	Zr2022 = 1001,
 }
 
 export interface ZrParserOptions {
@@ -148,6 +156,7 @@ export default class ZrParser {
 	private warnings = new Array<ZrParserWarning>();
 	private options: ZrParserOptions;
 	private enableExportKeyword = false;
+	private enableUserEnum = false;
 	private experimentalFeaturesEnabled = false;
 
 	public constructor(private lexer: ZrLexer, options?: Partial<ZrParserOptions>) {
@@ -162,6 +171,10 @@ export default class ZrParser {
 
 		if (this.options.version >= ZrScriptVersion.Zr2021) {
 			this.experimentalFeaturesEnabled = true;
+		}
+
+		if (this.options.version >= ZrScriptVersion.Zr2022) {
+			this.enableUserEnum = true;
 		}
 	}
 
@@ -246,7 +259,7 @@ export default class ZrParser {
 	/**
 	 * Skips a token of a specified kind if it's the next
 	 */
-	private skip(kind: ZrTokenKind, value: string | number | boolean, message?: string) {
+	private skip(kind: ZrTokenKind, value?: string | number | boolean, message?: string) {
 		if (this.is(kind, value)) {
 			return this.lexer.next()!;
 		} else {
@@ -925,12 +938,51 @@ export default class ZrParser {
 		return this.get(ZrTokenKind.Keyword, "let") ?? this.get(ZrTokenKind.Keyword, "const");
 	}
 
+	private parseEnumStatement() {
+		const enumToken = this.skip(ZrTokenKind.Keyword, "enum");
+
+		if (this.lexer.isNextOfKind(ZrTokenKind.Identifier)) {
+			const id = this.lexer.next() as IdentifierToken;
+			const idNode = createIdentifier(id.value, "");
+
+			if (this.is(ZrTokenKind.Special, "{")) {
+				const items = this.parseListExpression(
+					"{",
+					"}",
+					() => {
+						const id = this.skip(ZrTokenKind.Identifier) as IdentifierToken;
+						return createEnumItemExpression(createIdentifier(id.value));
+					},
+					",",
+					true,
+				);
+
+				return createEnumDeclaration(idNode, items);
+			} else {
+				this.throwParserError("Enum requires body", ZrParserErrorCode.ExpectedBlock, enumToken);
+			}
+		}
+
+		throw `Not Implemented`;
+	}
+
+	private parseDeclarations() {
+		if (this.is(ZrTokenKind.Keyword, "function")) {
+			return this.parseFunction();
+		}
+
+		if (this.is(ZrTokenKind.Keyword, "enum") && this.enableUserEnum) {
+			return this.parseEnumStatement();
+		}
+	}
+
 	/**
 	 * Parses the next expression statement
 	 */
 	private parseNextStatement(): Statement {
-		if (this.is(ZrTokenKind.Keyword, "function")) {
-			return this.parseFunction();
+		const declaration = this.parseDeclarations();
+		if (declaration) {
+			return declaration;
 		}
 
 		if (this.is(ZrTokenKind.Keyword, "return")) {

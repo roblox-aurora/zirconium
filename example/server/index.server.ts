@@ -45,9 +45,20 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 		#test.example 0
 
 		TestEnum
-		TestEnum.A!
-		TestEnum.0`,
-		ZrScriptVersion.Zr2021,
+		TestEnum.A
+		TestEnum.0
+		
+		enum UserEnum {
+			A
+			B
+		}
+		
+		UserEnum
+		UserEnum.A
+		UserEnum.A.value
+		UserEnum.B
+		UserEnum.B.name`,
+		ZrScriptVersion.Zr2022,
 	);
 	sourceResult.match(
 		(sourceFile) => {
@@ -59,6 +70,7 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 		},
 		(err) => {
 			const { message, errors } = err;
+
 			warn(
 				`${message} - ` +
 					errors
