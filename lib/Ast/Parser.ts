@@ -713,7 +713,7 @@ export default class ZrParser {
 	private parsePropertyAccess(token: PropertyAccessToken) {
 		let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
 		for (const name of token.properties) {
-			if (name.match("%d+")[0]) {
+			if (name.match("^%d+$")[0]) {
 				expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
 			} else {
 				expr = createPropertyAccessExpression(expr, createIdentifier(name));
@@ -834,7 +834,7 @@ export default class ZrParser {
 			} else if (isToken(token, ZrTokenKind.PropertyAccess)) {
 				let expr: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
 				for (const name of token.properties) {
-					if (name.match("%d+")[0]) {
+					if (name.match("^%d+$")[0]) {
 						expr = createArrayIndexExpression(expr, createNumberNode(tonumber(name)!));
 					} else {
 						expr = createPropertyAccessExpression(expr, createIdentifier(name));
@@ -874,6 +874,14 @@ export default class ZrParser {
 			const expr = createParenthesizedExpression(this.mutateExpression(this.parseExpression()));
 			this.skip(ZrTokenKind.Special, ")");
 			return expr;
+		}
+
+		if (isToken(token, ZrTokenKind.Special) || isToken(token, ZrTokenKind.Operator)) {
+			this.throwParserError(
+				"Unexpected " + token.kind + " '" + token.value + "'",
+				ZrParserErrorCode.Unexpected,
+				token,
+			);
 		}
 
 		if (token.kind === ZrTokenKind.Keyword) {

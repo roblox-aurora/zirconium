@@ -17,6 +17,7 @@ import {
 	VariableDeclaration,
 	OptionExpression,
 	FunctionExpression,
+	Identifier,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
@@ -345,7 +346,7 @@ export default class ZrRuntime {
 			try {
 				object[key] = value;
 			} catch (err) {
-				this.runtimeError(err, ZrRuntimeErrorCode.InstanceSetViolation, expression);
+				this.runtimeError(tostring(err), ZrRuntimeErrorCode.InstanceSetViolation, expression);
 			}
 		}
 	}
@@ -359,7 +360,7 @@ export default class ZrRuntime {
 			try {
 				return userdata.get(key as InferUserdataKeys<T>);
 			} catch (err) {
-				this.runtimeError(err, ZrRuntimeErrorCode.InstanceGetViolation, expression);
+				this.runtimeError(tostring(err), ZrRuntimeErrorCode.InstanceGetViolation, expression);
 			}
 		} else {
 			const object = userdata.value() as Record<string, ZrValue>;
@@ -461,7 +462,33 @@ export default class ZrRuntime {
 				return result;
 			}
 		} else {
-			this.runtimeError(expression.name + " is not a function", ZrRuntimeErrorCode.NotCallable, node);
+			this.runtimeError(
+				this.getFullName(expression) + " is not a function",
+				ZrRuntimeErrorCode.NotCallable,
+				node,
+			);
+		}
+	}
+
+	public getLeafName(id: PropertyAccessExpression | ArrayIndexExpression | Identifier): string {
+		if (types.isIdentifier(id)) {
+			return id.name;
+		} else if (types.isPropertyAccessExpression(id)) {
+			return id.name.name;
+		} else {
+			return tostring(id.index.value);
+		}
+	}
+
+	public getFullName(id: PropertyAccessExpression | ArrayIndexExpression | Identifier): string {
+		if (types.isIdentifier(id)) {
+			return id.name;
+		} else if (types.isArrayIndexExpression(id)) {
+			return `${this.getFullName(id.expression)}[${id.index.value}]`;
+		} else if (types.isPropertyAccessExpression(id)) {
+			return `${this.getFullName(id.expression)}.${this.getFullName(id.name)}`;
+		} else {
+			return "?";
 		}
 	}
 

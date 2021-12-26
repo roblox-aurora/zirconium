@@ -36,10 +36,12 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.importGlobals(globals);
 
 	const sourceResult = playerContext.parseSource(
-		`test.example "Hello, World!" // this is a comment!
-		test.example
-		test
-		test.example 0`,
+		`#test.example "Hello, World!" // this is a comment!
+		#test.example
+		#test
+		#print2
+		#test.example 0
+		test!`,
 		ZrScriptVersion.Zr2021,
 	);
 	sourceResult.match(

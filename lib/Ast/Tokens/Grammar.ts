@@ -1,8 +1,8 @@
 const Grammar = {
-	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!"],
+	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!", "?", "%", "^", "~"],
 	UnaryOperators: ["!"],
 	EndOfStatement: [";", "\n"],
-	Punctuation: ["(", ")", ",", "{", "}", "[", "]", ".", ":", "\\"],
+	Punctuation: ["(", ")", ",", "{", "}", "[", "]", ".", ":", "\\", "@", "`"],
 	BooleanLiterals: ["true", "false"],
 	Keywords: [
 		"if",

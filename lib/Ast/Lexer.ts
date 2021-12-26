@@ -364,6 +364,17 @@ export default class ZrLexer {
 
 		// Get the next token
 		const char = this.stream.peek();
+		const code = char.byte()[0];
+		if (code > 126) {
+			this.stream.next();
+			return identity<SpecialToken>({
+				kind: ZrTokenKind.Special,
+				startPos,
+				endPos: startPos,
+				flags: ZrTokenFlag.None,
+				value: "?",
+			});
+		}
 
 		if (options.SyntaxHighlighterLexer && this.isWhitespace(char)) {
 			this.stream.next();

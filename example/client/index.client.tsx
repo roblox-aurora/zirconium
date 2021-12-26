@@ -6,6 +6,11 @@ export {};
 const source = `# it does functions
 x = 10
 $y = 20
+test.print2!
+test.print
+test.2
+print2
+# \`~@^%? 😎
 `;
 const res = new ZrRichTextHighlighter(source);
 
