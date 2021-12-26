@@ -1,5 +1,5 @@
 import ZrTextStream from "./TextStream";
-import Grammar, { BooleanLiteralTokens, EndOfStatementTokens, OperatorTokens, PunctuationTokens } from "./Tokens/Grammar";
+import Grammar, { BooleanLiteralTokens, EndOfStatementTokens, Keywords, OperatorTokens, PunctuationTokens } from "./Tokens/Grammar";
 import {
 	BooleanToken,
 	CommentToken,
@@ -58,7 +58,7 @@ export default class ZrLexer {
 	private static readonly BOOLEAN = Grammar.BooleanLiterals;
 
 	public static IsPrimitiveValueToken = (token: Token): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
-		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean || (token.kind === ZrTokenKind.Keyword && token.value === "undefined");
+		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean || (token.kind === ZrTokenKind.Keyword && token.value === Keywords.UNDEFINED);
 	};
 
 	private options: ZrLexerOptions;
@@ -575,6 +575,10 @@ export default class ZrLexer {
 	public prevIs(kind: ZrTokenKind, offset?: number) {
 		const prev = this.prev(offset);
 		return prev?.kind === kind;
+	}
+
+	public current() {
+		return this.currentToken;
 	}
 
 	public next() {
