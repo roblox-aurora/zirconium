@@ -285,12 +285,23 @@ export default class ZrParser {
 	}
 
 	private parseBlock() {
-		if (this.is(ZrTokenKind.Special, "{")) {
-			const block = this.parseSource("{", "}") as Statement[];
-			return createBlock(block);
-		} else {
-			this.throwParserError("Expected '{'", ZrParserErrorCode.ExpectedToken);
+		const statements = new Array<Statement>();
+
+		this.skip(ZrTokenKind.Special, "{");
+		while (this.lexer.hasNext()) {
+			if (this.is(ZrTokenKind.Special, "}")) {
+				break;
+			}
+
+			if (this.skipIf(ZrTokenKind.EndOfStatement, "\n")) {
+				continue;
+			}
+
+			statements.push(this.parseNextStatement());
 		}
+
+		this.skip(ZrTokenKind.Special, "}");
+		return createBlock(statements);
 	}
 
 	/**
