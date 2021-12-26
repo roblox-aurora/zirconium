@@ -58,7 +58,7 @@ export default class ZrLexer {
 	private static readonly BOOLEAN = Grammar.BooleanLiterals;
 
 	public static IsPrimitiveValueToken = (token: Token): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
-		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean;
+		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean || (token.kind === ZrTokenKind.Keyword && token.value === "undefined");
 	};
 
 	private options: ZrLexerOptions;

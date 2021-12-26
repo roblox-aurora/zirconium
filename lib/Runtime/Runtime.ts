@@ -52,6 +52,7 @@ export enum ZrRuntimeErrorCode {
 	InvalidRangeError,
 	InvalidEnumItem,
 	OutOfRange,
+	UnassignedVariable,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -593,6 +594,27 @@ export default class ZrRuntime {
 				return new ZrRange(new NumberRange(leftValue, rightValue));
 			} else {
 				this.runtimeError("Range operator expects two numbers", ZrRuntimeErrorCode.InvalidRangeError, node);
+			}
+		} else if (operator === "=" && types.isIdentifier(left)) {
+			const assignment = this.getLocals().setUpValueOrLocalIfDefined(left.name, this.evaluateNode(right));
+			if (assignment.isErr()) {
+				const err = assignment.unwrapErr();
+				switch (err) {
+					case StackValueAssignmentError.ReassignConstant:
+						this.runtimeError(
+							`Cannot reassign constant '${left.name}'`,
+							ZrRuntimeErrorCode.ReassignConstant,
+							left,
+						);
+					case StackValueAssignmentError.VariableNotDeclared:
+						this.runtimeError(
+							`Unable to assign to undeclared '${left.name}' - use 'let' or 'const'`,
+							ZrRuntimeErrorCode.UnassignedVariable,
+							left,
+						);
+				}
+			} else {
+				return assignment.unwrap();
 			}
 		} else {
 			this.runtimeError(`Unhandled expression '${operator}'`, ZrRuntimeErrorCode.EvaluationError);

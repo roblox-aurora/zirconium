@@ -17,9 +17,9 @@ globals.registerGlobal("range", ZrRange);
 globals.registerGlobal("debug", ZrDebug);
 globals.registerGlobal("TestEnum", new ZrEnum(["A", "B"], "TestEnum"));
 globals.registerGlobal(
-	"value",
-	new ZrLuauFunction((context, value) => {
-		return value;
+	"values",
+	new ZrLuauFunction((context, ...args) => {
+		return `[ ${args.map(tostring).join(", ")} ]`;
 	}),
 );
 globals.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
@@ -37,29 +37,7 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const sourceResult = playerContext.parseSource(
-		`#test.example "Hello, World!" // this is a comment!
-		#test.example
-		#test
-		#print2
-		#test.example 0
-
-		TestEnum
-		TestEnum.A
-		TestEnum.0
-		
-		enum UserEnum {
-			A
-			B
-		}
-		
-		UserEnum
-		UserEnum.A
-		UserEnum.A.value
-		UserEnum.B
-		UserEnum.B.name`,
-		ZrScriptVersion.Zr2022,
-	);
+	const sourceResult = playerContext.parseSource(`values(undefined, 10)`, ZrScriptVersion.Zr2022);
 	sourceResult.match(
 		(sourceFile) => {
 			prettyPrintNodes([sourceFile]);

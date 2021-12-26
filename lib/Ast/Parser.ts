@@ -606,6 +606,8 @@ export default class ZrParser {
 				args.push(arg);
 			}
 
+			print("addArg", arg);
+
 			argumentIndex++;
 			endPos = this.lexer.getStream().getPtr() - 1;
 		}
@@ -741,6 +743,11 @@ export default class ZrParser {
 	}
 
 	private parseExpression(token?: Token, treatIdentifiersAsStrings = false): Expression {
+		if (this.is(ZrTokenKind.Keyword, "undefined")) {
+			this.skip(ZrTokenKind.Keyword);
+			return createUndefined();
+		}
+
 		if (this.is(ZrTokenKind.Special, "{")) {
 			return this.parseObjectExpression();
 		}
@@ -898,10 +905,6 @@ export default class ZrParser {
 		}
 
 		if (token.kind === ZrTokenKind.Keyword) {
-			if (token.value === "undefined") {
-				return createUndefined();
-			}
-
 			this.throwParserError(
 				`Cannot use '${token.value}' here, it is a reserved keyword.`,
 				ZrParserErrorCode.KeywordReserved,
@@ -1037,7 +1040,9 @@ export default class ZrParser {
 		flags: ZrNodeFlag = 0,
 		modifiers?: VariableStatement["modifiers"],
 	) {
+		const prev = this.get(ZrTokenKind.Operator);
 		this.skipIf(ZrTokenKind.Operator, "=");
+		print("skipIf =", prev);
 		let right = this.mutateExpression(this.parseExpression());
 
 		// Simplify the expression a bit, if it's parenthesized
@@ -1069,7 +1074,7 @@ export default class ZrParser {
 				const prev = this.lexer.prev();
 				this.lexer.next();
 
-				if (token.value === "=") {
+				if (token.value === "=" && left.kind !== ZrNodeKind.Identifier) {
 					this.throwParserError(
 						"Unexpected '=' after " + ZrNodeKind[left.kind],
 						ZrParserErrorCode.Unexpected,
