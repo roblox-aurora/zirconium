@@ -37,5 +37,9 @@
   },
   "dependencies": {
     "@rbxts/rust-classes": "^0.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roblox-aurora/zirconium.git"
   }
 }
