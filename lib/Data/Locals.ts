@@ -1,7 +1,8 @@
 import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
-import { ZrEnum, ZrEnumItem } from "./Enum";
+import { ZrEnum } from "./Enum";
+import { ZrEnumItem } from "./EnumItem";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import ZrRange from "./Range";

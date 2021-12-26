@@ -32,7 +32,8 @@ import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
 import ZrRange from "Data/Range";
-import { ZrEnum, ZrEnumItem } from "Data/Enum";
+import { ZrEnum } from "Data/Enum";
+import { ZrEnumItem } from "Data/EnumItem";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -205,9 +206,9 @@ export default class ZrRuntime {
 	private evaluateEnumDeclaration(node: EnumDeclarationStatement) {
 		const name = node.name.name;
 
-		const declaration = new ZrEnum(
-			node.values.map((v) => v.name.name),
+		const declaration = ZrEnum.fromArray(
 			node.name.name,
+			node.values.map((v) => v.name.name),
 		);
 
 		print(declaration.getItems(), "declaration");
