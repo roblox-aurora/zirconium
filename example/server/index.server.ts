@@ -2,6 +2,7 @@ import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
 import { prettyPrintNodes } from "Ast";
 import { ZrScriptVersion } from "Ast/Parser";
+import { ZrEnum, ZrEnumItem } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { ZrValue } from "./Data/Locals";
@@ -14,6 +15,7 @@ const globals = Zr.createContext();
 globals.registerGlobal("print", ZrPrint);
 globals.registerGlobal("range", ZrRange);
 globals.registerGlobal("debug", ZrDebug);
+globals.registerGlobal("TestEnum", new ZrEnum(["A", "B"], "TestEnum"));
 globals.registerGlobal(
 	"value",
 	new ZrLuauFunction((context, value) => {
@@ -41,7 +43,10 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 		#test
 		#print2
 		#test.example 0
-		test!`,
+
+		TestEnum
+		TestEnum.A!
+		TestEnum.0`,
 		ZrScriptVersion.Zr2021,
 	);
 	sourceResult.match(

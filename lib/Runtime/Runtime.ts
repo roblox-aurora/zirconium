@@ -31,6 +31,7 @@ import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
 import ZrRange from "Data/Range";
+import { ZrEnum, ZrEnumItem } from "Data/Enum";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -48,6 +49,8 @@ export enum ZrRuntimeErrorCode {
 	InvalidIterator,
 	ReassignConstant,
 	InvalidRangeError,
+	InvalidEnumItem,
+	OutOfRange,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -83,7 +86,7 @@ export default class ZrRuntime {
 		this.context = new ZrContext(this);
 	}
 
-	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
+	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node): never {
 		const err = identity<ZrRuntimeError>({
 			message,
 			code,
@@ -314,19 +317,33 @@ export default class ZrRuntime {
 	private evaluateArrayIndexExpression(node: ArrayIndexExpression) {
 		const { expression, index } = node;
 		const value = this.evaluateNode(expression);
-		this.runtimeAssertNotUndefined(
-			value,
-			"Attempted to index nil value",
-			ZrRuntimeErrorCode.IndexingUndefined,
-			expression,
-		);
-		this.runtimeAssert(
-			isArray<ZrValue>(value),
-			"Attempt to index " + getTypeName(value) + " with a number",
-			ZrRuntimeErrorCode.InvalidArrayIndex,
-			index,
-		);
-		return value[index.value];
+
+		if (value instanceof ZrEnum) {
+			const enumValue = value.getItemByIndex(index.value);
+			if (!enumValue) {
+				this.runtimeAssertNotUndefined(
+					value,
+					"Index out of range for enum " + index.value,
+					ZrRuntimeErrorCode.OutOfRange,
+					expression,
+				);
+			}
+			return enumValue;
+		} else {
+			this.runtimeAssertNotUndefined(
+				value,
+				"Attempted to index nil value",
+				ZrRuntimeErrorCode.IndexingUndefined,
+				expression,
+			);
+			this.runtimeAssert(
+				isArray<ZrValue>(value),
+				"Attempt to index " + getTypeName(value) + " with a number",
+				ZrRuntimeErrorCode.InvalidArrayIndex,
+				index,
+			);
+			return value[index.value];
+		}
 	}
 
 	private setUserdata(
@@ -383,6 +400,23 @@ export default class ZrRuntime {
 			return value.get(id);
 		} else if (value instanceof ZrUserdata) {
 			return this.getUserdata(expression, value, id);
+		} else if (value instanceof ZrEnum) {
+			return (
+				value.getItemByName(id) ??
+				this.runtimeError(`${id} is not a valid enum item`, ZrRuntimeErrorCode.InvalidEnumItem, name)
+			);
+		} else if (value instanceof ZrEnumItem) {
+			if (id === "name") {
+				return value.getName();
+			} else if (id === "value") {
+				return value.getValue();
+			} else {
+				this.runtimeError(
+					`Attempted to index EnumItem with ${id}`,
+					ZrRuntimeErrorCode.InvalidPropertyAccess,
+					name,
+				);
+			}
 		} else if (isMap<ZrValue>(value)) {
 			return value.get(id);
 		} else if (value instanceof ZrRange) {

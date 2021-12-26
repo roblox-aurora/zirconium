@@ -9,6 +9,8 @@ const Grammar = {
 		"else",
 		"for",
 		"in",
+		"enum",
+		"declare",
 		"function",
 		"let",
 		"export",

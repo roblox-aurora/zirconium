@@ -1,6 +1,7 @@
 import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
+import { ZrEnum, ZrEnumItem } from "./Enum";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import ZrRange from "./Range";
@@ -17,6 +18,8 @@ export type ZrValue =
 	| Map<string, ZrValue>
 	| ZrUserFunction
 	| ZrLuauFunction
+	| ZrEnum
+	| ZrEnumItem
 	| ZrUserdata<defined> | ZrRange;
 
 export const enum StackValueType {
