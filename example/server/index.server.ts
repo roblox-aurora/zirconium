@@ -3,7 +3,7 @@ import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
 import { ZrScriptVersion } from "Ast/Parser";
 import { Token } from "Ast/Tokens/Tokens";
-import { ZrEnum, ZrEnumItem } from "Data/Enum";
+import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { ZrValue } from "./Data/Locals";
@@ -16,7 +16,7 @@ const globals = Zr.createContext();
 globals.registerGlobal("print", ZrPrint);
 globals.registerGlobal("range", ZrRange);
 globals.registerGlobal("debug", ZrDebug);
-globals.registerGlobal("TestEnum", new ZrEnum(["A", "B"], "TestEnum"));
+globals.registerGlobal("TestEnum", ZrEnum.fromArray("TestEnum", ["A", "B"]));
 globals.registerGlobal(
 	"values",
 	new ZrLuauFunction((context, ...args) => {

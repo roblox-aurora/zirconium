@@ -2,6 +2,7 @@ import { SourceFile } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
 import ZrRuntime, { ZrRuntimeError } from "./Runtime";
+import { $print } from "rbxts-transform-debug";
 
 export default class ZrScript {
 	private runtime: ZrRuntime;
@@ -30,7 +31,7 @@ export default class ZrScript {
 	public executeOrThrow() {
 		const results = this.runtime.execute().toArray();
 		for (const result of results) {
-			print(">", result);
+			$print(">", result);
 		}
 	}
 

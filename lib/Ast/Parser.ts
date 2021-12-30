@@ -1,4 +1,5 @@
 import { AstCommandDefinitions } from "./Definitions/Definitions";
+import { $print } from "rbxts-transform-debug";
 import ZrLexer from "./Lexer";
 import { ZrNodeKind, isNode } from "./Nodes";
 import * as ErrorStrings from "./ErrorStrings.json";
@@ -609,7 +610,7 @@ export default class ZrParser {
 				arg = this.mutateExpression(this.parseExpression());
 			} else {
 				arg = this.parseExpression(undefined, true);
-				print("addArg", arg);
+				$print("addArg", arg);
 			}
 
 			if (isOptionExpression(arg)) {
@@ -635,7 +636,7 @@ export default class ZrParser {
 			result = createCallExpression(callee, args, options);
 		} else {
 			result = createSimpleCallExpression(callee, args);
-			print(result, "simpleCall");
+			$print(result, "simpleCall");
 		}
 
 		this.functionCallScope -= 1;
@@ -1067,7 +1068,7 @@ export default class ZrParser {
 	) {
 		const prev = this.get(ZrTokenKind.Operator);
 		this.skipIf(ZrTokenKind.Operator, "=");
-		print("skipIf =", prev);
+		$print("skipIf =", prev);
 		let right = this.mutateExpression(this.parseExpression());
 
 		// Simplify the expression a bit, if it's parenthesized

@@ -34,6 +34,7 @@ import { ZrNodeFlag } from "Ast/Nodes/Enum";
 import ZrRange from "Data/Range";
 import { ZrEnum } from "Data/Enum";
 import { ZrEnumItem } from "Data/EnumItem";
+import { $print } from "rbxts-transform-debug";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -211,7 +212,7 @@ export default class ZrRuntime {
 			node.values.map((v) => v.name.name),
 		);
 
-		print(declaration.getItems(), "declaration");
+		$print(declaration.getItems(), "declaration");
 		this.locals.setLocal(name, declaration, true);
 		return declaration;
 	}
@@ -480,11 +481,11 @@ export default class ZrRuntime {
 				const param = params[i];
 				const value = callArgs[i];
 				if (value !== undefined) {
-					const valueOf = this.evaluateNode(value);
-					this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
+					const nodeValue = this.evaluateNode(value);
+					this.runtimeAssertNotUndefined(nodeValue, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
 
-					if (valueOf !== ZrUndefined) {
-						this.locals.setLocal(param.name.name, valueOf);
+					if (nodeValue !== ZrUndefined) {
+						this.locals.setLocal(param.name.name, nodeValue);
 					}
 				}
 			}
