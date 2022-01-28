@@ -106,6 +106,10 @@ export enum ZrNodeKind {
 	 * `EnumItem`
 	 */
 	EnumItemExpression,
+
+	EmptyExpression,
+
+	EmptyStatement
 }
 
 export enum ZrTypeKeyword {

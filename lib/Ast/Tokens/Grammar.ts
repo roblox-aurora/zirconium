@@ -1,3 +1,12 @@
+export const enum Precedence {
+	Brackets = 30,
+	Exponents = 25,
+	Division = 21,
+	Multiplication = 20,
+	Addition = 11,
+	Subtraction = 10,
+}
+
 const Grammar = {
 	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!", "?", "%", "^", "~"],
 	UnaryOperators: ["!", "-", "+"],
@@ -51,11 +60,12 @@ const Grammar = {
 		"<=": 7,
 		"==": 7,
 		"!=": 7,
-		"+": 10,
-		"-": 10,
-		"*": 20,
-		"/": 20,
-		"%": 20,
+		"+": Precedence.Addition,
+		"-": Precedence.Subtraction,
+		"*": Precedence.Multiplication,
+		"/": Precedence.Division,
+		"%": Precedence.Division,
+		"**": Precedence.Exponents,
 	}),
 	SpecialTokenId: {
 		BodyBegin: "{",

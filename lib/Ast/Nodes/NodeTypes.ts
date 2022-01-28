@@ -43,6 +43,8 @@ export interface NodeTypes {
 	[ZrNodeKind.RangeExpression]: RangeExpression;
 	[ZrNodeKind.EnumDeclaration]: EnumDeclarationStatement;
 	[ZrNodeKind.EnumItemExpression]: EnumItemExpression;
+	[ZrNodeKind.EmptyExpression]: EmptyExpression;
+	[ZrNodeKind.EmptyStatement]: EmptyStatement;
 }
 
 export interface Node {
@@ -63,6 +65,8 @@ export interface Statement extends Node {
 	/** @deprecated */
 	readonly _nominal_Statement: unique symbol;
 }
+
+export interface EmptyStatement extends Statement {}
 
 export interface Declaration extends Node {
 	/** @deprecated */
@@ -94,6 +98,9 @@ export interface Expression extends Node {
 	/** @deprecated */
 	readonly _nominal_Expression: unique symbol;
 }
+
+export interface EmptyExpression extends Expression {}
+
 export interface LiteralExpression extends Expression {
 	/** @deprecated */
 	readonly _nominal_Literal: unique symbol;

@@ -35,17 +35,26 @@ globals.registerGlobal(
 );
 
 let source = `
-no!
-uh.oh(- 30, true, 'Hello there', x)
-uh.oh $(30 - 20) $x true 'Hello there' x
-uh { a: 10 }
-anotherFunc [1, 2, "hello there"]
-(30 - 20)
-[1, 2, 3]
-{
-	a: 10,
-	b: 20,
-	"c": "hi there"
+# testing inline literals
+"Hello there"
+10
+true
+[ 1, 2, 3 ]
+{ a: "A", b: "B", "c": "C" }
+
+# Binary expressions
+5 + 5 # should be fine
+5 * 5 + 10 # Precedence here needs fixing
+(5 * 5) + 10 # Predence here is forced. So fine.
+
+# Call expressions
+bang! # bang operator
+command "string" 42 true [ "an", "array" ] { objects: true } $("Give me an inline expression, " + "please!")
+funcName("string", 42, true, [ "an", "array" ], { objects: true }, "Give me an inline expression, " + "please!")
+
+# Declarations
+function test() {
+	# The body stuff should work here.
 }
 `;
 

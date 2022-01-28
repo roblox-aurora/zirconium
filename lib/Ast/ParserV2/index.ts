@@ -1,6 +1,6 @@
 import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
-import { createArrayIndexExpression, createArrayLiteral, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createObjectLiteral, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createPropertyAssignment, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
+import { createArrayIndexExpression, createArrayLiteral, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createEmptyStatement, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createObjectLiteral, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createPropertyAssignment, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { ArrayIndexExpression, ArrayLiteralExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, Node, ObjectLiteralExpression, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, PropertyAssignment, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
@@ -413,7 +413,7 @@ export class ZrParserV2 {
         // Handle our primitive types
         const primitive = this.tryParseLiteral();
         if (primitive.isSome()) {
-            return primitive.unwrap();
+            return this.mutateExpression(primitive.unwrap(), 0);
         }
 
         // Handle @(...) inline expression for command calling
@@ -481,11 +481,11 @@ export class ZrParserV2 {
         const token = this.getToken(ZrTokenKind.Operator);
         if (token) {
             const otherPrecedence = Grammar.OperatorPrecedence[token.value];
+            const opToken = this.consumeToken(ZrTokenKind.Operator);
+
             assert(otherPrecedence !== undefined, `No precedence for '${token.value}'`);
             if (otherPrecedence > precedence) {
-                const opToken = this.consumeToken(ZrTokenKind.Operator);
-                
-                return createBinaryExpression(left, opToken.value, this.mutateExpression(this.parseNextExpression()))
+                return createBinaryExpression(left, opToken.value, this.mutateExpression(this.parseNextExpression(), otherPrecedence));
             }
         }
 
@@ -500,6 +500,10 @@ export class ZrParserV2 {
         const declaration = this.tryParseDeclarationStatement();
         if (declaration !== undefined) {
             return declaration;
+        }
+
+        if (this.isToken(ZrTokenKind.EndOfStatement, "\n")) {
+            return createEmptyStatement();
         }
 
         return createExpressionStatement(this.mutateExpression(this.parseNextExpression()));
@@ -529,6 +533,11 @@ export class ZrParserV2 {
 
         // While we have tokens in the lexer, we want to fetch them
         while (this.lexer.hasNext()) {
+
+            if (this.isToken(ZrTokenKind.EndOfStatement, "\n")) {
+                this.consumeToken();
+            }
+
             // We're wanting to fetch statements here, the source file is composed of statements
             const statement = this.mutateStatement(this.parseNextStatement());
             source.push(statement);

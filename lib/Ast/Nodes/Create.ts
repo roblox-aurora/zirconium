@@ -74,6 +74,14 @@ export function createReturnStatement(expression: Expression) {
 	return node;
 }
 
+export function createEmptyExpression() {
+	return createNode(ZrNodeKind.EmptyExpression);
+}
+
+export function createEmptyStatement() {
+	return createNode(ZrNodeKind.EmptyStatement);
+}
+
 export function createArrayLiteral(values: ArrayLiteralExpression["values"]) {
 	const node = createNode(ZrNodeKind.ArrayLiteralExpression);
 	node.values = values;
