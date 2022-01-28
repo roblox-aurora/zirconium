@@ -3,15 +3,35 @@ QuotedString ::= [^"]*
 
 /* Literals */
 StringLiteral ::= '"' QuotedString '"' | "'" [^']* "'"
-NumberLiteral ::= [0-9].?[0-9]?+
+NumberLiteral ::= '-'? [0-9].?[0-9]?+
 ArrayLiteral ::= '[' ( Expression | Expression (',' Expression)* ) ']'
 ObjectLiteral ::= '{' ( ObjectProperty | ObjectProperty ( ',' ObjectProperty )* )? '}'
 
 /* Objects */
 ObjectProperty ::= (Identifier | StringLiteral) ':' Expression
 
+/* Operators */
+UnaryOperator ::= '-' | '+' | '!'
+BinaryOperator ::= "*" | "+" | "/" | "-" | "!=" | "==" | "|" | '&' | "||" | "&&" | ">=" | "<=" 
+
+/* Statements */
+ExpressionStatement ::= Expression | '(' Expression ')'
+Statement ::= ExpressionStatement | FunctionDeclaration | VariableDeclaration | EnumDeclaration
+SourceBlock  ::= (Statement ';'*)*
+Block = '{' SourceBlock '}'
+
 /* Expressions */
-Expression ::= Identifier | StringLiteral | InterpolatedStringExpression | NumberLiteral | ArrayLiteral | ObjectLiteral
+Expression ::= Identifier
+            | StringLiteral
+            | InterpolatedStringExpression
+            | NumberLiteral
+            | ArrayLiteral
+            | ObjectLiteral
+            | BinaryExpression
+            | UnaryExpression
+            | FunctionExpression
+UnaryExpression ::= UnaryOperator Expression
+BinaryExpression ::= Expression BinaryOperator Expression
 InterpolatedStringExpression ::= '"' (QuotedString* ('$' Identifier)* QuotedString*)* '"'
 
 
@@ -20,3 +40,15 @@ SimpleCallArgument ::= '$(' Expression ')' | ( '$' Identifier ) | NumberLiteral 
 SimpleCallExpression ::= Identifier '!' | Identifier SimpleCallArgument ( ' ' SimpleCallArgument )*
 
 CallExpression ::= Identifier '(' (Expression | Expression (',' Expression)* ) ')'
+
+/* Enums */
+EnumItems ::= Identifier | Identifier (','  Identifier )*
+EnumDeclaration ::= 'enum' Identifier '{' EnumItems '}'
+
+/* Functions */
+FunctionParameters ::= Identifier | Identifier ( ',' Identifier )*
+FunctionDeclaration ::= 'function' Identifier '(' FunctionParameters? ')' Block
+FunctionExpression ::= 'function' '(' FunctionParameters ')' Block
+
+/* Variables */
+VariableDeclaration ::= ('export')? ('const' | 'let') Identifier '=' Expression
