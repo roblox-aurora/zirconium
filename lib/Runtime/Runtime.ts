@@ -11,7 +11,7 @@ import {
 	FunctionDeclaration,
 	IfStatement,
 	Node,
-	ObjectLiteral,
+	ObjectLiteralExpression,
 	PropertyAccessExpression,
 	SourceBlock,
 	VariableDeclaration,
@@ -188,7 +188,7 @@ export default class ZrRuntime {
 		return undefined;
 	}
 
-	private evaluateObjectNode(node: ObjectLiteral) {
+	private evaluateObjectNode(node: ObjectLiteralExpression) {
 		const object = new ZrObject();
 		for (const prop of node.values) {
 			const value = this.evaluateNode(prop.initializer);

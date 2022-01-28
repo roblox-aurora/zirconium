@@ -2,7 +2,7 @@ import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
 import { createArrayIndexExpression, createArrayLiteral, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createObjectLiteral, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createPropertyAssignment, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
-import { ArrayIndexExpression, ArrayLiteralExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, Node, ObjectLiteral, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, PropertyAssignment, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
+import { ArrayIndexExpression, ArrayLiteralExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, Node, ObjectLiteralExpression, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, PropertyAssignment, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenFlag, ZrTokenKind } from "Ast/Tokens/Tokens";
 
@@ -381,12 +381,12 @@ export class ZrParserV2 {
 		}
 	}
 
-	private parseObjectExpression(): ObjectLiteral {
+	private parseObjectExpression(): ObjectLiteralExpression {
 		const values = this.parseExpressionList("{", "}", () => this.parseObjectPropertyAssignment(), ",");
 		return createObjectLiteral(values);
 	}
 
-    private tryParseListLiteral(): Option<ArrayLiteralExpression | ObjectLiteral> {
+    private tryParseListLiteral(): Option<ArrayLiteralExpression | ObjectLiteralExpression> {
         if (this.isToken(ZrTokenKind.Special, "[")) {
             const list = this.parseExpressionList("[", "]", () => this.mutateExpression(this.parseNextExpression()));
             return Option.some(createArrayLiteral(list));

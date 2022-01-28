@@ -33,7 +33,7 @@ export interface NodeTypes {
 	[ZrNodeKind.Parameter]: ParameterDeclaration;
 	[ZrNodeKind.TypeReference]: TypeReference;
 	[ZrNodeKind.ForInStatement]: ForInStatement;
-	[ZrNodeKind.ObjectLiteralExpression]: ObjectLiteral;
+	[ZrNodeKind.ObjectLiteralExpression]: ObjectLiteralExpression;
 	[ZrNodeKind.PropertyAssignment]: PropertyAssignment;
 	[ZrNodeKind.UnaryExpression]: UnaryExpression;
 	[ZrNodeKind.UndefinedKeyword]: UndefinedKeyword;
@@ -209,7 +209,7 @@ export interface PropertyAssignment extends ObjectLiteralElement {
 	initializer: Expression;
 }
 
-export interface ObjectLiteral extends LiteralExpression, ValuesExpression {
+export interface ObjectLiteralExpression extends LiteralExpression, ValuesExpression {
 	kind: ZrNodeKind.ObjectLiteralExpression;
 	values: PropertyAssignment[];
 }

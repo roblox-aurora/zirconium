@@ -29,7 +29,7 @@ import {
 	ParameterDeclaration,
 	TypeReference,
 	ForInStatement,
-	ObjectLiteral,
+	ObjectLiteralExpression,
 	PropertyAssignment,
 	UnaryExpression,
 	CallExpression,
@@ -121,7 +121,7 @@ export function createPropertyAssignment(
 	return node;
 }
 
-export function createObjectLiteral(values: ObjectLiteral["values"]) {
+export function createObjectLiteral(values: ObjectLiteralExpression["values"]) {
 	const node = createNode(ZrNodeKind.ObjectLiteralExpression);
 	node.values = values;
 	node.children = values;

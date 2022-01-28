@@ -26,7 +26,7 @@ import {
 	PropertyAccessExpression,
 	ReturnStatement,
 	ParameterDeclaration,
-	ObjectLiteral,
+	ObjectLiteralExpression,
 	ExportKeyword,
 	UndefinedKeyword,
 	PropertyAssignment,
@@ -247,7 +247,7 @@ export function isIdentifier(node: Node): node is Identifier {
 	return node !== undefined && node.kind === ZrNodeKind.Identifier;
 }
 
-export function isObjectLiteralExpression(node: Node): node is ObjectLiteral {
+export function isObjectLiteralExpression(node: Node): node is ObjectLiteralExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ObjectLiteralExpression;
 }
 
