@@ -38,7 +38,8 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const source = `print( -10 )`;
+	const source = `print(-10)
+	-20-3`;
 
 	const tokenizer = new ZrLexer(new ZrTextStream(source));
 	const results = new Array<Token>();
