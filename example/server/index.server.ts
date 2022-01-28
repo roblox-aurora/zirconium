@@ -2,6 +2,7 @@ import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
 import { ZrScriptVersion } from "Ast/Parser";
+import { ZrParserV2 } from "Ast/ParserV2";
 import { Token } from "Ast/Tokens/Tokens";
 import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
@@ -33,6 +34,16 @@ globals.registerGlobal(
 	}),
 );
 
+
+const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(`(10 + (10 / +30)) - "hi there"`)));
+lex.parseAst().match((source) => {
+	print("AST", source);
+	prettyPrintNodes(source.children);
+}, (err) => {
+	const [source, errs] = err;
+	errs.forEach(e => warn(e.message));
+});
+
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	const playerContext = Zr.createPlayerContext(player);
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
@@ -41,39 +52,33 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	const source = `print(-10)
 	-20-3`;
 
-	const tokenizer = new ZrLexer(new ZrTextStream(source));
-	const results = new Array<Token>();
-	while (tokenizer.hasNext()) {
-		results.push(tokenizer.next()!);
-	}
-	print("tokens", results);
 
-	const sourceResult = playerContext.parseSource(source, ZrScriptVersion.Zr2022);
-	sourceResult.match(
-		(sourceFile) => {
-			prettyPrintNodes([sourceFile]);
+	// const sourceResult = playerContext.parseSource(source, ZrScriptVersion.Zr2022);
+	// sourceResult.match(
+	// 	(sourceFile) => {
+	// 		prettyPrintNodes([sourceFile]);
 
-			const sourceScript = playerContext.createScript(sourceFile);
-			// sourceScript._printScriptGlobals();
-			sourceScript.executeOrThrow();
-		},
-		(err) => {
-			const { message, errors } = err;
+	// 		const sourceScript = playerContext.createScript(sourceFile);
+	// 		// sourceScript._printScriptGlobals();
+	// 		sourceScript.executeOrThrow();
+	// 	},
+	// 	(err) => {
+	// 		const { message, errors } = err;
 
-			warn(
-				`${message} - ` +
-					errors
-						.map((e) => {
-							if (e.token) {
-								return `[${e.token.startPos}:${e.token.endPos}] ${e.message} '${e.token.value}'`;
-							} else if (e.node) {
-								return `<${e.node.kind}> ${e.message}`;
-							}
+	// 		warn(
+	// 			`${message} - ` +
+	// 				errors
+	// 					.map((e) => {
+	// 						if (e.token) {
+	// 							return `[${e.token.startPos}:${e.token.endPos}] ${e.message} '${e.token.value}'`;
+	// 						} else if (e.node) {
+	// 							return `<${e.node.kind}> ${e.message}`;
+	// 						}
 
-							return e.message;
-						})
-						.join(", "),
-			);
-		},
-	);
+	// 						return e.message;
+	// 					})
+	// 					.join(", "),
+	// 		);
+	// 	},
+	// );
 });

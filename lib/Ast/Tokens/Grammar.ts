@@ -1,6 +1,6 @@
 const Grammar = {
 	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!", "?", "%", "^", "~"],
-	UnaryOperators: ["!"],
+	UnaryOperators: ["!", "-", "+"],
 	EndOfStatement: [";", "\n"],
 	Punctuation: ["(", ")", ",", "{", "}", "[", "]", ".", ":", "\\", "@", "`"],
 	BooleanLiterals: ["true", "false"],
@@ -57,7 +57,27 @@ const Grammar = {
 		"/": 20,
 		"%": 20,
 	}),
+	SpecialTokenId: {
+		BodyBegin: "{",
+		BodyEnd: "}",
+		FunctionParameterBegin: "(",
+		FunctionParameterEnd: ")",
+	}
 } as const;
+
+export const enum OperatorTokenId {
+	UnaryMinus = "-",
+	UnaryPlus = "+",
+	UnaryNot = "!",
+}
+
+export const enum SpecialTokenId {
+	BodyBegin = "{",
+	BodyEnd = "}",
+	FunctionParametersBegin = "(",
+	FunctionParametersEnd = ")",
+	FunctionParametersSeparator = ","
+}
 
 export type OperatorTokens = typeof Grammar["Operators"][number];
 export type KeywordTokens = typeof Grammar["Keywords"][number];

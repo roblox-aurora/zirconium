@@ -99,9 +99,7 @@ export interface LiteralExpression extends Expression {
 	readonly _nominal_Literal: unique symbol;
 }
 
-export interface DeclarationStatement extends Statement {
-	readonly name?: Identifier | StringLiteral | NumberLiteral;
-}
+export interface DeclarationStatement extends Declaration, Statement {}
 
 type OP = "&&" | "|" | "=";
 
@@ -194,7 +192,7 @@ export interface EnumItemExpression extends Expression {
 	name: Identifier;
 }
 
-export interface EnumDeclarationStatement extends Statement {
+export interface EnumDeclarationStatement extends DeclarationStatement {
 	kind: ZrNodeKind.EnumDeclaration;
 	name: Identifier;
 	values: EnumItemExpression[];
@@ -222,7 +220,7 @@ export interface InvalidNode extends Node {
 	message: string;
 }
 
-export interface VariableDeclaration extends Declaration {
+export interface VariableDeclaration extends DeclarationStatement {
 	kind: ZrNodeKind.VariableDeclaration;
 	identifier: Identifier | PropertyAccessExpression | ArrayIndexExpression;
 	expression: AssignableExpression;
