@@ -38,6 +38,12 @@ let source = `
 uh.oh(- 30, true, 'Hello there', x);
 uh.oh $(30 - 20) $x true 'Hello there' x;
 (30 - 20)
+[1, 2, 3]
+{
+	a: 10,
+	b: 20,
+	"c": "hi there"
+}
 `;
 
 

@@ -1,8 +1,8 @@
 import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
-import { createArrayIndexExpression, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
+import { createArrayIndexExpression, createArrayLiteral, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createObjectLiteral, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createPropertyAssignment, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
-import { ArrayIndexExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, Node, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
+import { ArrayIndexExpression, ArrayLiteralExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, Node, ObjectLiteral, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, PropertyAssignment, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenFlag, ZrTokenKind } from "Ast/Tokens/Tokens";
 
@@ -35,6 +35,10 @@ export class ZrParserV2 {
 
     public constructor(private lexer: ZrLexer) {}
 
+    private getCurrentCallContext() {
+        return this.callContext[this.callContext.size() - 1];
+    }
+
     /**
      * Consumes the given token
      * @param kind Forces the consumed token kind, or errors if mismatched.
@@ -60,6 +64,16 @@ export class ZrParserV2 {
      */
     private isToken<K extends keyof TokenTypes>(kind: K, value?: string, token = this.lexer.peek()): token is TokenTypes[K] {
         return token !== undefined && isToken(token, kind) && (value === undefined || value === token.value);
+    }
+
+    /**
+     * Skips teh matching token if it exists
+     * @param kind 
+     */
+    private consumeIfToken<K extends keyof TokenTypes>(kind: K, value?: string) {
+        if (this.isToken<K>(kind, value)) {
+            return this.consumeToken(kind, value);
+        }
     }
 
     /**
@@ -310,6 +324,83 @@ export class ZrParserV2 {
     }
 
     /**
+     * Parses a list type expression (such as an array, or object)
+     */
+	private parseExpressionList<K extends Expression | NamedDeclaration = Expression>(
+		start: string,
+		stop: string,
+		nextItem: () => K,
+		separator = ",",
+		strict = true
+	): K[] {
+		const values = new Array<K>();
+		let index = 0;
+
+		this.consumeToken(ZrTokenKind.Special, start);
+
+	    const functionContext = this.getCurrentCallContext();
+
+		while (this.lexer.hasNext() && !this.isToken(ZrTokenKind.Special, stop)) {
+			if (this.isToken(ZrTokenKind.Special, stop)) {
+				break;
+			}
+
+			if (this.isToken(ZrTokenKind.EndOfStatement, "\n")) {
+                this.consumeToken(ZrTokenKind.EndOfStatement)
+				continue;
+			}
+
+			if (index > 0 && (this.isToken(ZrTokenKind.Special, separator) || (functionContext && functionContext.strict) || strict)) {
+				this.consumeToken(ZrTokenKind.Special, separator);
+			}
+
+			this.consumeIfToken(ZrTokenKind.EndOfStatement, "\n");
+
+			values.push(nextItem());
+
+			index++;
+		}
+
+		this.consumeIfToken(ZrTokenKind.EndOfStatement, "\n");
+		this.consumeToken(ZrTokenKind.Special, stop);
+
+		return values;
+	}
+
+	private parseObjectPropertyAssignment(): PropertyAssignment {
+		if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.String)) {
+			const id = this.consumeIfToken(ZrTokenKind.Identifier) ?? this.consumeToken(ZrTokenKind.String);
+
+			this.consumeToken(ZrTokenKind.Special, ":"); // Expects ':'
+
+			const expression = this.mutateExpression(this.parseNextExpression());
+			return createPropertyAssignment(createIdentifier(id.value), expression);
+		} else {
+			// this.throwParserError("Expected Identifier", ZrParserErrorCode.IdentifierExpected, this.lexer.peek());
+            throw `expected id`;
+		}
+	}
+
+	private parseObjectExpression(): ObjectLiteral {
+		const values = this.parseExpressionList("{", "}", () => this.parseObjectPropertyAssignment(), ",");
+		return createObjectLiteral(values);
+	}
+
+    private tryParseListLiteral(): Option<ArrayLiteralExpression | ObjectLiteral> {
+        if (this.isToken(ZrTokenKind.Special, "[")) {
+            const list = this.parseExpressionList("[", "]", () => this.mutateExpression(this.parseNextExpression()));
+            return Option.some(createArrayLiteral(list));
+        }
+
+        if (this.isToken(ZrTokenKind.Special, "{")) {
+            print("parseObjExpression");
+            return Option.some(this.parseObjectExpression());
+        }
+
+        return Option.none();
+    }
+
+    /**
      * Attempts to parse the next expression
      */
     private parseNextExpression(useSimpleCallSyntax = false): Expression {
@@ -331,6 +422,11 @@ export class ZrParserV2 {
 
         if (this.isToken(ZrTokenKind.Special, "(")) {
             return this.mutateExpression(this.parseParenthesizedExpression());
+        }
+
+        const literalList = this.tryParseListLiteral();
+        if (literalList.isSome()) {
+            return literalList.unwrap();
         }
 
         if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.PropertyAccess)) {
@@ -386,15 +482,7 @@ export class ZrParserV2 {
             return declaration;
         }
 
-        let expression: Expression;
-
-        // if (this.isToken(ZrTokenKind.Special, "(")) {
-        //     expression = this.mutateExpression(this.parseParenthesizedExpression());
-        // } else {
-            expression = this.mutateExpression(this.parseNextExpression());
-        //}
-
-        return createExpressionStatement(expression);
+        return createExpressionStatement(this.mutateExpression(this.parseNextExpression()));
     }
 
 	private skipAllWhitespace() {
