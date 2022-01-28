@@ -1,3 +1,4 @@
+import { $print } from "rbxts-transform-debug";
 import { ZrValue } from "./Locals";
 
 export abstract class ZrUserdata<T> {
@@ -91,7 +92,7 @@ export class ZrInstanceUserdata<T extends Instance = Instance> extends ZrUserdat
 	public value() {
 		if (typeIs(this.instance, "function")) {
 			this.instance = this.instance();
-			print("lazyGet", this.instance);
+			$print("lazyGet", this.instance);
 		}
 
 		return this.instance;

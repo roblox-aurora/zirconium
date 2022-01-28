@@ -1,7 +1,9 @@
 import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
-import { prettyPrintNodes } from "Ast";
+import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
 import { ZrScriptVersion } from "Ast/Parser";
+import { Token } from "Ast/Tokens/Tokens";
+import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { ZrValue } from "./Data/Locals";
@@ -14,10 +16,11 @@ const globals = Zr.createContext();
 globals.registerGlobal("print", ZrPrint);
 globals.registerGlobal("range", ZrRange);
 globals.registerGlobal("debug", ZrDebug);
+globals.registerGlobal("TestEnum", ZrEnum.fromArray("TestEnum", ["A", "B"]));
 globals.registerGlobal(
-	"value",
-	new ZrLuauFunction((context, value) => {
-		return value;
+	"values",
+	new ZrLuauFunction((context, ...args) => {
+		return `[ ${args.map(tostring).join(", ")} ]`;
 	}),
 );
 globals.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
@@ -35,25 +38,27 @@ game.GetService("Players").PlayerAdded.Connect((player) => {
 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
 	playerContext.importGlobals(globals);
 
-	const sourceResult = playerContext.parseSource(
-		`#test.example "Hello, World!" // this is a comment!
-		#test.example
-		#test
-		#print2
-		#test.example 0
-		test!`,
-		ZrScriptVersion.Zr2021,
-	);
+	const source = `print( -10 )`;
+
+	const tokenizer = new ZrLexer(new ZrTextStream(source));
+	const results = new Array<Token>();
+	while (tokenizer.hasNext()) {
+		results.push(tokenizer.next()!);
+	}
+	print("tokens", results);
+
+	const sourceResult = playerContext.parseSource(source, ZrScriptVersion.Zr2022);
 	sourceResult.match(
 		(sourceFile) => {
 			prettyPrintNodes([sourceFile]);
 
 			const sourceScript = playerContext.createScript(sourceFile);
-			sourceScript._printScriptGlobals();
+			// sourceScript._printScriptGlobals();
 			sourceScript.executeOrThrow();
 		},
 		(err) => {
 			const { message, errors } = err;
+
 			warn(
 				`${message} - ` +
 					errors

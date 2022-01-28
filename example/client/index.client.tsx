@@ -8,9 +8,13 @@ x = 10
 $y = 20
 test.print2!
 test.print
-test.2
-print2
-# \`~@^%? 😎
+enum Test {
+    ItemA,
+    ItemB,
+    ItemC,
+}
+
+function Test() {}
 `;
 const res = new ZrRichTextHighlighter(source);
 

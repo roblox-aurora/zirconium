@@ -18,6 +18,7 @@ import {
 	OptionExpression,
 	FunctionExpression,
 	Identifier,
+	EnumDeclarationStatement,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
@@ -31,6 +32,9 @@ import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
 import ZrRange from "Data/Range";
+import { ZrEnum } from "Data/Enum";
+import { ZrEnumItem } from "Data/EnumItem";
+import { $print } from "rbxts-transform-debug";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -48,6 +52,9 @@ export enum ZrRuntimeErrorCode {
 	InvalidIterator,
 	ReassignConstant,
 	InvalidRangeError,
+	InvalidEnumItem,
+	OutOfRange,
+	UnassignedVariable,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -83,7 +90,7 @@ export default class ZrRuntime {
 		this.context = new ZrContext(this);
 	}
 
-	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node) {
+	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node): never {
 		const err = identity<ZrRuntimeError>({
 			message,
 			code,
@@ -194,6 +201,19 @@ export default class ZrRuntime {
 	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
 		const declaration = new ZrUserFunction(node);
 		this.locals.setLocal(node.name.name, declaration, true);
+		return declaration;
+	}
+
+	private evaluateEnumDeclaration(node: EnumDeclarationStatement) {
+		const name = node.name.name;
+
+		const declaration = ZrEnum.fromArray(
+			node.name.name,
+			node.values.map((v) => v.name.name),
+		);
+
+		$print(declaration.getItems(), "declaration");
+		this.locals.setLocal(name, declaration, true);
 		return declaration;
 	}
 
@@ -314,19 +334,33 @@ export default class ZrRuntime {
 	private evaluateArrayIndexExpression(node: ArrayIndexExpression) {
 		const { expression, index } = node;
 		const value = this.evaluateNode(expression);
-		this.runtimeAssertNotUndefined(
-			value,
-			"Attempted to index nil value",
-			ZrRuntimeErrorCode.IndexingUndefined,
-			expression,
-		);
-		this.runtimeAssert(
-			isArray<ZrValue>(value),
-			"Attempt to index " + getTypeName(value) + " with a number",
-			ZrRuntimeErrorCode.InvalidArrayIndex,
-			index,
-		);
-		return value[index.value];
+
+		if (value instanceof ZrEnum) {
+			const enumValue = value.getItemByIndex(index.value);
+			if (!enumValue) {
+				this.runtimeAssertNotUndefined(
+					value,
+					"Index out of range for enum " + index.value,
+					ZrRuntimeErrorCode.OutOfRange,
+					expression,
+				);
+			}
+			return enumValue;
+		} else {
+			this.runtimeAssertNotUndefined(
+				value,
+				"Attempted to index nil value",
+				ZrRuntimeErrorCode.IndexingUndefined,
+				expression,
+			);
+			this.runtimeAssert(
+				isArray<ZrValue>(value),
+				"Attempt to index " + getTypeName(value) + " with a number",
+				ZrRuntimeErrorCode.InvalidArrayIndex,
+				index,
+			);
+			return value[index.value];
+		}
 	}
 
 	private setUserdata(
@@ -383,6 +417,23 @@ export default class ZrRuntime {
 			return value.get(id);
 		} else if (value instanceof ZrUserdata) {
 			return this.getUserdata(expression, value, id);
+		} else if (value instanceof ZrEnum) {
+			return (
+				value.getItemByName(id) ??
+				this.runtimeError(`${id} is not a valid enum item`, ZrRuntimeErrorCode.InvalidEnumItem, name)
+			);
+		} else if (value instanceof ZrEnumItem) {
+			if (id === "name") {
+				return value.getName();
+			} else if (id === "value") {
+				return value.getValue();
+			} else {
+				this.runtimeError(
+					`Attempted to index EnumItem with ${id}`,
+					ZrRuntimeErrorCode.InvalidPropertyAccess,
+					name,
+				);
+			}
 		} else if (isMap<ZrValue>(value)) {
 			return value.get(id);
 		} else if (value instanceof ZrRange) {
@@ -430,11 +481,11 @@ export default class ZrRuntime {
 				const param = params[i];
 				const value = callArgs[i];
 				if (value !== undefined) {
-					const valueOf = this.evaluateNode(value);
-					this.runtimeAssertNotUndefined(valueOf, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
+					const nodeValue = this.evaluateNode(value);
+					this.runtimeAssertNotUndefined(nodeValue, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
 
-					if (valueOf !== ZrUndefined) {
-						this.locals.setLocal(param.name.name, valueOf);
+					if (nodeValue !== ZrUndefined) {
+						this.locals.setLocal(param.name.name, nodeValue);
 					}
 				}
 			}
@@ -546,6 +597,27 @@ export default class ZrRuntime {
 			} else {
 				this.runtimeError("Range operator expects two numbers", ZrRuntimeErrorCode.InvalidRangeError, node);
 			}
+		} else if (operator === "=" && types.isIdentifier(left)) {
+			const assignment = this.getLocals().setUpValueOrLocalIfDefined(left.name, this.evaluateNode(right));
+			if (assignment.isErr()) {
+				const err = assignment.unwrapErr();
+				switch (err) {
+					case StackValueAssignmentError.ReassignConstant:
+						this.runtimeError(
+							`Cannot reassign constant '${left.name}'`,
+							ZrRuntimeErrorCode.ReassignConstant,
+							left,
+						);
+					case StackValueAssignmentError.VariableNotDeclared:
+						this.runtimeError(
+							`Unable to assign to undeclared '${left.name}' - use 'let' or 'const'`,
+							ZrRuntimeErrorCode.UnassignedVariable,
+							left,
+						);
+				}
+			} else {
+				return assignment.unwrap();
+			}
 		} else {
 			this.runtimeError(`Unhandled expression '${operator}'`, ZrRuntimeErrorCode.EvaluationError);
 		}
@@ -569,6 +641,8 @@ export default class ZrRuntime {
 			return this.evaluatePropertyAccessExpression(node) ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			return this.evaluateFunctionDeclaration(node);
+		} else if (isNode(node, ZrNodeKind.EnumDeclaration)) {
+			return this.evaluateEnumDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ParenthesizedExpression)) {
 			return this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.BinaryExpression)) {

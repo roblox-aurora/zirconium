@@ -1,6 +1,8 @@
 import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
+import { ZrEnum } from "./Enum";
+import { ZrEnumItem } from "./EnumItem";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import ZrRange from "./Range";
@@ -17,6 +19,8 @@ export type ZrValue =
 	| Map<string, ZrValue>
 	| ZrUserFunction
 	| ZrLuauFunction
+	| ZrEnum
+	| ZrEnumItem
 	| ZrUserdata<defined> | ZrRange;
 
 export const enum StackValueType {
@@ -79,7 +83,7 @@ export default class ZrLocalStack {
 	 * Will set the value at the stack it was first declared
 	 * @internal
 	 */
-	public setUpValueOrLocal(name: string, value: ZrValue | undefined, constant?: boolean): Result<UnitType, StackValueAssignmentError> {
+	public setUpValueOrLocal(name: string, value: ZrValue | ZrUndefined | undefined, constant?: boolean): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const stackValue = stack.get(name);
 		if (stackValue) {
@@ -89,20 +93,24 @@ export default class ZrLocalStack {
 			}
 		}
 
-		if (value !== undefined) {
+		if (value !== undefined && value  !== ZrUndefined) {
 			stack.set(name, [value, constant]);
+			return Result.ok(value);
 		} else {
 			stack.delete(name);
+			return Result.ok(ZrUndefined);
 		}
-
-		return Result.ok(unit());
 	}
 
-	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | undefined): Result<UnitType, StackValueAssignmentError> {
+	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | ZrUndefined | undefined): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const existingValue = stack.get(name);
 		if (existingValue !== undefined) {
-			return this.setUpValueOrLocal(name, value);
+			if (value === ZrUndefined || value === undefined) {
+				return this.setUpValueOrLocal(name, ZrUndefined);
+			} else {
+				return this.setUpValueOrLocal(name, value);
+			}
 		} else {
 			return Result.err(StackValueAssignmentError.VariableNotDeclared);
 		}

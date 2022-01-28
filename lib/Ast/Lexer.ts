@@ -1,5 +1,5 @@
 import ZrTextStream from "./TextStream";
-import Grammar, { BooleanLiteralTokens, EndOfStatementTokens, OperatorTokens, PunctuationTokens } from "./Tokens/Grammar";
+import Grammar, { BooleanLiteralTokens, EndOfStatementTokens, Keywords, OperatorTokens, PunctuationTokens } from "./Tokens/Grammar";
 import {
 	BooleanToken,
 	CommentToken,
@@ -58,7 +58,7 @@ export default class ZrLexer {
 	private static readonly BOOLEAN = Grammar.BooleanLiterals;
 
 	public static IsPrimitiveValueToken = (token: Token): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
-		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean;
+		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean || (token.kind === ZrTokenKind.Keyword && token.value === Keywords.UNDEFINED);
 	};
 
 	private options: ZrLexerOptions;
@@ -95,10 +95,12 @@ export default class ZrLexer {
 	/**
 	 * Reads while the specified condition is met, or the end of stream
 	 */
-	private readWhile(condition: (str: string, nextStr: string) => boolean) {
+	private readWhile(condition: (str: string, nextStr: string, index: number) => boolean) {
 		let src = "";
-		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1)) === true) {
+		let idx = 0;
+		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1), idx) === true) {
 			src += this.stream.next();
+			idx ++;
 		}
 		return src;
 	}
@@ -239,6 +241,16 @@ export default class ZrLexer {
 			});
 		}
 
+		if (previous && this.prevIs(ZrTokenKind.Keyword, 1) && previous.value === "enum") {
+			return identity<IdentifierToken>({
+				kind: ZrTokenKind.Identifier,
+				startPos,
+				endPos,
+				flags: ZrTokenFlag.EnumName,
+				value: literal,
+			});
+		}
+
 		if (previous && this.prevIs(ZrTokenKind.Keyword, 2) && (previous.value === "let" || previous.value === "const")) {
 
 			if (this.options.SyntaxHighlighterLexer && this.options.ExperimentalSyntaxHighlighter) {
@@ -285,7 +297,13 @@ export default class ZrLexer {
 		const startPos = this.stream.getPtr();
 
 		let isDecimal = false;
-		const number = this.readWhile((c, c1) => {
+		let isNegative = false;
+		const number = this.readWhile((c, c1, idx) => {
+			if (idx === 0 && c === "-" && this.isNumeric(c1)) {
+				isNegative = true;
+				return true;
+			}
+
 			if (c === "." && this.isNumeric(c1)) {
 				if (isDecimal) {
 					return false;
@@ -364,6 +382,7 @@ export default class ZrLexer {
 
 		// Get the next token
 		const char = this.stream.peek();
+		const nextChar = this.stream.peek(1);
 		const code = char.byte()[0];
 		if (code > 126) {
 			this.stream.next();
@@ -419,7 +438,7 @@ export default class ZrLexer {
 			}
 		}
 
-		if (this.isNumeric(char)) {
+		if ((char === "-" && this.isNumeric(nextChar)) || this.isNumeric(char)) {
 			return this.readNumber();
 		}
 
@@ -565,6 +584,10 @@ export default class ZrLexer {
 	public prevIs(kind: ZrTokenKind, offset?: number) {
 		const prev = this.prev(offset);
 		return prev?.kind === kind;
+	}
+
+	public current() {
+		return this.currentToken;
 	}
 
 	public next() {

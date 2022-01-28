@@ -75,6 +75,7 @@ export default class ZrScriptContext {
 			const nodes = parser.parseOrThrow();
 			return Result.ok(nodes);
 		} catch (error) {
+			warn(error);
 			return Result.err(
 				identity<ZrCreateScriptError>({
 					result: ZrScriptCreateResult.ParserError,

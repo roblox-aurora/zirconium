@@ -1,6 +1,6 @@
 {
   "name": "@rbxts/zirconium",
-  "version": "1.0.4",
+  "version": "1.1.0-beta.4",
   "description": "",
   "main": "out/init.lua",
   "scripts": {
@@ -19,23 +19,27 @@
   },
   "types": "out/index.d.ts",
   "devDependencies": {
-    "@rbxts/compiler-types": "^1.1.1-types.3",
-    "@rbxts/roact": "^1.3.0-ts.2",
-    "@rbxts/types": "^1.0.476",
-    "@typescript-eslint/eslint-plugin": "^3.5.0",
-    "@typescript-eslint/parser": "^3.5.0",
+    "@rbxts/compiler-types": "1.2.7-types.1",
+    "@rbxts/roact": "1.4.0-ts.2",
+    "@rbxts/types": "^1.0.558",
+    "@typescript-eslint/eslint-plugin": "^5.8.1",
+    "@typescript-eslint/parser": "^5.8.1",
     "concurrently": "^5.3.0",
     "cross-env": "^7.0.3",
-    "eslint": "^7.3.1",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-plugin-prettier": "^3.1.4",
-    "eslint-plugin-roblox-ts": "0.0.16",
-    "prettier": "^2.0.5",
-    "rbxts-transform-debug": "^0.4.0",
-    "roblox-ts": "^1.1.1",
-    "typescript": "^4.1.2"
+    "eslint": "^8.5.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-roblox-ts": "0.0.32",
+    "prettier": "^2.5.1",
+    "rbxts-transform-debug": "1.0.0-ts4.4",
+    "roblox-ts": "^1.2.7",
+    "typescript": "^4.4.4"
   },
   "dependencies": {
     "@rbxts/rust-classes": "^0.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roblox-aurora/zirconium.git"
   }
 }

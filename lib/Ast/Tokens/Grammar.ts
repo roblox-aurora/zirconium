@@ -9,6 +9,8 @@ const Grammar = {
 		"else",
 		"for",
 		"in",
+		"enum",
+		"declare",
 		"function",
 		"let",
 		"export",
@@ -58,9 +60,20 @@ const Grammar = {
 } as const;
 
 export type OperatorTokens = typeof Grammar["Operators"][number];
+export type KeywordTokens = typeof Grammar["Keywords"][number];
 export type EndOfStatementTokens = typeof Grammar["EndOfStatement"][number];
 export type PunctuationTokens = typeof Grammar["Punctuation"][number];
 export type BooleanLiteralTokens = typeof Grammar["BooleanLiterals"][number];
 export type UnaryOperatorsTokens = typeof Grammar["UnaryOperators"][number];
 
+export type KeywordMap<K extends ReadonlyArray<string>> = { readonly [P in Uppercase<K[number]>]: Lowercase<P> };
+function makeKeywordMap<K extends ReadonlyArray<string>>(value: K) {
+	const items: Record<string, string> = {};
+	for (const item of value) {
+		items[item.upper()] = item;
+	}
+	return (items as unknown) as KeywordMap<K>;
+}
+
+export const Keywords = makeKeywordMap(Grammar.Keywords);
 export default Grammar;
