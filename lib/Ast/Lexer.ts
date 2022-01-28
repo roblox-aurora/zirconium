@@ -95,10 +95,12 @@ export default class ZrLexer {
 	/**
 	 * Reads while the specified condition is met, or the end of stream
 	 */
-	private readWhile(condition: (str: string, nextStr: string) => boolean) {
+	private readWhile(condition: (str: string, nextStr: string, index: number) => boolean) {
 		let src = "";
-		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1)) === true) {
+		let idx = 0;
+		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1), idx) === true) {
 			src += this.stream.next();
+			idx ++;
 		}
 		return src;
 	}
@@ -295,7 +297,13 @@ export default class ZrLexer {
 		const startPos = this.stream.getPtr();
 
 		let isDecimal = false;
-		const number = this.readWhile((c, c1) => {
+		let isNegative = false;
+		const number = this.readWhile((c, c1, idx) => {
+			if (idx === 0 && c === "-" && this.isNumeric(c1)) {
+				isNegative = true;
+				return true;
+			}
+
 			if (c === "." && this.isNumeric(c1)) {
 				if (isDecimal) {
 					return false;
@@ -374,6 +382,7 @@ export default class ZrLexer {
 
 		// Get the next token
 		const char = this.stream.peek();
+		const nextChar = this.stream.peek(1);
 		const code = char.byte()[0];
 		if (code > 126) {
 			this.stream.next();
@@ -429,7 +438,7 @@ export default class ZrLexer {
 			}
 		}
 
-		if (this.isNumeric(char)) {
+		if ((char === "-" && this.isNumeric(nextChar)) || this.isNumeric(char)) {
 			return this.readNumber();
 		}
 

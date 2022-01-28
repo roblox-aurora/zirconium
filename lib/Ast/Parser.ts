@@ -225,7 +225,7 @@ export default class ZrParser {
 	}
 
 	private _throwParserError(message: string): never {
-		throw `[ZParser] Parsing Error: ${message}`;
+		throw `[ZParser] Parsing Error: ${message} \n` + debug.traceback("", 2);
 	}
 
 	/**
@@ -266,7 +266,7 @@ export default class ZrParser {
 		} else {
 			const node = this.lexer.peek();
 			this.throwParserError(
-				message ?? "Expected '" + value + "' got " + this.tokenToString(node),
+				message ?? `ZrParser.skip("${kind}", ${value ? `'${value}'` : 'undefined'}): Expected '` + value + "' got " + this.tokenToString(node),
 				ZrParserErrorCode.Unexpected,
 				node,
 			);
@@ -588,7 +588,7 @@ export default class ZrParser {
 		while (
 			this.lexer.hasNext() &&
 			(!this.isNextEndOfStatementOrNewline() || isStrictFunctionCall) &&
-			!this.isOperatorToken() &&
+			// !this.isOperatorToken() &&
 			!this.isEndBracketOrBlockToken()
 		) {
 			if (isStrictFunctionCall && this.is(ZrTokenKind.Special, ")")) {
@@ -912,7 +912,7 @@ export default class ZrParser {
 			isToken(token, ZrTokenKind.Operator) &&
 			Grammar.UnaryOperators.includes(token.value as UnaryOperatorsTokens)
 		) {
-			return createUnaryExpression(token.value, this.parseNextStatement());
+			return createUnaryExpression(token.value, this.parseExpression());
 		}
 
 		// Handle parenthesized expression
@@ -924,7 +924,7 @@ export default class ZrParser {
 
 		if (isToken(token, ZrTokenKind.Special) || isToken(token, ZrTokenKind.Operator)) {
 			this.throwParserError(
-				"Unexpected " + token.kind + " '" + token.value + "'",
+				`ZrParser.parseExpression(${token.kind}, ${treatIdentifiersAsStrings}) - Unexpected Token "${token.kind}" with value "${token.value}"`,
 				ZrParserErrorCode.Unexpected,
 				token,
 			);
