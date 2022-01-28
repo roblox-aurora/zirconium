@@ -1,10 +1,10 @@
 import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
-import { createBinaryExpression, createBlock, createBooleanNode, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createParameter, createParenthesizedExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
+import { createArrayIndexExpression, createBinaryExpression, createBlock, createBooleanNode, createCallExpression, createExpressionStatement, createFunctionDeclaration, createIdentifier, createKeywordTypeNode, createNumberNode, createParameter, createParenthesizedExpression, createPropertyAccessExpression, createSimpleCallExpression, createSourceFile, createStringNode, createUnaryExpression } from "Ast/Nodes/Create";
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
-import { DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, LiteralExpression, Node, ParameterDeclaration, ParenthesizedExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
+import { ArrayIndexExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, Node, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
-import { isToken, KeywordToken, Token, TokenTypes, ZrTokenKind } from "Ast/Tokens/Tokens";
+import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenKind } from "Ast/Tokens/Tokens";
 
 export interface ZrParserError {
 	message: string;
@@ -23,9 +23,15 @@ export interface ZrParserFunctionContext {
     name: string;
 }
 
+export interface ZrFunctionCallContext {
+    strict: boolean;
+}
+
 export class ZrParserV2 {
     private errors = new Array<ZrParserError>();
+    private callContext = new Array<ZrFunctionCallContext>();
     private functionContext = new Array<ZrParserFunctionContext>();
+    private functionCallScope = 0;
 
     public constructor(private lexer: ZrLexer) {}
 
@@ -82,6 +88,14 @@ export class ZrParserV2 {
      */
     private isKeywordToken(keyword: string, token = this.lexer.peek()): token is KeywordToken {
         return this.isToken(ZrTokenKind.Keyword, undefined, token) && token.value === keyword;
+    }
+
+    private isFunctionCallEndToken() {
+        return this.isToken(ZrTokenKind.Special, SpecialTokenId.FunctionParametersEnd);
+    }
+
+    private isEndOfStatement() {
+        return this.isToken(ZrTokenKind.EndOfStatement);
     }
 
     /**
@@ -213,10 +227,92 @@ export class ZrParserV2 {
         return innerExpr;
     }
 
+    private parseId(token: IdentifierToken | PropertyAccessToken) {
+        if (isToken(token, ZrTokenKind.PropertyAccess)) {
+            let id: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
+            for (const name of token.properties) {
+                if (name.match("^%d+$")[0]) {
+                    id = createArrayIndexExpression(id, createNumberNode(tonumber(name)!));
+                } else {
+                    id = createPropertyAccessExpression(id, createIdentifier(name));
+                }
+            }
+            return id;
+        } else {
+            return createIdentifier(token.value);
+        }
+    }
+
+    private parseCallExpression(token: IdentifierToken | PropertyAccessToken, isStrictFunctionCall = false) {
+        this.functionCallScope += 1;
+        const startPos = token.startPos;
+        let endPos = token.startPos;
+
+        const callee = this.parseId(token);
+
+        const args = new Array<Expression>();
+
+        if (this.isToken(ZrTokenKind.Special, SpecialTokenId.FunctionParametersBegin)) {
+            this.consumeToken(ZrTokenKind.Special);
+            isStrictFunctionCall = true;
+            this.callContext.push({ strict: true });
+        } else {
+            this.callContext.push({ strict: false });
+        }
+
+        let argumentIndex = 0;
+        while (this.lexer.hasNext() && (this.isEndOfStatement() || isStrictFunctionCall) && !this.isFunctionCallEndToken()) {
+            if (isStrictFunctionCall && this.isToken(ZrTokenKind.Special, SpecialTokenId.FunctionParametersEnd)) {
+				break;
+			}
+
+            let arg: Expression;
+			// Handle expression mutation only if strict
+			if (isStrictFunctionCall) {
+				if (argumentIndex > 0) {
+					this.consumeToken(ZrTokenKind.Special, ",");
+				}
+
+                // If there's any new lines, skip them since they don't matter.
+                if (this.isToken(ZrTokenKind.EndOfStatement, "\n")) {
+                    this.consumeToken(ZrTokenKind.EndOfStatement);
+                }
+
+				arg = this.mutateExpression(this.parseNextExpression());
+			} else {
+				arg = this.mutateExpression(this.parseNextExpression());
+			}
+
+            args.push(arg);
+
+            argumentIndex++;
+            endPos = this.lexer.getStream().getPtr() - 1;
+        }
+
+        if (isStrictFunctionCall) {
+			endPos = this.consumeToken(ZrTokenKind.Special, SpecialTokenId.FunctionParametersEnd).endPos - 1;
+		}
+
+        this.callContext.pop();
+
+        let result: CallExpression | SimpleCallExpression;
+        if (isStrictFunctionCall) {
+            result = createCallExpression(callee, args, []);
+        } else {
+            result = createSimpleCallExpression(callee, args);
+        }
+
+        this.functionCallScope -= 1;
+		result.startPos = startPos;
+		result.endPos = endPos;
+		result.rawText = this.lexer.getStreamSub(startPos, endPos);
+        return result;
+    }
+
     /**
      * Attempts to parse the next expression
      */
-    private parseNextExpression(): Expression {
+    private parseNextExpression(treatIdentifiersAsStrings = false): Expression {
 
         if (this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryMinus) || this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryPlus)) {
             const unaryOp = this.consumeToken(ZrTokenKind.Operator);
@@ -231,6 +327,13 @@ export class ZrParserV2 {
 
         if (this.isToken(ZrTokenKind.Special, "(")) {
             return this.mutateExpression(this.parseParenthesizedExpression());
+        }
+
+        if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.PropertyAccess)) {
+            const id = this.consumeToken() as IdentifierToken | PropertyAccessToken;
+            if (this.isToken(ZrTokenKind.Special, "(")) {
+                return this.parseCallExpression(id, false);
+            }
         }
         
 

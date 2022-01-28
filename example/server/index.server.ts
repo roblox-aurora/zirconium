@@ -1,7 +1,7 @@
 import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
-import { ZrScriptVersion } from "Ast/Parser";
+import ZrParser, { ZrScriptVersion } from "Ast/Parser";
 import { ZrParserV2 } from "Ast/ParserV2";
 import { Token } from "Ast/Tokens/Tokens";
 import { ZrEnum } from "Data/Enum";
@@ -34,8 +34,10 @@ globals.registerGlobal(
 	}),
 );
 
+let source = `uh.oh( ((10 + (10 / +30)) - "hi there") )`;
 
-const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(`(10 + (10 / +30)) - "hi there"`)));
+
+const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)));
 lex.parseAst().match((source) => {
 	print("AST", source);
 	prettyPrintNodes(source.children);
@@ -43,6 +45,12 @@ lex.parseAst().match((source) => {
 	const [source, errs] = err;
 	errs.forEach(e => warn(e.message));
 });
+
+print("---");
+
+const oldLex = new ZrParser(new ZrLexer(new ZrTextStream(source)));
+const nodes = oldLex.parse()
+prettyPrintNodes(nodes.children);
 
 game.GetService("Players").PlayerAdded.Connect((player) => {
 	const playerContext = Zr.createPlayerContext(player);
