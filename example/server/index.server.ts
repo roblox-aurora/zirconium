@@ -34,7 +34,11 @@ globals.registerGlobal(
 	}),
 );
 
-let source = `uh.oh( ((10 + (10 / +30)) - "hi there") )`;
+let source = `
+uh.oh(- 30, true, 'Hello there', x);
+uh.oh $(30 - 20) $x true 'Hello there' x;
+(30 - 20)
+`;
 
 
 const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)));

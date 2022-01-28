@@ -4,7 +4,7 @@ import { createArrayIndexExpression, createBinaryExpression, createBlock, create
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { ArrayIndexExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, Node, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
-import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenKind } from "Ast/Tokens/Tokens";
+import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenFlag, ZrTokenKind } from "Ast/Tokens/Tokens";
 
 export interface ZrParserError {
 	message: string;
@@ -261,7 +261,7 @@ export class ZrParserV2 {
         }
 
         let argumentIndex = 0;
-        while (this.lexer.hasNext() && (this.isEndOfStatement() || isStrictFunctionCall) && !this.isFunctionCallEndToken()) {
+        while (this.lexer.hasNext() && (!this.isEndOfStatement() || isStrictFunctionCall) && !this.isFunctionCallEndToken()) {
             if (isStrictFunctionCall && this.isToken(ZrTokenKind.Special, SpecialTokenId.FunctionParametersEnd)) {
 				break;
 			}
@@ -280,7 +280,7 @@ export class ZrParserV2 {
 
 				arg = this.mutateExpression(this.parseNextExpression());
 			} else {
-				arg = this.mutateExpression(this.parseNextExpression());
+                arg = this.parseNextExpression(true);
 			}
 
             args.push(arg);
@@ -312,7 +312,7 @@ export class ZrParserV2 {
     /**
      * Attempts to parse the next expression
      */
-    private parseNextExpression(treatIdentifiersAsStrings = false): Expression {
+    private parseNextExpression(useSimpleCallSyntax = false): Expression {
 
         if (this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryMinus) || this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryPlus)) {
             const unaryOp = this.consumeToken(ZrTokenKind.Operator);
@@ -324,6 +324,10 @@ export class ZrParserV2 {
             return primitive.unwrap();
         }
 
+        if (useSimpleCallSyntax && this.isToken(ZrTokenKind.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)) {
+            this.consumeToken(); // consume @
+            return this.mutateExpression(this.parseParenthesizedExpression());
+        }
 
         if (this.isToken(ZrTokenKind.Special, "(")) {
             return this.mutateExpression(this.parseParenthesizedExpression());
@@ -331,13 +335,30 @@ export class ZrParserV2 {
 
         if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.PropertyAccess)) {
             const id = this.consumeToken() as IdentifierToken | PropertyAccessToken;
-            if (this.isToken(ZrTokenKind.Special, "(")) {
+            if (this.isToken(ZrTokenKind.Special, "(") && !useSimpleCallSyntax) {
+                return this.parseCallExpression(id, true);
+            }
+
+            // If postfixed by any literals, we'll treat it as a simple call
+            if (
+                (this.isToken(ZrTokenKind.String) 
+                || this.isToken(ZrTokenKind.Number)
+                || this.isToken(ZrTokenKind.Boolean)
+                || this.isToken(ZrTokenKind.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter))
+                && !useSimpleCallSyntax
+            ) {
                 return this.parseCallExpression(id, false);
             }
+
+            if (useSimpleCallSyntax && (id.flags & ZrTokenFlag.VariableDollarIdentifier) === 0) {
+                return createStringNode(id.value);
+            }
+
+            return this.parseId(id);
         }
         
 
-        throw `Unexpected '${this.getToken()?.value}' after expression: ` + debug.traceback("", 2);
+        throw `parseNextExpression(${useSimpleCallSyntax}) -> Unexpected '${this.getToken()?.value}' after expression: ` + debug.traceback("", 2);
     }
 
     private mutateExpression(left: Expression, precedence = 0): Expression {
@@ -376,6 +397,12 @@ export class ZrParserV2 {
         return createExpressionStatement(expression);
     }
 
+	private skipAllWhitespace() {
+		while (this.lexer.hasNext() && this.isEndOfStatement()) {
+			this.consumeToken();
+		}
+	}
+
     /**
      * Handles statement mutation (such as operators)
      * @param statement The statement
@@ -401,8 +428,11 @@ export class ZrParserV2 {
             if (this.isToken(ZrTokenKind.EndOfStatement, ";")) {
                 this.consumeToken(ZrTokenKind.EndOfStatement);
             }
+
+            this.skipAllWhitespace();
         }
 
+        
         return createSourceFile(source);
     }
 

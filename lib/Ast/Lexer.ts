@@ -514,6 +514,16 @@ export default class ZrLexer {
 
 		const endPos = this.stream.getPtr() - 1;
 
+		if (id === "") {
+			return identity<SpecialToken>({
+				kind: ZrTokenKind.Special,
+				value: "$",
+				startPos,
+				endPos,
+				flags,
+			})
+		}
+
 		if (properties.size() > 0) {
 			return identity<PropertyAccessToken>({
 				kind: ZrTokenKind.PropertyAccess,
