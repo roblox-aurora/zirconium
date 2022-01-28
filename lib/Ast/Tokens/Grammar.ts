@@ -78,6 +78,10 @@ export const enum SpecialTokenId {
 	FunctionParametersEnd = ")",
 	FunctionParametersSeparator = ",",
 	SimpleCallInlineExpressionDelimiter = "$",
+	ArrayBegin = "[",
+	ArrayEnd = "]",
+	ObjectBegin = "{",
+	ObjectEnd = "}"
 }
 
 export type OperatorTokens = typeof Grammar["Operators"][number];

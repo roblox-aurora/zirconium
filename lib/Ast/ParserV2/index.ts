@@ -4,7 +4,7 @@ import { createArrayIndexExpression, createArrayLiteral, createBinaryExpression,
 import { ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { ArrayIndexExpression, ArrayLiteralExpression, CallExpression, DeclarationStatement, EnumDeclarationStatement, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, Node, ObjectLiteralExpression, ParameterDeclaration, ParenthesizedExpression, PropertyAccessExpression, PropertyAssignment, SimpleCallExpression, SourceBlock, SourceFile, Statement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
-import { IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenFlag, ZrTokenKind } from "Ast/Tokens/Tokens";
+import { ArrayIndexToken, IdentifierToken, isToken, KeywordToken, PropertyAccessToken, StringToken, Token, TokenTypes, ZrTokenFlag, ZrTokenKind } from "Ast/Tokens/Tokens";
 
 export interface ZrParserError {
 	message: string;
@@ -241,7 +241,7 @@ export class ZrParserV2 {
         return innerExpr;
     }
 
-    private parseId(token: IdentifierToken | PropertyAccessToken) {
+    private parseId(token: IdentifierToken | PropertyAccessToken | ArrayIndexToken) {
         if (isToken(token, ZrTokenKind.PropertyAccess)) {
             let id: Identifier | PropertyAccessExpression | ArrayIndexExpression = createIdentifier(token.value);
             for (const name of token.properties) {
@@ -257,7 +257,7 @@ export class ZrParserV2 {
         }
     }
 
-    private parseCallExpression(token: IdentifierToken | PropertyAccessToken, isStrictFunctionCall = false) {
+    private parseCallExpression(token: IdentifierToken | PropertyAccessToken | ArrayIndexToken, isStrictFunctionCall = false) {
         this.functionCallScope += 1;
         const startPos = token.startPos;
         let endPos = token.startPos;
@@ -404,57 +404,77 @@ export class ZrParserV2 {
      * Attempts to parse the next expression
      */
     private parseNextExpression(useSimpleCallSyntax = false): Expression {
-
+        // Handle our unary expressions
         if (this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryMinus) || this.isToken(ZrTokenKind.Operator, OperatorTokenId.UnaryPlus)) {
             const unaryOp = this.consumeToken(ZrTokenKind.Operator);
             return createUnaryExpression(unaryOp.value, this.parseNextExpression());
         }
 
+        // Handle our primitive types
         const primitive = this.tryParseLiteral();
         if (primitive.isSome()) {
             return primitive.unwrap();
         }
 
+        // Handle @(...) inline expression for command calling
         if (useSimpleCallSyntax && this.isToken(ZrTokenKind.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)) {
             this.consumeToken(); // consume @
             return this.mutateExpression(this.parseParenthesizedExpression());
         }
 
+        // Handle parenthesized expressions (which are just for order of operation stuff; mainly)
         if (this.isToken(ZrTokenKind.Special, "(")) {
             return this.mutateExpression(this.parseParenthesizedExpression());
         }
 
+        // Handle literal lists, such as objects and arrays
         const literalList = this.tryParseListLiteral();
         if (literalList.isSome()) {
             return literalList.unwrap();
         }
 
-        if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.PropertyAccess)) {
-            const id = this.consumeToken() as IdentifierToken | PropertyAccessToken;
+        // Handling function calling + identifiers
+        if (this.isToken(ZrTokenKind.Identifier) || this.isToken(ZrTokenKind.PropertyAccess) || this.isToken(ZrTokenKind.ArrayIndex)) {
+            const id = this.consumeToken() as IdentifierToken | PropertyAccessToken | ArrayIndexToken;
+
+            // Handle bang calls e.g. 'execute!'
+            if (this.isToken(ZrTokenKind.Operator, "!") && !useSimpleCallSyntax) {
+                this.consumeToken();
+
+                const callExpression = createSimpleCallExpression(this.parseId(id), []);
+                return callExpression;
+            }
+        
+        
+            // Handle script calls - e.g. `player.add_item("iron_sword", 20)`
             if (this.isToken(ZrTokenKind.Special, "(") && !useSimpleCallSyntax) {
                 return this.parseCallExpression(id, true);
             }
 
-            // If postfixed by any literals, we'll treat it as a simple call
+            // Handle command calls e.g. `player.add_item "iron_sword" 20`
             if (
                 (this.isToken(ZrTokenKind.String) 
                 || this.isToken(ZrTokenKind.Number)
                 || this.isToken(ZrTokenKind.Boolean)
-                || this.isToken(ZrTokenKind.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter))
+                || this.isToken(ZrTokenKind.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)
+                || this.isToken(ZrTokenKind.Special, SpecialTokenId.ArrayBegin)
+                || this.isToken(ZrTokenKind.Special, SpecialTokenId.ObjectBegin))
                 && !useSimpleCallSyntax
             ) {
                 return this.parseCallExpression(id, false);
             }
 
+            // If we're currently inside a command call, we'll treat identifiers as strings.
             if (useSimpleCallSyntax && (id.flags & ZrTokenFlag.VariableDollarIdentifier) === 0) {
                 return createStringNode(id.value);
             }
 
+            // Otherwise, we'll return this as a regular identifier.
             return this.parseId(id);
         }
         
 
-        throw `parseNextExpression(${useSimpleCallSyntax}) -> Unexpected '${this.getToken()?.value}' after expression: ` + debug.traceback("", 2);
+        throw `parseNextExpression(${useSimpleCallSyntax}) -> Unexpected '${this.getToken()?.value}' after expression: '${this.lexer.getTextAt()}' ` + debug.traceback("", 2);
     }
 
     private mutateExpression(left: Expression, precedence = 0): Expression {

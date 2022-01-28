@@ -35,8 +35,11 @@ globals.registerGlobal(
 );
 
 let source = `
-uh.oh(- 30, true, 'Hello there', x);
-uh.oh $(30 - 20) $x true 'Hello there' x;
+no!
+uh.oh(- 30, true, 'Hello there', x)
+uh.oh $(30 - 20) $x true 'Hello there' x
+uh { a: 10 }
+anotherFunc [1, 2, "hello there"]
 (30 - 20)
 [1, 2, 3]
 {

@@ -92,6 +92,10 @@ export default class ZrLexer {
 		this.stream.reset();
 	}
 
+	public getTextAt() {
+		return this.stream.sub(1, this.stream.getPtr());
+	}
+
 	/**
 	 * Reads while the specified condition is met, or the end of stream
 	 */
