@@ -1,4 +1,4 @@
-import { Node } from "../Nodes/NodeTypes";
+import { ZrNode } from "../Nodes/NodeTypes";
 import { isStringExpression, isNumberLiteral, isBooleanLiteral } from "../Nodes/Guards";
 
 /* eslint-disable @typescript-eslint/no-empty-interface */
@@ -21,7 +21,7 @@ export interface AstCommandDefinition {
 }
 export type AstCommandDefinitions = readonly AstCommandDefinition[];
 
-export function nodeMatchAstDefinitionType(node: Node, typeName: AstPrimitiveType): MatchResult {
+export function nodeMatchAstDefinitionType(node: ZrNode, typeName: AstPrimitiveType): MatchResult {
 	if (typeName === "string" && isStringExpression(node)) {
 		return { matches: true, matchType: typeName };
 	} else if (typeName === "number" && isNumberLiteral(node)) {
@@ -35,7 +35,7 @@ export function nodeMatchAstDefinitionType(node: Node, typeName: AstPrimitiveTyp
 }
 
 type MatchResult = { matches: true; matchType: AstPrimitiveType } | { matches: false };
-export function nodeMatchesAstDefinitionTypes(node: Node, types: readonly AstPrimitiveType[]): MatchResult {
+export function nodeMatchesAstDefinitionTypes(node: ZrNode, types: readonly AstPrimitiveType[]): MatchResult {
 	for (const typeName of types) {
 		const result = nodeMatchAstDefinitionType(node, typeName);
 		if (result.matches) {

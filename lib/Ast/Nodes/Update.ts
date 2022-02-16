@@ -1,7 +1,7 @@
 import { ZrNodeFlag } from "./Enum";
-import { Node } from "./NodeTypes";
+import { ZrNode } from "./NodeTypes";
 
-export function updateHasNodeError<T extends Node>(node: T) {
+export function updateHasNodeError<T extends ZrNode>(node: T) {
     node.flags |= ZrNodeFlag.ThisNodeHasError;
     return node;
 }

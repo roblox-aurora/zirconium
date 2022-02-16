@@ -2,7 +2,7 @@ import { ZrNodeKind, ZrNodeFlag, ZrTypeKeyword } from "./Enum";
 import {
 	InterpolatedStringExpression,
 	StringLiteral,
-	Node,
+	ZrNode,
 	InnerExpression,
 	PrefixToken,
 	PrefixExpression,
@@ -34,7 +34,7 @@ import {
 	UnaryExpression,
 	CallExpression,
 	SimpleCallExpression,
-	NodeTypes,
+	ZrNodeKinds,
 	Expression,
 	UndefinedKeyword,
 	ExportKeyword,
@@ -42,15 +42,15 @@ import {
 } from "./NodeTypes";
 import { isNode } from "./Guards";
 
-export function createNode<T extends keyof NodeTypes>(kind: T) {
+export function createNode<T extends keyof ZrNodeKinds>(kind: T) {
 	return {
 		kind,
 		flags: 0,
-	} as Writable<NodeTypes[T & ZrNodeKind]>;
+	} as Writable<ZrNodeKinds[T & ZrNodeKind]>;
 }
 
 /** @internal */
-export function updateNodeInternal<TNode extends Node>(node: TNode, props: Partial<TNode>) {
+export function updateNodeInternal<TNode extends ZrNode>(node: TNode, props: Partial<TNode>) {
 	for (const [key, prop] of pairs(props)) {
 		/** @ts-ignore */
 		node[key] = prop;
@@ -103,7 +103,7 @@ export function createEnumItemExpression(name: Identifier) {
 	return node;
 }
 
-export function withError<T extends Node>(node: T): T {
+export function withError<T extends ZrNode>(node: T): T {
 	node.flags |= ZrNodeFlag.ThisNodeHasError;
 	return node;
 }
@@ -158,7 +158,7 @@ export function createPropertyAccessExpression(
 	return node;
 }
 
-export function createNodeError(message: string, node: Node): NodeError {
+export function createNodeError(message: string, node: ZrNode): NodeError {
 	return {
 		node,
 		message,
@@ -476,7 +476,7 @@ export function createEndOfStatementNode(): EndOfStatement {
 
 export function createInvalidNode(
 	message: InvalidNode["message"],
-	expression: Node,
+	expression: ZrNode,
 	startPos?: number,
 	endPos?: number,
 ): InvalidNode {
@@ -511,7 +511,7 @@ export function createBinaryExpression(
 	return node;
 }
 
-export function createUnaryExpression(op: string, expression: Node, startPos?: number, endPos?: number) {
+export function createUnaryExpression(op: string, expression: ZrNode, startPos?: number, endPos?: number) {
 	const node = createNode(ZrNodeKind.UnaryExpression);
 	node.expression = expression;
 	node.operator = op;

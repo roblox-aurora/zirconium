@@ -1,10 +1,10 @@
-import { Node } from "../Nodes/NodeTypes";
+import { ZrNode } from "../Nodes/NodeTypes";
 import { isNode } from "../Nodes/Guards";
 import { CmdSyntaxKind } from "../Nodes";
 import { getNodeKindName } from "../Nodes/Functions";
 import { ZrNodeFlag } from "../Nodes/Enum";
 
-function prettyPrintNodes(nodes: Node[], prefix = "", verbose = false) {
+function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 	for (const node of nodes) {
 		if (isNode(node, CmdSyntaxKind.String)) {
 			const str = node.quotes !== undefined ? `${node.quotes}${node.text}${node.quotes}` : `\`${node.text}\``;

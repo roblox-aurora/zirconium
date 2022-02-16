@@ -1,6 +1,6 @@
 
 import { ZrParser } from "Ast";
-import { Token, ZrTokenKind } from "Ast/Tokens/Tokens";
+import { ZrToken, ZrTokenType } from "Ast/Tokens/Tokens";
 import { ZrParserError, ZrParserErrorCode } from "./Diagnostics";
 
 export interface ZrDiagnostic {
@@ -9,16 +9,16 @@ export interface ZrDiagnostic {
 }
 
 export const DiagnosticErrors = {
-    ExpectedToken: (token: ZrTokenKind) => {
+    ExpectedToken: (token: ZrTokenType) => {
         return identity<ZrDiagnostic>({
             code: ZrParserErrorCode.ExpectedToken,
             message: `Expected token kind ${token}`
         });
     },
-    Expected: (value: string) => {
+    Expected: (...values: string[]) => {
         return identity<ZrDiagnostic>({
             code: ZrParserErrorCode.ExpectedToken,
-            message: `Expected '${value}'`
+            message: values.size() === 1 ? `Expected '${values[0]}'` : `Expected ${values.map(v => `'${v}'`).join(" or ")}`
         });
     },
     IdentifierExpected: identity<ZrDiagnostic>({

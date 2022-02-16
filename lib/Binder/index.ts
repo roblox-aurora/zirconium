@@ -1,5 +1,5 @@
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
-import { Node, NodeTypes, SourceFile } from "../Ast/Nodes/NodeTypes";
+import { ZrNode, ZrNodeKinds, SourceFile } from "../Ast/Nodes/NodeTypes";
 
 export interface ZrBinder {
 	// TODO
@@ -59,13 +59,13 @@ export class ZrBinder implements ZrBinder {
 		this.symbolStack.push(this.currentSymbol);
 	}
 
-	private getSymbolNameFor(node: Node) {
+	private getSymbolNameFor(node: ZrNode) {
 		if (isNode(node, ZrNodeKind.Identifier)) {
 			return "id:" + node.name;
 		}
 	}
 
-	public bindNode(node: Node, parentSymbol?: ZrSymbols) {
+	public bindNode(node: ZrNode, parentSymbol?: ZrSymbols) {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const child of node.children) {
 				this.bindNode(child);

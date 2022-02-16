@@ -2,7 +2,7 @@
 import type { ZrNodeKind, ZrNodeFlag } from "./Enum";
 import { ASSIGNABLE } from "./Guards";
 
-export interface NodeTypes {
+export interface ZrNodeKinds {
 	[ZrNodeKind.CallExpression]: CallExpression;
 	[ZrNodeKind.ExpressionStatement]: ExpressionStatement;
 	[ZrNodeKind.SimpleCallExpression]: SimpleCallExpression;
@@ -47,28 +47,28 @@ export interface NodeTypes {
 	[ZrNodeKind.EmptyStatement]: EmptyStatement;
 }
 
-export interface Node {
+export interface ZrNode {
 	kind: ZrNodeKind;
-	parent?: Node;
+	parent?: ZrNode;
 	startPos?: number;
 	rawText?: string;
 	endPos?: number;
-	children?: Node[];
+	children?: ZrNode[];
 	flags: ZrNodeFlag;
 }
 
 export interface ValuesExpression extends Expression {
-	readonly values: Node[];
+	readonly values: ZrNode[];
 }
 
-export interface Statement extends Node {
+export interface Statement extends ZrNode {
 	/** @deprecated */
 	readonly _nominal_Statement: unique symbol;
 }
 
 export interface EmptyStatement extends Statement {}
 
-export interface Declaration extends Node {
+export interface Declaration extends ZrNode {
 	/** @deprecated */
 	readonly _nominal_Declaration: unique symbol;
 }
@@ -78,7 +78,7 @@ export interface NamedDeclaration extends Declaration {
 	readonly name?: DeclarationName;
 }
 
-export interface Keyword extends Node {
+export interface Keyword extends ZrNode {
 	readonly _nominal_Keyword: unique symbol;
 }
 
@@ -94,7 +94,7 @@ export interface LeftHandSideExpression extends Expression {
 	readonly _nominal_LeftHandSide: unique symbol;
 }
 
-export interface Expression extends Node {
+export interface Expression extends ZrNode {
 	/** @deprecated */
 	readonly _nominal_Expression: unique symbol;
 }
@@ -110,7 +110,7 @@ export interface DeclarationStatement extends Declaration, Statement {}
 
 type OP = "&&" | "|" | "=";
 
-export interface OperatorToken extends Node {
+export interface OperatorToken extends ZrNode {
 	operator: string;
 	kind: ZrNodeKind.OperatorToken;
 }
@@ -134,7 +134,7 @@ export interface RangeExpression extends Expression {
 	right: Expression;
 }
 
-export interface TypeReference extends Node {
+export interface TypeReference extends ZrNode {
 	kind: ZrNodeKind.TypeReference;
 	typeName: Identifier;
 }
@@ -170,9 +170,9 @@ export interface FunctionDeclaration extends DeclarationStatement {
 	body: SourceBlock;
 }
 
-export interface SourceFile extends Node {
+export interface SourceFile extends ZrNode {
 	kind: ZrNodeKind.Source;
-	children: Array<Node>;
+	children: Array<ZrNode>;
 }
 
 export interface InterpolatedStringExpression extends ValuesExpression {
@@ -182,7 +182,7 @@ export interface InterpolatedStringExpression extends ValuesExpression {
 
 export interface UnaryExpression extends Expression {
 	kind: ZrNodeKind.UnaryExpression;
-	expression: Node;
+	expression: ZrNode;
 	operator: string;
 }
 
@@ -191,7 +191,7 @@ export interface BinaryExpression extends Expression, Declaration {
 	left: Expression;
 	operator: string;
 	right: Expression;
-	children: Node[];
+	children: ZrNode[];
 }
 
 export interface EnumItemExpression extends Expression {
@@ -207,7 +207,7 @@ export interface EnumDeclarationStatement extends DeclarationStatement {
 
 export interface ArrayLiteralExpression extends ValuesExpression {
 	kind: ZrNodeKind.ArrayLiteralExpression;
-	values: Node[];
+	values: ZrNode[];
 }
 
 export interface PropertyAssignment extends ObjectLiteralElement {
@@ -221,9 +221,9 @@ export interface ObjectLiteralExpression extends LiteralExpression, ValuesExpres
 	values: PropertyAssignment[];
 }
 
-export interface InvalidNode extends Node {
+export interface InvalidNode extends ZrNode {
 	kind: ZrNodeKind.Invalid;
-	expression: Node;
+	expression: ZrNode;
 	message: string;
 }
 
@@ -263,7 +263,7 @@ export interface SourceBlock extends Statement {
 	statements: Statement[];
 }
 
-export type AssignableExpression = NodeTypes[typeof ASSIGNABLE[number]];
+export type AssignableExpression = ZrNodeKinds[typeof ASSIGNABLE[number]];
 
 export interface IfStatement extends Statement {
 	kind: ZrNodeKind.IfStatement;
@@ -296,7 +296,7 @@ export interface CallExpression extends Expression {
 	readonly options: OptionExpression[];
 	readonly isUnterminated?: boolean;
 	readonly isSimpleCall: boolean;
-	readonly arguments: Node[];
+	readonly arguments: ZrNode[];
 }
 
 /**
@@ -307,7 +307,7 @@ export interface SimpleCallExpression extends Expression {
 	kind: ZrNodeKind.SimpleCallExpression;
 	expression: Identifier | ArrayIndexExpression | PropertyAccessExpression;
 	isUnterminated?: boolean;
-	arguments: Node[];
+	arguments: ZrNode[];
 }
 
 export interface InnerExpression extends Expression {
@@ -316,13 +316,13 @@ export interface InnerExpression extends Expression {
 }
 
 export interface NodeError {
-	node: Node;
+	node: ZrNode;
 	message: string;
 }
 
 export interface Option extends LeftHandSideExpression {
 	flag: string;
-	right?: Node;
+	right?: ZrNode;
 }
 
 export interface OptionExpression extends Expression {
@@ -331,7 +331,7 @@ export interface OptionExpression extends Expression {
 }
 
 export const VALID_PREFIX_CHARS = ["~", "@", "%", "^", "*", "!"] as const;
-export interface PrefixToken extends Node {
+export interface PrefixToken extends ZrNode {
 	value: typeof VALID_PREFIX_CHARS[number];
 }
 
@@ -345,11 +345,11 @@ export interface Identifier extends Declaration, LeftHandSideExpression {
 	prefix: string;
 }
 
-export interface EndOfStatement extends Node {
+export interface EndOfStatement extends ZrNode {
 	kind: ZrNodeKind.EndOfStatement;
 }
 
-type NonParentNode<T> = T extends { children: Node[] } ? never : T;
-export type ParentNode = Exclude<Node, NonParentNode<Node>>;
+type NonParentNode<T> = T extends { children: ZrNode[] } ? never : T;
+export type ParentNode = Exclude<ZrNode, NonParentNode<ZrNode>>;
 
-export type NodeKind = keyof NodeTypes;
+export type NodeKind = keyof ZrNodeKinds;

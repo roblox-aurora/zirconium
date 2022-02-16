@@ -10,7 +10,7 @@ import {
 	ForInStatement,
 	FunctionDeclaration,
 	IfStatement,
-	Node,
+	ZrNode,
 	ObjectLiteralExpression,
 	PropertyAccessExpression,
 	SourceBlock,
@@ -59,7 +59,7 @@ export enum ZrRuntimeErrorCode {
 export interface ZrRuntimeError {
 	message: string;
 	code: ZrRuntimeErrorCode;
-	node?: Node;
+	node?: ZrNode;
 }
 
 const getTypeName = (value: ZrValue | ZrUndefined) => {
@@ -90,7 +90,7 @@ export default class ZrRuntime {
 		this.context = new ZrContext(this);
 	}
 
-	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: Node): never {
+	private runtimeError(message: string, code: ZrRuntimeErrorCode, node?: ZrNode): never {
 		const err = identity<ZrRuntimeError>({
 			message,
 			code,
@@ -104,7 +104,7 @@ export default class ZrRuntime {
 		condition: unknown,
 		message: string,
 		code: ZrRuntimeErrorCode,
-		node?: Node,
+		node?: ZrNode,
 	): asserts condition {
 		if (condition === false) {
 			this.runtimeError(message, code, node);
@@ -115,7 +115,7 @@ export default class ZrRuntime {
 		condition: unknown,
 		message: string,
 		code: ZrRuntimeErrorCode,
-		node?: Node,
+		node?: ZrNode,
 	): asserts condition is defined {
 		if (condition === undefined) {
 			this.runtimeError(message, code, node);
@@ -625,7 +625,7 @@ export default class ZrRuntime {
 	}
 
 	/** @internal */
-	public evaluateNode(node: Node): ZrValue | ZrUndefined | undefined {
+	public evaluateNode(node: ZrNode): ZrValue | ZrUndefined | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
 				this.evaluateNode(subNode);

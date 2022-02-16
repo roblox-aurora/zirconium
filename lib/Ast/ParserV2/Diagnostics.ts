@@ -1,5 +1,5 @@
-import { Node } from "Ast/Nodes/NodeTypes";
-import { Token } from "Ast/Tokens/Tokens";
+import { ZrNode } from "Ast/Nodes/NodeTypes";
+import { ZrToken } from "Ast/Tokens/Tokens";
 
 
 
@@ -14,7 +14,7 @@ export enum ZrParserErrorCode {
 export interface ZrParserError {
 	message: string;
 	code: ZrParserErrorCode;
-	node?: Node;
-	token?: Token;
+	node?: ZrNode;
+	token?: ZrToken;
 	range?: [number, number];
 }

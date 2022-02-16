@@ -1,6 +1,6 @@
 import ZrTextStream from "../TextStream";
 import ZrLexer, { ZrLexerOptions } from "../Lexer";
-import { isToken, ZrTokenFlag, ZrTokenKind } from "../Tokens/Tokens";
+import { isToken, ZrTokenFlag, ZrTokenType } from "../Tokens/Tokens";
 
 export interface ZrThemeOptions {
 	VariableColor: string;
@@ -55,9 +55,9 @@ export default class ZrRichTextHighlighter {
 
 			if (!token) break;
 
-			if (isToken(token, ZrTokenKind.Boolean))
+			if (isToken(token, ZrTokenType.Boolean))
 				str += font(token.rawText, options.BooleanLiteral ?? options.OperatorColor);
-			else if (isToken(token, ZrTokenKind.String)) {
+			else if (isToken(token, ZrTokenType.String)) {
 				const { value, flags, startCharacter, endCharacter } = token;
 				if (startCharacter !== undefined) {
 					str += font(
@@ -75,7 +75,7 @@ export default class ZrRichTextHighlighter {
 						str += value;
 					}
 				}
-			} else if (isToken(token, ZrTokenKind.InterpolatedString)) {
+			} else if (isToken(token, ZrTokenType.InterpolatedString)) {
 				const { values, variables, quotes, closed } = token;
 				const resulting = new Array<string>();
 				for (let k = 0; k < values.size(); k++) {
@@ -91,8 +91,8 @@ export default class ZrRichTextHighlighter {
 					`${quotes}${font(resulting.join(""), options.StringColor)}${closed ? quotes : ""}`,
 					options.OperatorColor,
 				);
-			} else if (isToken(token, ZrTokenKind.Number)) str += font(token.rawText, options.NumberColor);
-			else if (isToken(token, ZrTokenKind.Identifier))
+			} else if (isToken(token, ZrTokenType.Number)) str += font(token.rawText, options.NumberColor);
+			else if (isToken(token, ZrTokenType.Identifier))
 				if ((token.flags & ZrTokenFlag.FunctionName) !== 0) {
 					str += font(`${token.value}`, options.FunctionColor ?? options.NumberColor);
 				} else if ((token.flags & ZrTokenFlag.VariableDeclaration) !== 0) {
@@ -103,25 +103,25 @@ export default class ZrRichTextHighlighter {
 						options.VariableColor,
 					);
 				}
-			else if (isToken(token, ZrTokenKind.Operator) || isToken(token, ZrTokenKind.Special))
+			else if (isToken(token, ZrTokenType.Operator) || isToken(token, ZrTokenType.Special))
 				str += font(token.value, options.OperatorColor);
-			else if (isToken(token, ZrTokenKind.Keyword)) str += font(token.value, options.KeywordColor);
-			else if (isToken(token, ZrTokenKind.EndOfStatement)) {
+			else if (isToken(token, ZrTokenType.Keyword)) str += font(token.value, options.KeywordColor);
+			else if (isToken(token, ZrTokenType.EndOfStatement)) {
 				if (token.value === "\n") {
 					str += font("¬", options.ControlCharacters);
 					str += token.value;
 				} else if (token.value !== "\r") {
 					str += font(token.value, options.OperatorColor);
 				}
-			} else if (isToken(token, ZrTokenKind.Whitespace)) {
+			} else if (isToken(token, ZrTokenType.Whitespace)) {
 				if (token.value === " ") {
 					str += font("·", options.ControlCharacters);
 				} else {
 					str += token.value;
 				}
-			} else if (isToken(token, ZrTokenKind.Option))
+			} else if (isToken(token, ZrTokenType.Option))
 				str += font(`${token.prefix ?? ""}${token.value}`, options.KeywordColor);
-			else if (isToken(token, ZrTokenKind.PropertyAccess)) {
+			else if (isToken(token, ZrTokenType.PropertyAccess)) {
 				str += font(
 					(token.flags & ZrTokenFlag.VariableDollarIdentifier) !== 0 ? `$${token.value}` : token.value,
 					options.VariableColor,
@@ -133,7 +133,7 @@ export default class ZrRichTextHighlighter {
 							? font(prop, options.NumberColor)
 							: font(prop, options.VariableColor));
 				}
-			} else if (isToken(token, ZrTokenKind.Comment))
+			} else if (isToken(token, ZrTokenType.Comment))
 				str += font(token.value, options.CommentColor ?? options.OperatorColor);
 			else str += tostring(token.value);
 		}
