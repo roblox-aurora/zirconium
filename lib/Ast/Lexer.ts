@@ -93,7 +93,15 @@ export default class ZrLexer {
 	}
 
 	public getPosition() {
-		return this.stream.getPtr();
+		return this.peek()?.startPos ?? this.stream.getPtr();
+		// return this.stream.getPtr() - 1;
+	}
+
+	public getTokenRange(): [number, number] | undefined {
+		const range = this.prev();
+		if (range !== undefined) {
+			return [range.startPos, range.endPos];
+		} 
 	}
 
 	public getTextAt() {
@@ -324,6 +332,7 @@ export default class ZrLexer {
 			return this.isNumeric(c);
 		});
 		const endPos = this.stream.getPtr() - 1;
+
 		return identity<NumberToken>({
 			kind: ZrTokenType.Number,
 			value: tonumber(number)!,
@@ -361,7 +370,7 @@ export default class ZrLexer {
 	/**
 	 * Similar to `readNext`, except resets the pointer back to the start of the read afterwards.
 	 */
-	private peekNext(offset = 1) {
+	public peekNext(offset = 1) {
 		const start = this.stream.getPtr();
 		let i = 0;
 		let value: ZrToken | undefined;

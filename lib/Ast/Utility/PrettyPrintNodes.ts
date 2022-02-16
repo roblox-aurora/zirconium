@@ -5,6 +5,8 @@ import { getNodeKindName } from "../Nodes/Functions";
 import { ZrNodeFlag } from "../Nodes/Enum";
 
 function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
+	if (!nodes) return;
+	
 	for (const node of nodes) {
 		if (isNode(node, CmdSyntaxKind.String)) {
 			const str = node.quotes !== undefined ? `${node.quotes}${node.text}${node.quotes}` : `\`${node.text}\``;
@@ -219,6 +221,10 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			print(prefix, "}");
 		} else {
 			print(prefix, getNodeKindName(node));
+		}
+
+		if ((node.kind & ZrNodeFlag.ThisNodeHasError) !== 0) {
+			warn(prefix, "** error", CmdSyntaxKind[node.kind]);
 		}
 	}
 }

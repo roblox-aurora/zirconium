@@ -23,6 +23,6 @@ export const DiagnosticErrors = {
     },
     IdentifierExpected: identity<ZrDiagnostic>({
         code: ZrParserErrorCode.IdentifierExpected,
-        message: 'Expected identifier'
+        message: 'Identifier expected'
     })
 } as const;

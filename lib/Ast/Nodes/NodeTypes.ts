@@ -49,6 +49,8 @@ export interface ZrNodeKinds {
 }
 export type ZrNodes = ZrNodeKinds[keyof ZrNodeKinds];
 
+export type ZrEditNode<T extends ZrNode> = Writable<T>;
+
 export interface ZrNode {
 	kind: ZrNodeKind;
 	parent?: ZrNode;
