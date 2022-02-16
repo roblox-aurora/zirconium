@@ -19,9 +19,9 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			if (node.isUnterminated) {
 				print(prefix, "Unterminated String");
 			}
-		} else if (isNode(node, CmdSyntaxKind.CallExpression) || isNode(node, CmdSyntaxKind.SimpleCallExpression)) {
+		} else if (isNode(node, CmdSyntaxKind.CallExpression)) {
 			if (verbose) {
-				print(prefix, CmdSyntaxKind[node.kind], `'${node.rawText}'`, `[${node.startPos}:${node.endPos}]`, "{");
+				print(prefix, CmdSyntaxKind[node.kind], node.isSimpleCall ? "<!>" : "<()>", `'${node.rawText}'`, `[${node.startPos}:${node.endPos}]`, "{");
 			} else {
 				print(prefix, CmdSyntaxKind[node.kind], "{");
 			}
@@ -148,7 +148,12 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			prettyPrintNodes([node.option, node.expression], prefix + "\t", verbose);
 			print(prefix, "}");
 		} else if (isNode(node, CmdSyntaxKind.ExpressionStatement)) {
-			print(prefix, "ExpressionStatement", "{");
+			if (verbose) {
+				print(prefix, "ExpressionStatement", `'${node.rawText}'`, `[${node.startPos}:${node.endPos}]`, "{");
+			} else {
+				print(prefix, "ExpressionStatement", "{");
+			}
+			
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
 			print(prefix, "}");
 			print("");
