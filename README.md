@@ -3,7 +3,8 @@
 </div>
 <div align="center">
 	<h1>Zirconium</h1>
-    	<a href="https://www.npmjs.com/package/@rbxts/zirconium">
+    <p>Roblox-based Runtime Scripting Language</p>
+    <a href="https://www.npmjs.com/package/@rbxts/zirconium">
 		<img src="https://badge.fury.io/js/%40rbxts%2Fzirconium.svg"></img>
 	</a>
 </div>
@@ -12,6 +13,10 @@
 - Zirconium is a runtime scripting language for Roblox, for programmatic manipulation of Roblox games during runtime. Unlike other solutions this is not bound to any sort of command framework. It is inspired by Rust and TypeScript.
 - The scripts can be as simple as user commands, to more complex scripting systems like quest triggers.
 - Zirconium is sandboxed. You can only use functions that you explicitly provide. Each script runs in it's own environment.
+
+## Why
+- In cases where you want to run code dynamically (such as through a debug console) to affect a currently running game, a typical situation like Luau would not really work (`loadstring` is extremely risky to enable and doesn't work on the client)
+- A scripting language was required for the [Zircon](https://github.com/roblox-aurora/zircon) console, written originally for Zenerith that's now open source. It was required that you could powerfully script during a running game to execute code, while still being quite sandboxed. Simple command frameworks such as `Cmdr` weren't viable.
 
 ## Supported
 - [x] Variables

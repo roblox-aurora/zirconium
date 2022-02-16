@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ZrSymbol } from "Binder";
 import type { ZrNodeKind, ZrNodeFlag } from "./Enum";
 import { ASSIGNABLE } from "./Guards";
 
@@ -46,6 +47,7 @@ export interface ZrNodeKinds {
 	[ZrNodeKind.EmptyExpression]: EmptyExpression;
 	[ZrNodeKind.EmptyStatement]: EmptyStatement;
 }
+export type ZrNodes = ZrNodeKinds[keyof ZrNodeKinds];
 
 export interface ZrNode {
 	kind: ZrNodeKind;
@@ -55,6 +57,9 @@ export interface ZrNode {
 	endPos?: number;
 	children?: ZrNode[];
 	flags: ZrNodeFlag;
+
+	/** @internal */
+	symbol?: ZrSymbol;
 }
 
 export interface ValuesExpression extends Expression {
@@ -186,7 +191,7 @@ export interface UnaryExpression extends Expression {
 	operator: string;
 }
 
-export interface BinaryExpression extends Expression, Declaration {
+export interface BinaryExpression extends Expression {
 	kind: ZrNodeKind.BinaryExpression;
 	left: Expression;
 	operator: string;

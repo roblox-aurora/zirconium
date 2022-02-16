@@ -122,5 +122,7 @@ export const enum ZrNodeFlag {
 	None = 0,
 	Const = 1 << 0,
 	Let = 1 << 1,
+
+	HasImplicitReturn = 1 << 8,
 	ThisNodeHasError = 1 << 16,
 }

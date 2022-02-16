@@ -1,79 +1,107 @@
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
-import { ZrNode, ZrNodeKinds, SourceFile } from "../Ast/Nodes/NodeTypes";
+import { ZrNode, ZrNodeKinds, SourceFile, Declaration, Identifier, FunctionDeclaration, VariableDeclaration, EnumDeclarationStatement, ZrNodes } from "../Ast/Nodes/NodeTypes";
 
-export interface ZrBinder {
-	// TODO
-	bind(): void;
+
+export enum ZrSymbolFlags {
+	None = 0,
+	ScopedVariable = 1 << 0,
+	Function = 1 << 1,
+	Interface = 1 << 2,
+	TypeLiteral = 1 << 3,
+
+	EnumMember = 1 << 4,
+	Property = 1 << 5,
+	
 }
 
-export enum ZrSymbolKind {
-	Source,
-	Function,
-	Variable,
+export interface ZrSymbolTable {
+	[name: string]: ZrSymbol;
 }
 
-export interface ZrSymbol {
-	kind: ZrSymbolKind;
-	name: string;
-}
+export class ZrSymbol {
+	public declarations?: Declaration[];
+	public parent?: ZrSymbol;
+	public exports: ZrSymbolTable = {};
 
-interface FileSymbol extends ZrSymbol {
-	kind: ZrSymbolKind.Source;
-}
-
-interface FunctionSymbol extends ZrSymbol {
-	kind: ZrSymbolKind.Function;
-}
-
-interface VariableSymbol extends ZrSymbol {
-	kind: ZrSymbolKind.Variable;
-}
-
-interface ZrSymbolMap {
-	[ZrSymbolKind.Function]: FunctionSymbol;
-	[ZrSymbolKind.Source]: FileSymbol;
-	[ZrSymbolKind.Variable]: VariableSymbol;
-}
-
-type ZrSymbols = ZrSymbolMap[keyof ZrSymbolMap];
-
-export class ZrSymbolTable {
-	public symbols = new Array<ZrSymbols>();
-	public hasSymbolById(symbolId: string) {
-		return this.symbols.find((f) => f.name === symbolId);
-	}
-	public addSymbol(symbol: ZrSymbols) {}
+	constructor(public flags: ZrSymbolFlags, private name: string) {}
 }
 
 /** @internal */
-export class ZrBinder implements ZrBinder {
-	private symbolMap = new Array<ZrSymbols>();
-	private symbolStack = new Array<ZrSymbols>();
-	private currentSymbol: ZrSymbols;
+export class ZrBinder {
+	public constructor(private file: SourceFile) {}
 
-	public constructor(private source: SourceFile) {
-		this.currentSymbol = {
-			kind: ZrSymbolKind.Source,
-			name: "<source>",
-		};
-		this.symbolStack.push(this.currentSymbol);
+	private createSymbol(flags: ZrSymbolFlags, name: string): ZrSymbol {
+		return new ZrSymbol(flags, name);
 	}
 
-	private getSymbolNameFor(node: ZrNode) {
+	private addDeclarationToSymbol(symbol: ZrSymbol, node: Declaration, flags: ZrSymbolFlags) {
+		symbol.flags |= flags;
+		node.symbol = symbol;
+
+		if (!symbol.declarations) {
+			symbol.declarations = [];
+		}
+		symbol.declarations.push(node);
+	}
+
+	private getDeclarationName(node: Declaration) {
+		// TODO: Change identifier to use NamedDeclaration
 		if (isNode(node, ZrNodeKind.Identifier)) {
-			return "id:" + node.name;
+			return node.name;
 		}
 	}
 
-	public bindNode(node: ZrNode, parentSymbol?: ZrSymbols) {
-		if (isNode(node, ZrNodeKind.Source)) {
-			for (const child of node.children) {
-				this.bindNode(child);
-			}
-		} else if (isNode(node, ZrNodeKind.VariableDeclaration)) {
-			const id = this.getSymbolNameFor(node);
+	private bindFunctionDeclaration(node: FunctionDeclaration) {
+		const sym = this.createSymbol(0, node.name.name);
+		this.addDeclarationToSymbol(sym, node, 0);
+		return sym;
+	}
+
+	private bindEnumDeclaration(node: EnumDeclarationStatement) {
+		const sym = this.createSymbol(0, node.name.name);
+		this.addDeclarationToSymbol(sym, node, 0);
+		return sym;
+	}
+
+	private declareSymbol(symbolTable: ZrSymbolTable, parent: ZrSymbol, node: Declaration, includes: ZrSymbolFlags, excludes: ZrSymbolFlags) {
+		let name = this.getDeclarationName(node);
+		
+		let symbol: ZrSymbol;
+		if (name !== undefined) {
+			symbol = (symbolTable[name] = this.createSymbol(ZrSymbolFlags.None, name));
+		} else {
+			symbol = this.createSymbol(ZrSymbolFlags.None, "__missing");
+		}
+
+		this.addDeclarationToSymbol(symbol, node, includes);
+		symbol.parent = parent;
+	}
+
+	private declareDeclarationSymbol(container: Declaration, symbolFlags: ZrSymbolFlags): void {
+		switch (container.kind) {
+			case ZrNodeKind.EnumDeclaration:
+				return this.declareSymbol(
+					container.symbol!.exports,
+					container.symbol!,
+					container,
+					symbolFlags,
+					0
+				);
 		}
 	}
 
-	public bind() {}
+	private bindVariableDeclaration(node: VariableDeclaration) {
+		this.declareDeclarationSymbol(node, ZrSymbolFlags.ScopedVariable);
+	}
+
+	private bind(node: ZrNodes) {
+		switch (node.kind) {
+			case ZrNodeKind.Identifier:
+				// TODO:
+			case ZrNodeKind.FunctionDeclaration:
+				return this.declareDeclarationSymbol(<Declaration> node, ZrSymbolFlags.Function);
+			case ZrNodeKind.VariableDeclaration:
+				return this.bindVariableDeclaration(node as VariableDeclaration);
+		}
+	}
 }
