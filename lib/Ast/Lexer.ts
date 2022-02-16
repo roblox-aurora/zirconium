@@ -92,6 +92,10 @@ export default class ZrLexer {
 		this.stream.reset();
 	}
 
+	public getPosition() {
+		return this.stream.getPtr();
+	}
+
 	public getTextAt() {
 		return this.stream.sub(1, this.stream.getPtr());
 	}

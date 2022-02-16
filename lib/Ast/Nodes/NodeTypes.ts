@@ -295,11 +295,13 @@ export interface CallExpression extends Expression {
 	readonly expression: Identifier | PropertyAccessExpression | ArrayIndexExpression;
 	readonly options: OptionExpression[];
 	readonly isUnterminated?: boolean;
+	readonly isSimpleCall: boolean;
 	readonly arguments: Node[];
 }
 
 /**
  * An expression like `func ...`
+ * @deprecated
  */
 export interface SimpleCallExpression extends Expression {
 	kind: ZrNodeKind.SimpleCallExpression;

@@ -42,7 +42,7 @@ import {
 } from "./NodeTypes";
 import { isNode } from "./Guards";
 
-function createNode<T extends keyof NodeTypes>(kind: T) {
+export function createNode<T extends keyof NodeTypes>(kind: T) {
 	return {
 		kind,
 		flags: 0,
@@ -104,7 +104,7 @@ export function createEnumItemExpression(name: Identifier) {
 }
 
 export function withError<T extends Node>(node: T): T {
-	node.flags |= ZrNodeFlag.NodeHasError;
+	node.flags |= ZrNodeFlag.ThisNodeHasError;
 	return node;
 }
 
@@ -484,7 +484,7 @@ export function createInvalidNode(
 		kind: ZrNodeKind.Invalid,
 		expression,
 		message,
-		flags: ZrNodeFlag.NodeHasError,
+		flags: ZrNodeFlag.ThisNodeHasError,
 		children: [],
 		startPos: startPos ?? expression.startPos,
 		endPos: endPos ?? expression.endPos,
