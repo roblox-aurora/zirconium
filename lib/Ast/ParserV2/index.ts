@@ -145,7 +145,8 @@ export class ZrParserV2 {
             let isMatchingValue = expectedValue === undefined || expectedValue === value?.value;
 
             if ((expectedValue  !== undefined && !isMatchingType) || !isMatchingValue) {
-                this.parserErrorAtPosition(this.lexer.prev().startPos, 0, DiagnosticErrors.Expected(expectedValue!));
+                const prev = this.lexer.prev();
+                this.parserErrorAtPosition(prev.startPos, prev.endPos, DiagnosticErrors.Expected(expectedValue!));
             } else if(!isMatchingType) {
                 this.parserErrorAtCurrentToken(DiagnosticErrors.ExpectedToken(kind), value);
             }
@@ -399,11 +400,12 @@ export class ZrParserV2 {
             return this.parseVariableAccessExpression();
         }
 
+        const literalNode =this.parseVariableAccessExpression();
 
         const stringNode = this.createNode(ZrNodeKind.String);
 
-        const idToken = this.consumeToken(ZrTokenType.Identifier);
-        stringNode.text = idToken!.value;
+        // const idToken = this.consumeToken(ZrTokenType.Identifier);
+        stringNode.text = literalNode!.rawText!;
 
         return this.finishNode(stringNode);
     }
@@ -427,12 +429,14 @@ export class ZrParserV2 {
                 const propExpression = this.createNode(ZrNodeKind.PropertyAccessExpression);
                 propExpression.expression = left;
                 propExpression.name = this.parseIdentifier();
+                propExpression.startPos = left.startPos;
                 
                 return this.mutateVariableAccessExpression(this.finishNode(propExpression));
             } else if (specialToken.value === SpecialTokenId.ElementBegin) {
                 const elementAccess = this.createNode(ZrNodeKind.ElementAccessExpression);
                 elementAccess.expression = left;
                 elementAccess.argumentExpression = this.mutateExpression(this.parseNextExpression());
+                elementAccess.startPos = left.startPos;
                 this.consumeIfToken(ZrTokenType.Special, SpecialTokenId.ElementEnd);
                 return this.mutateVariableAccessExpression(this.finishNode(elementAccess));
             }
@@ -506,7 +510,7 @@ export class ZrParserV2 {
             const endToken = this.consumeToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersEnd);
             endPos = endToken?.endPos;
 		} else {
-            const endToken = this.consumeIfToken(ZrTokenType.EndOfStatement);
+            const endToken = this.lexer.hasReachedEnd() ? this.consumeIfToken(ZrTokenType.EndOfStatement, ";") : this.consumeToken(ZrTokenType.EndOfStatement, ";");
             endPos = endToken ? endToken?.endPos - 1 : undefined;
         }
 
@@ -647,6 +651,11 @@ export class ZrParserV2 {
 
         // Handling function calling + identifiers
         if (this.isToken(ZrTokenType.Identifier)) {
+            // If we're currently inside a command call, we'll treat identifiers as strings.
+            if (useSimpleCallSyntax) {
+                return this.parseIdentifierAsString();
+            }
+
             const id = this.parseVariableAccessExpression();
 
             // Handle bang calls e.g. 'execute!'
@@ -668,6 +677,7 @@ export class ZrParserV2 {
                 (this.isToken(ZrTokenType.String) 
                 || this.isToken(ZrTokenType.Number)
                 || this.isToken(ZrTokenType.Boolean)
+                || this.isToken(ZrTokenType.Identifier)
                 || this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)
                 || this.isToken(ZrTokenType.Special, SpecialTokenId.ArrayBegin)
                 || this.isToken(ZrTokenType.Special, SpecialTokenId.ObjectBegin))
@@ -676,10 +686,7 @@ export class ZrParserV2 {
                 return this.parseCallExpression(id, false);
             }
 
-            // If we're currently inside a command call, we'll treat identifiers as strings.
-            if (useSimpleCallSyntax) {
-                return this.parseIdentifierAsString();
-            }
+
 
             // Otherwise, we'll return this as a regular identifier.
             return id;

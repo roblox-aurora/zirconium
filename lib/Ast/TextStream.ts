@@ -32,6 +32,10 @@ export default class ZrTextStream {
 		return this.source.sub(x, y);
 	}
 
+	public size() {
+		return this.source.size();
+	}
+
 	public getRow() {
 		return this.row;
 	}

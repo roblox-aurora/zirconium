@@ -92,6 +92,10 @@ export default class ZrLexer {
 		this.stream.reset();
 	}
 
+	public hasReachedEnd() {
+		return this.stream.getPtr() >= this.stream.size();
+	}
+
 	public finish() {
 		this.stream.finish();
 	}
