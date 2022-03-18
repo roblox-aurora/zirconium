@@ -30,7 +30,7 @@ globals.registerGlobal(
 );
 
 let source = `
-FIRST.SECOND.THIRD[0]
+FIRST.SECOND.THIRD[inner]["hi there"]
 `;
 
 function rangeToString(range?: [x: number, y: number]) {

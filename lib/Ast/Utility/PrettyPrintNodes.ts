@@ -166,6 +166,10 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			print(prefix, "PropertyAccessExpression", "{");
 			prettyPrintNodes([node.expression, node.name], prefix + "\t", verbose);
 			print(prefix, "}");
+		} else if (isNode(node, CmdSyntaxKind.ElementAccessExpression)) {
+			print(prefix, "ElementAccessExpression", "{");
+			prettyPrintNodes([node.expression, node.argumentExpression], prefix + "\t", verbose);
+			print(prefix, "}");
 		} else if (isNode(node, CmdSyntaxKind.ArrayIndexExpression)) {
 			print(prefix, "ArrayIndexExpression", "{");
 			prettyPrintNodes([node.expression, node.index], prefix + "\t", verbose);
@@ -229,7 +233,11 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			print(prefix, getNodeKindName(node));
 		}
 
-		if ((node.kind & ZrNodeFlag.ThisNodeHasError) !== 0) {
+		if (!node.kind) {
+			warn(node);
+		}
+		assert(node.kind, "kind missing for node");
+		if (node && (node.kind & ZrNodeFlag.ThisNodeHasError) !== 0) {
 			warn(prefix, "** error", CmdSyntaxKind[node.kind]);
 		}
 	}

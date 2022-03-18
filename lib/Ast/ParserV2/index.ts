@@ -432,8 +432,9 @@ export class ZrParserV2 {
             } else if (specialToken.value === SpecialTokenId.ElementBegin) {
                 const elementAccess = this.createNode(ZrNodeKind.ElementAccessExpression);
                 elementAccess.expression = left;
-                elementAccess.argumentExpression = this.parseNextExpression();
-                return elementAccess;
+                elementAccess.argumentExpression = this.mutateExpression(this.parseNextExpression());
+                this.consumeIfToken(ZrTokenType.Special, SpecialTokenId.ElementEnd);
+                return this.mutateIdentifyingExpression(this.finishNode(elementAccess));
             }
         }
 
