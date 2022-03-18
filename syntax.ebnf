@@ -1,4 +1,7 @@
 Identifier ::= [_A-Fa-f][_A-Fa-f0-9]+
+PropertyAccessExpression ::= Identifier ( '.' Identifier )
+ElementAccessExpression ::= Identifier '[' Expression ']'
+IdentifyingExpression ::= Identifier | PropertyAccessExpression | ElementAccessExpression
 QuotedString ::= [^"]*
 
 /* Literals */
@@ -18,10 +21,10 @@ BinaryOperator ::= "*" | "+" | "/" | "-" | "!=" | "==" | "|" | '&' | "||" | "&&"
 ExpressionStatement ::= Expression | '(' Expression ')'
 Statement ::= ExpressionStatement | FunctionDeclaration | VariableDeclaration | EnumDeclaration
 SourceBlock  ::= (Statement ';'*)*
-Block = '{' SourceBlock '}'
+Block ::= '{' SourceBlock '}'
 
 /* Expressions */
-Expression ::= Identifier
+Expression ::= IdentifyingExpression
             | StringLiteral
             | InterpolatedStringExpression
             | NumberLiteral
@@ -36,10 +39,10 @@ InterpolatedStringExpression ::= '"' (QuotedString* ('$' Identifier)* QuotedStri
 
 
 /* Call Expressions */
-SimpleCallArgument ::= '$(' Expression ')' | ( '$' Identifier ) | NumberLiteral | BooleanLiteral | StringExpression | ArrayLiteral | ObjectLiteral
-SimpleCallExpression ::= Identifier '!' | Identifier SimpleCallArgument ( ' ' SimpleCallArgument )*
+SimpleCallArgument ::= '$(' Expression ')' | ( '$' IdentifyingExpression ) | NumberLiteral | BooleanLiteral | StringExpression | '$' ArrayLiteral | '$' ObjectLiteral
+SimpleCallExpression ::= IdentifyingExpression '!' | IdentifyingExpression SimpleCallArgument ( ' ' SimpleCallArgument )*
 
-CallExpression ::= Identifier '(' (Expression | Expression (',' Expression)* ) ')'
+CallExpression ::= IdentifyingExpression '(' (Expression | Expression (',' Expression)* ) ')'
 
 /* Enums */
 EnumItems ::= Identifier | Identifier (','  Identifier )*

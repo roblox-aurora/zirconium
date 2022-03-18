@@ -65,6 +65,8 @@ export interface ZrNode {
 	symbol?: ZrSymbol;
 }
 
+export type VariableAccessExpression = Identifier | ElementAccessExpression | PropertyAccessExpression;
+
 export interface ValuesExpression extends Expression {
 	readonly values: ZrNode[];
 }

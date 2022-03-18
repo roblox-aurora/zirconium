@@ -1,6 +1,6 @@
 import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
-import { ArrayIndexExpression, ArrayLiteralExpression, DeclarationStatement, EnumDeclarationStatement, EnumItemExpression, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, ZrNode, ZrNodeKinds, ObjectLiteralExpression, ParameterDeclaration, PropertyAccessExpression, PropertyAssignment, SourceBlock, SourceFile, Statement, ZrEditNode, StringLiteral, ElementAccessExpression } from "Ast/Nodes/NodeTypes";
+import { ArrayIndexExpression, ArrayLiteralExpression, DeclarationStatement, EnumDeclarationStatement, EnumItemExpression, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, ZrNode, ZrNodeKinds, ObjectLiteralExpression, ParameterDeclaration, PropertyAccessExpression, PropertyAssignment, SourceBlock, SourceFile, Statement, ZrEditNode, StringLiteral, ElementAccessExpression, VariableAccessExpression } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import { ArrayIndexToken, IdentifierToken, isToken, KeywordToken, PropertyAccessToken, ZrToken, TokenTypes, ZrTokenType, ZrTokenFlag } from "Ast/Tokens/Tokens";
 import { DiagnosticErrors, ZrDiagnostic } from "./DiagnosticMap";
@@ -396,7 +396,7 @@ export class ZrParserV2 {
     private parseIdentifierAsString(): StringLiteral | Identifier | ArrayIndexExpression | PropertyAccessExpression | ElementAccessExpression {
         const nextToken = this.getToken(ZrTokenType.Identifier);
         if (nextToken && (nextToken.flags & ZrTokenFlag.VariableDollarIdentifier) !== 0) {
-            return this.parseIdentifierLike();
+            return this.parseVariableAccessExpression();
         }
 
 
@@ -419,7 +419,7 @@ export class ZrParserV2 {
         return this.finishNode(identifier);
     }
 
-    private mutateIdentifyingExpression(left: PropertyAccessExpression | ElementAccessExpression | Identifier | ArrayIndexExpression): PropertyAccessExpression | ElementAccessExpression | ArrayIndexExpression | Identifier {
+    private mutateVariableAccessExpression(left: VariableAccessExpression): VariableAccessExpression {
         const token = this.getToken(ZrTokenType.Special);
         if (token) {
             const specialToken = this.consumeToken(ZrTokenType.Special)!;
@@ -428,13 +428,13 @@ export class ZrParserV2 {
                 propExpression.expression = left;
                 propExpression.name = this.parseIdentifier();
                 
-                return this.mutateIdentifyingExpression(this.finishNode(propExpression));
+                return this.mutateVariableAccessExpression(this.finishNode(propExpression));
             } else if (specialToken.value === SpecialTokenId.ElementBegin) {
                 const elementAccess = this.createNode(ZrNodeKind.ElementAccessExpression);
                 elementAccess.expression = left;
                 elementAccess.argumentExpression = this.mutateExpression(this.parseNextExpression());
                 this.consumeIfToken(ZrTokenType.Special, SpecialTokenId.ElementEnd);
-                return this.mutateIdentifyingExpression(this.finishNode(elementAccess));
+                return this.mutateVariableAccessExpression(this.finishNode(elementAccess));
             }
         }
 
@@ -445,15 +445,15 @@ export class ZrParserV2 {
      * Parses any identifying like nodes
      * @returns 
      */
-    private parseIdentifierLike(): Identifier | PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression {
-        return this.mutateIdentifyingExpression(this.parseIdentifier());
+    private parseVariableAccessExpression(): VariableAccessExpression {
+        return this.mutateVariableAccessExpression(this.parseIdentifier());
     }
 
-    private parseCallExpression(isStrictFunctionCall = false) {
+    private parseCallExpression(expression: VariableAccessExpression, isStrictFunctionCall = false) {
         this.functionCallScope += 1;
 
         const callExpression = this.createNode(ZrNodeKind.CallExpression);
-        callExpression.expression = this.parseIdentifierLike();
+        callExpression.expression = expression;
         const args = new Array<Expression>();
 
         if (this.isToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersBegin) || isStrictFunctionCall) {
@@ -646,32 +646,34 @@ export class ZrParserV2 {
         }
 
         // Handling function calling + identifiers
-        if (this.isToken(ZrTokenType.Identifier) || this.isToken(ZrTokenType.PropertyAccess) || this.isToken(ZrTokenType.ArrayIndex)) {
+        if (this.isToken(ZrTokenType.Identifier)) {
+            const id = this.parseVariableAccessExpression();
+
             // Handle bang calls e.g. 'execute!'
-            if (this.isNextToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
+            if (this.isToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
                 const callExpression = this.createNode(ZrNodeKind.CallExpression);
                 callExpression.isSimpleCall = true;
-                callExpression.expression = this.parseIdentifierLike();
+                callExpression.expression = id;
                 const bang = this.consumeToken(ZrTokenType.Operator, "!");
                 return this.finishNode(callExpression, bang!.startPos);
             }
         
             // Handle script calls - e.g. `player.add_item("iron_sword", 20)`
-            if (this.isNextToken(ZrTokenType.Special, "(") && !useSimpleCallSyntax) {
-                return this.parseCallExpression(true);
+            if (this.isToken(ZrTokenType.Special, "(") && !useSimpleCallSyntax) {
+                return this.parseCallExpression(id, true);
             }
 
             // Handle command calls e.g. `player.add_item "iron_sword" 20`
             if (
-                (this.isNextToken(ZrTokenType.String) 
-                || this.isNextToken(ZrTokenType.Number)
-                || this.isNextToken(ZrTokenType.Boolean)
-                || this.isNextToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)
-                || this.isNextToken(ZrTokenType.Special, SpecialTokenId.ArrayBegin)
-                || this.isNextToken(ZrTokenType.Special, SpecialTokenId.ObjectBegin))
+                (this.isToken(ZrTokenType.String) 
+                || this.isToken(ZrTokenType.Number)
+                || this.isToken(ZrTokenType.Boolean)
+                || this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)
+                || this.isToken(ZrTokenType.Special, SpecialTokenId.ArrayBegin)
+                || this.isToken(ZrTokenType.Special, SpecialTokenId.ObjectBegin))
                 && !useSimpleCallSyntax
             ) {
-                return this.parseCallExpression(false);
+                return this.parseCallExpression(id, false);
             }
 
             // If we're currently inside a command call, we'll treat identifiers as strings.
@@ -680,7 +682,7 @@ export class ZrParserV2 {
             }
 
             // Otherwise, we'll return this as a regular identifier.
-            return this.parseIdentifierLike();
+            return id;
         }
         
         this.consumeToken();

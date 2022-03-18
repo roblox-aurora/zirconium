@@ -30,7 +30,9 @@ globals.registerGlobal(
 );
 
 let source = `
-FIRST.SECOND.THIRD[inner]["hi there"]
+print!;
+player.test
+player.add_item 10
 `;
 
 function rangeToString(range?: [x: number, y: number]) {

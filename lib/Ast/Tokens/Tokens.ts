@@ -9,7 +9,9 @@ export const enum ZrTokenType {
 	Option = "Option",
 	Special = "Special",
 	Keyword = "Keyword",
+	/** @deprecated */
 	PropertyAccess = "Property",
+	/** @deprecated */
 	ArrayIndex = "ArrayIndex",
 	EndOfStatement = "EndOfStatement",
 	Whitespace = "Whitespace",
