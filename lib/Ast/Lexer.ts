@@ -92,6 +92,10 @@ export default class ZrLexer {
 		this.stream.reset();
 	}
 
+	public finish() {
+		this.stream.finish();
+	}
+
 	public getPosition() {
 		return this.peek()?.startPos ?? this.stream.getPtr();
 		// return this.stream.getPtr() - 1;
@@ -412,15 +416,24 @@ export default class ZrLexer {
 			});
 		}
 
-		if (options.SyntaxHighlighterLexer && this.isWhitespace(char)) {
+		if (char === "\n") {
 			this.stream.next();
-			return identity<WhitespaceToken>({
-				kind: ZrTokenType.Whitespace,
-				value: char,
-				flags: ZrTokenFlag.None,
-				startPos: startPos,
-				endPos: startPos,
-			});
+			return this.readNext();
+		}
+
+		if (this.isWhitespace(char)) {
+			this.stream.next();
+
+			if (options.SyntaxHighlighterLexer) {
+				return identity<WhitespaceToken>({
+					kind: ZrTokenType.Whitespace,
+					value: char,
+					flags: ZrTokenFlag.None,
+					startPos: startPos,
+					endPos: startPos,
+				});
+			}
+			return this.next();
 		}
 
 		if (char === TokenCharacter.Hash || (char === TokenCharacter.Slash && this.stream.peek(1) === TokenCharacter.Slash)) {
@@ -519,15 +532,15 @@ export default class ZrLexer {
 		// read the id
 		const id = this.readWhile(this.isId);
 
-		// read any property access
-		while (this.stream.hasNext() && this.stream.peek() === ".") {
-			this.stream.next();
-			const id = this.readWhile(this.isId);
-			if (id === "") {
-				flags = ZrTokenFlag.InvalidIdentifier;
-			}
-			properties.push(id);
-		}
+		// // read any property access
+		// while (this.stream.hasNext() && this.stream.peek() === ".") {
+		// 	this.stream.next();
+		// 	const id = this.readWhile(this.isId);
+		// 	if (id === "") {
+		// 		flags = ZrTokenFlag.InvalidIdentifier;
+		// 	}
+		// 	properties.push(id);
+		// }
 
 		const endPos = this.stream.getPtr() - 1;
 

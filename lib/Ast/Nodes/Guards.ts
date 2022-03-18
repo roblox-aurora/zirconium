@@ -34,6 +34,7 @@ import {
 	ParenthesizedExpression,
 	VariableDeclaration,
 	SourceBlock,
+	ElementAccessExpression,
 } from "./NodeTypes";
 import { ZrNodeFlag, ZrNodeKind } from "./Enum";
 import { getKindName, getNodeKindName } from "./Functions";
@@ -201,6 +202,10 @@ export function isBlock(node: ZrNode): node is SourceBlock {
 
 export function isArrayIndexExpression(node: ZrNode): node is ArrayIndexExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ArrayIndexExpression;
+}
+
+export function isElementAccessExpression(node: ZrNode): node is ElementAccessExpression {
+	return node !== undefined && node.kind === ZrNodeKind.ElementAccessExpression;
 }
 
 export function isPropertyAccessExpression(node: ZrNode): node is PropertyAccessExpression {

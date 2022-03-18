@@ -2,7 +2,7 @@
 	<img src="https://i.imgur.com/pPwm8wc.png"/>
 </div>
 <div align="center">
-	<h1>Zirconium</h1>
+	<h1>Zirconium v2</h1>
     <p>Roblox-based Runtime Scripting Language</p>
     <a href="https://www.npmjs.com/package/@rbxts/zirconium">
 		<img src="https://badge.fury.io/js/%40rbxts%2Fzirconium.svg"></img>
@@ -59,6 +59,7 @@
     // Command calls
     test! // no arguments, exclaimation is because otherwise it's evaluated as the variable itself
     print "Hello, World!" 42 true // arguments
+    print $[10, 20, 30] ${a: 10} 1..10 $variable // inline objects
 
     // Script calls
     test() //  no arguments

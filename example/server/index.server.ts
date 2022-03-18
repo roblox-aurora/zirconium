@@ -1,16 +1,12 @@
-import { Result } from "@rbxts/rust-classes";
 import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
-import ZrParser, { ZrScriptVersion } from "Ast/Parser";
 import { ZrParserV2 } from "Ast/ParserV2";
 import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
-import { ZrUserdata } from "./Data/Userdata";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
-import { ZrScriptCreateResult } from "./Runtime/ScriptContext";
 
 const globals = Zr.createContext();
 globals.registerGlobal("print", ZrPrint);
@@ -34,10 +30,7 @@ globals.registerGlobal(
 );
 
 let source = `
-print "hi there";
-print!
-print
-print("Hello, world!")
+FIRST.SECOND.THIRD[0]
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -49,16 +42,16 @@ function rangeToString(range?: [x: number, y: number]) {
 }
 
 const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)));
-lex.parseAst().match((source) => {
+lex.parseAstWithThrow().match((source) => {
 	print("AST", source);
-	prettyPrintNodes(source.children, undefined, true);
+	prettyPrintNodes([source], undefined, false);
 }, (err) => {
 	const [source, errs] = err;
-	prettyPrintNodes(source.children);
+	prettyPrintNodes([source], undefined, true);
 
 	errs.forEach(e => warn(`Error: ${rangeToString(e.range)} [${e.range ? lex.getSource(e.range) : ""}] ${e.message}`));
 
-	print(lex.test);
+	print(lex.nodes);
 });
 
 // game.GetService("Players").PlayerAdded.Connect((player) => {

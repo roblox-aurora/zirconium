@@ -10,7 +10,7 @@ export const enum Precedence {
 const Grammar = {
 	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!", "?", "%", "^", "~"],
 	UnaryOperators: ["!", "-", "+"],
-	EndOfStatement: [";", "\n"],
+	EndOfStatement: [";"],
 	Punctuation: ["(", ")", ",", "{", "}", "[", "]", ".", ":", "\\", "@", "`"],
 	BooleanLiterals: ["true", "false"],
 	Keywords: [
@@ -81,17 +81,21 @@ export const enum OperatorTokenId {
 	UnaryNot = "!",
 }
 
+
 export const enum SpecialTokenId {
-	BodyBegin = "{",
-	BodyEnd = "}",
-	FunctionParametersBegin = "(",
-	FunctionParametersEnd = ")",
-	FunctionParametersSeparator = ",",
-	SimpleCallInlineExpressionDelimiter = "$",
-	ArrayBegin = "[",
-	ArrayEnd = "]",
-	ObjectBegin = "{",
-	ObjectEnd = "}"
+    BodyBegin = "{",
+    BodyEnd = "}",
+    FunctionParametersBegin = "(",
+    FunctionParametersEnd = ")",
+    FunctionParametersSeparator = ",",
+    SimpleCallInlineExpressionDelimiter = "$",
+    ArrayBegin = "[",
+	ElementBegin = "[",
+	ElementEnd = "]",
+    ArrayEnd = "]",
+    ObjectBegin = "{",
+    ObjectEnd = "}",
+    Dot = "."
 }
 
 export type OperatorTokens = typeof Grammar["Operators"][number];

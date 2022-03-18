@@ -7,6 +7,7 @@ import {
 	Identifier,
 	PropertyAccessExpression,
 	ZrNodeKinds,
+	ElementAccessExpression,
 } from "./NodeTypes";
 
 export function getKindName(kind: ZrNodeKind | undefined) {
@@ -21,13 +22,15 @@ function isNode<K extends keyof ZrNodeKinds>(node: ZrNode, kind: K): node is ZrN
 	return node.kind === kind;
 }
 
-function interpolate(node: Identifier | PropertyAccessExpression | ArrayIndexExpression): string {
+function interpolate(node: Identifier | PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression): string {
 	if (isNode(node, ZrNodeKind.Identifier)) {
 		return node.name;
 	} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
 		return node.name + "." + interpolate(node.expression);
 	} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 		return interpolate(node.expression) + "." + node.index.value;
+	} else if (isNode(node, ZrNodeKind.ElementAccessExpression)) {
+		return "?";
 	}
 
 	throw `Invalid`;

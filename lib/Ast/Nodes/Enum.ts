@@ -47,7 +47,7 @@ export enum ZrNodeKind {
 	IfStatement,
 	/** `[<value>, <value>, ...]` */
 	ArrayLiteralExpression,
-	/** `$var[0]` */
+	/** @deprecated */
 	ArrayIndexExpression,
 	/** `$var.value` */
 	PropertyAccessExpression,
@@ -109,7 +109,12 @@ export enum ZrNodeKind {
 
 	EmptyExpression,
 
-	EmptyStatement
+	EmptyStatement,
+
+	/**
+	 * Element access - `x[0]`, `x["hi there"]`, `x[var]`
+	 */
+	ElementAccessExpression,
 }
 
 export enum ZrTypeKeyword {
@@ -118,11 +123,13 @@ export enum ZrTypeKeyword {
 
 export const CmdSyntaxKind = ZrNodeKind;
 
-export const enum ZrNodeFlag {
-	None = 0,
-	Const = 1 << 0,
-	Let = 1 << 1,
 
-	HasImplicitReturn = 1 << 8,
-	ThisNodeHasError = 1 << 16,
+export const enum ZrNodeFlag {
+    None = 0,
+    Const = 1 << 0,
+    Let = 1 << 1,
+
+    HasImplicitReturn = 1 << 8,
+    ThisNodeHasError = 1 << 16,
+	IncompleteNode = 1 << 31,
 }

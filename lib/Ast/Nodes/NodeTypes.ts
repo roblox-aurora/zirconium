@@ -46,6 +46,7 @@ export interface ZrNodeKinds {
 	[ZrNodeKind.EnumItemExpression]: EnumItemExpression;
 	[ZrNodeKind.EmptyExpression]: EmptyExpression;
 	[ZrNodeKind.EmptyStatement]: EmptyStatement;
+	[ZrNodeKind.ElementAccessExpression]: ElementAccessExpression;
 }
 export type ZrNodes = ZrNodeKinds[keyof ZrNodeKinds];
 
@@ -66,6 +67,11 @@ export interface ZrNode {
 
 export interface ValuesExpression extends Expression {
 	readonly values: ZrNode[];
+}
+
+export interface ElementAccessExpression extends Expression {
+	readonly expression: Expression;
+	readonly argumentExpression: Expression;
 }
 
 export interface Statement extends ZrNode {
@@ -248,10 +254,13 @@ export interface VariableStatement extends Statement {
 
 export interface PropertyAccessExpression extends Expression {
 	kind: ZrNodeKind.PropertyAccessExpression;
-	expression: Identifier | PropertyAccessExpression | ArrayIndexExpression;
+	expression: Identifier | PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression;
 	name: Identifier;
 }
 
+/**
+ * @deprecated Use {@link ElementAccessExpression} with a `NumericLiteral` as the argumentExpression
+ */
 export interface ArrayIndexExpression extends Expression {
 	kind: ZrNodeKind.ArrayIndexExpression;
 	expression: Identifier | PropertyAccessExpression | ArrayIndexExpression;
@@ -299,7 +308,7 @@ export interface NumberLiteral extends LiteralExpression {
  */
 export interface CallExpression extends Expression {
 	readonly kind: ZrNodeKind.CallExpression;
-	readonly expression: Identifier | PropertyAccessExpression | ArrayIndexExpression;
+	readonly expression: Identifier | PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression;
 	readonly options: OptionExpression[];
 	readonly isUnterminated?: boolean;
 	readonly isSimpleCall: boolean;

@@ -55,6 +55,10 @@ export default class ZrTextStream {
 		this.ptr = 1;
 	}
 
+	public finish() {
+		this.ptr = this.source.size();
+	}
+
 	/**
 	 * Whether or not there's a next character in the stream
 	 */

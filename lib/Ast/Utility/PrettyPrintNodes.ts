@@ -109,6 +109,7 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 		} else if (isNode(node, CmdSyntaxKind.Source)) {
 			if (verbose) {
 				print(prefix, CmdSyntaxKind[node.kind], `[${node.startPos}:${node.endPos}]`, "{");
+				print(prefix + "\t", `[[ ${node.rawText} ]]`)
 			} else {
 				print(prefix, CmdSyntaxKind[node.kind], "{");
 			}

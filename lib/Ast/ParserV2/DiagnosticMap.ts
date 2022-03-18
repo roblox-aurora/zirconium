@@ -18,11 +18,15 @@ export const DiagnosticErrors = {
     Expected: (...values: string[]) => {
         return identity<ZrDiagnostic>({
             code: ZrParserErrorCode.ExpectedToken,
-            message: values.size() === 1 ? `Expected '${values[0]}'` : `Expected ${values.map(v => `'${v}'`).join(" or ")}`
+            message: values.size() === 1 ? `'${values[0]}' Expected` : `${values.map(v => `'${v}'`).join(" or ")} Expected`
         });
     },
     IdentifierExpected: identity<ZrDiagnostic>({
         code: ZrParserErrorCode.IdentifierExpected,
         message: 'Identifier expected'
+    }),
+    EndOfFile: identity<ZrDiagnostic>({
+        code: ZrParserErrorCode.EndOfFile,
+        message: 'Unexpected EOF'
     })
 } as const;

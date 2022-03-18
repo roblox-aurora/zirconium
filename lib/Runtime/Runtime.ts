@@ -19,6 +19,7 @@ import {
 	FunctionExpression,
 	Identifier,
 	EnumDeclarationStatement,
+	ElementAccessExpression,
 } from "../Ast/Nodes/NodeTypes";
 import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
@@ -402,6 +403,10 @@ export default class ZrRuntime {
 		}
 	}
 
+	private evaluateElementAccessExpression(node: ElementAccessExpression): ZrValue | ZrUndefined | undefined {
+		throw `Not implemented yet!`;
+	}
+
 	private evaluatePropertyAccessExpression(node: PropertyAccessExpression) {
 		const { expression, name } = node;
 		const value = this.evaluateNode(expression);
@@ -469,6 +474,8 @@ export default class ZrRuntime {
 			throw `Not supported yet`;
 		} else if (types.isPropertyAccessExpression(expression)) {
 			matching = this.evaluateNode(expression);
+		} else if (types.isElementAccessExpression(expression)) {
+			matching = this.evaluateNode(expression);
 		} else {
 			matching = this.locals.getLocalOrUpValue(expression.name)?.[0];
 		}
@@ -531,7 +538,7 @@ export default class ZrRuntime {
 		}
 	}
 
-	public getFullName(id: PropertyAccessExpression | ArrayIndexExpression | Identifier): string {
+	public getFullName(id: PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression | Identifier): string {
 		if (types.isIdentifier(id)) {
 			return id.name;
 		} else if (types.isArrayIndexExpression(id)) {
@@ -637,6 +644,8 @@ export default class ZrRuntime {
 			return this.getLocals().getLocalOrUpValue(node.name)?.[0] ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
+		} else if (isNode(node, ZrNodeKind.ElementAccessExpression)) {
+			return this.evaluateElementAccessExpression(node);
 		} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
 			return this.evaluatePropertyAccessExpression(node) ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
