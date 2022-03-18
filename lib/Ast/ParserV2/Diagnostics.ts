@@ -2,12 +2,17 @@ import { ZrNode } from "Ast/Nodes/NodeTypes";
 import { ZrToken } from "Ast/Tokens/Tokens";
 import { TextLocation } from "Ast/Types";
 
+
+
+
 export enum ZrParserErrorCode {
     ExceptionThrown = -1,
     NotImplemented = 0,
     ExpectedToken = 1,
     IdentifierExpected,
-    EndOfFile
+    EndOfFile,
+    UnexpectedKeyword,
+    ExpressionExpected
 }
 
 export interface ZrParserError {

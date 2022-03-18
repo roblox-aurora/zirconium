@@ -286,8 +286,9 @@ export class ZrParserV2 {
         this.consumeToken(ZrTokenType.Keyword, Keywords.FUNCTION); // consume 'function'
 
         if (this.isToken(ZrTokenType.Identifier)) {
-            const id = this.consumeToken(ZrTokenType.Identifier)!;
-            this.functionContext.push({ name: id.value });
+            functionDeclaration.name = this.parseIdentifier();
+
+            this.functionContext.push({ name: functionDeclaration.name.name });
             const parameters = this.parseFunctionDeclarationParameters();
             functionDeclaration.parameters = parameters;
 
@@ -337,6 +338,8 @@ export class ZrParserV2 {
      * This will match a `VariableDeclaration`, `FunctionDeclaration` or `EnumDeclaration`.
      */
     private tryParseDeclarationStatement(): DeclarationStatement | undefined {
+        const exportToken = this.consumeIfToken(ZrTokenType.Keyword, Keywords.EXPORT);
+
         // If `function` -
         if (this.isKeywordToken(Keywords.FUNCTION)) {
             return this.parseFunctionDeclaration();
@@ -345,6 +348,10 @@ export class ZrParserV2 {
         // If `enum` - 
         if (this.isKeywordToken(Keywords.ENUM)) {
             return this.parseEnumDeclaration();
+        }
+
+        if (exportToken) {
+            this.parserErrorAtCurrentToken(DiagnosticErrors.UnexpectedKeyword(exportToken));
         }
     }
 
@@ -606,6 +613,21 @@ export class ZrParserV2 {
         return Option.none();
     }
 
+    private parseKeyword() {
+        const keyword = this.consumeToken(ZrTokenType.Keyword)!;
+        if (keyword.value === Keywords.UNDEFINED) {
+            const undefinedKeyword = this.createNode(ZrNodeKind.UndefinedKeyword);
+            undefinedKeyword.startPos = keyword.startPos;
+            undefinedKeyword.endPos = keyword.endPos;
+            return this.finishNode(undefinedKeyword);
+        }
+
+
+        const emptyNode = this.createNode(ZrNodeKind.EmptyExpression);
+        this.parserErrorAtCurrentToken(DiagnosticErrors.UnexpectedKeyword(keyword));
+        return this.finishNode(emptyNode);
+    }
+
     /**
      * Attempts to parse the next expression
      */
@@ -691,9 +713,15 @@ export class ZrParserV2 {
             // Otherwise, we'll return this as a regular identifier.
             return id;
         }
+
+        if (this.isToken(ZrTokenType.Keyword)) {
+            return this.parseKeyword();
+        }
         
+        const errNode = this.createNode(ZrNodeKind.EmptyExpression);
         this.consumeToken();
-        return this.finishNode(this.createNode(ZrNodeKind.EmptyExpression));
+        this.parserErrorAtCurrentToken(DiagnosticErrors.ExpressionExpected);
+        return this.finishNode(errNode);
     }
 
     private mutateExpression(left: Expression, precedence = 0): Expression {

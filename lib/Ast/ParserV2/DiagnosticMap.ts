@@ -1,6 +1,6 @@
 
 import { ZrParser } from "Ast";
-import { ZrToken, ZrTokenType } from "Ast/Tokens/Tokens";
+import { KeywordToken, ZrToken, ZrTokenType } from "Ast/Tokens/Tokens";
 import { ZrParserError, ZrParserErrorCode } from "./Diagnostics";
 
 export interface ZrDiagnostic {
@@ -25,8 +25,18 @@ export const DiagnosticErrors = {
         code: ZrParserErrorCode.IdentifierExpected,
         message: 'Identifier expected'
     }),
+    UnexpectedKeyword: (value: KeywordToken) => {
+        return identity<ZrDiagnostic>({
+            code: ZrParserErrorCode.UnexpectedKeyword,
+            message: `Unexpected keyword '${value.value}'`
+        })
+    },
     EndOfFile: identity<ZrDiagnostic>({
         code: ZrParserErrorCode.EndOfFile,
         message: 'Unexpected EOF'
+    }),
+    ExpressionExpected: identity<ZrDiagnostic>({
+        code: ZrParserErrorCode.ExpressionExpected,
+        message: "Expected expression"
     })
 } as const;

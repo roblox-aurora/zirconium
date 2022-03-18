@@ -187,7 +187,7 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			prettyPrintNodes(node.statements, prefix + "\t", verbose);
 			print(prefix, "}");
 		} else if (isNode(node, CmdSyntaxKind.FunctionDeclaration)) {
-			print(prefix, "FunctionDeclaration", "{");
+			print(prefix, "FunctionDeclaration", `${node.name.name}`, "{");
 			prettyPrintNodes([node.name], prefix + "\t", verbose);
 			prettyPrintNodes(node.parameters, prefix + "\t ", verbose);
 			prettyPrintNodes([node.body], prefix + "\t", verbose);
