@@ -1,8 +1,8 @@
 import { Option, Result } from "@rbxts/rust-classes";
 import { ZrLexer } from "Ast";
-import { ArrayIndexExpression, ArrayLiteralExpression, DeclarationStatement, EnumDeclarationStatement, EnumItemExpression, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, ZrNode, ZrNodeKinds, ObjectLiteralExpression, ParameterDeclaration, PropertyAccessExpression, PropertyAssignment, SourceBlock, SourceFile, Statement, ZrEditNode, StringLiteral, ElementAccessExpression, VariableAccessExpression } from "Ast/Nodes/NodeTypes";
+import { ArrayIndexExpression, ArrayLiteralExpression, DeclarationStatement, EnumDeclarationStatement, EnumItemExpression, Expression, FunctionDeclaration, Identifier, LiteralExpression, NamedDeclaration, ZrNode, ZrNodeKinds, ObjectLiteralExpression, ParameterDeclaration, PropertyAccessExpression, PropertyAssignment, SourceBlock, SourceFile, Statement, ZrEditNode, StringLiteral, ElementAccessExpression, VariableAccessExpression, ForInStatement } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
-import { ArrayIndexToken, IdentifierToken, isToken, KeywordToken, PropertyAccessToken, ZrToken, TokenTypes, ZrTokenType, ZrTokenFlag } from "Ast/Tokens/Tokens";
+import { ArrayIndexToken, IdentifierToken, isToken, KeywordToken, PropertyAccessToken, ZrToken, TokenTypes, ZrTokenType, ZrTokenFlag, KEYWORDS } from "Ast/Tokens/Tokens";
 import { DiagnosticErrors, ZrDiagnostic } from "./DiagnosticMap";
 import { ZrParserError, ZrParserErrorCode } from "./Diagnostics";
 import * as factory from "Ast/Nodes/Create";
@@ -332,29 +332,6 @@ export class ZrParserV2 {
         return this.finishNode(enumStatement);
     }
 
-    /**
-     * Attempts to parse a declaration statement, if there is any
-     * 
-     * This will match a `VariableDeclaration`, `FunctionDeclaration` or `EnumDeclaration`.
-     */
-    private tryParseDeclarationStatement(): DeclarationStatement | undefined {
-        const exportToken = this.consumeIfToken(ZrTokenType.Keyword, Keywords.EXPORT);
-
-        // If `function` -
-        if (this.isKeywordToken(Keywords.FUNCTION)) {
-            return this.parseFunctionDeclaration();
-        }
-
-        // If `enum` - 
-        if (this.isKeywordToken(Keywords.ENUM)) {
-            return this.parseEnumDeclaration();
-        }
-
-        if (exportToken) {
-            this.parserErrorAtCurrentToken(DiagnosticErrors.UnexpectedKeyword(exportToken));
-        }
-    }
-
     private tryParseLiteral(): Option<LiteralExpression> {
         if (this.isToken(ZrTokenType.Number)) {
             const numberNode = this.createNode(ZrNodeKind.Number);
@@ -407,7 +384,7 @@ export class ZrParserV2 {
             return this.parseVariableAccessExpression();
         }
 
-        const literalNode =this.parseVariableAccessExpression();
+        const literalNode = this.parseVariableAccessExpression();
 
         const stringNode = this.createNode(ZrNodeKind.String);
 
@@ -517,8 +494,8 @@ export class ZrParserV2 {
             const endToken = this.consumeToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersEnd);
             endPos = endToken?.endPos;
 		} else {
-            const endToken = this.lexer.hasReachedEnd() ? this.consumeIfToken(ZrTokenType.EndOfStatement, ";") : this.consumeToken(ZrTokenType.EndOfStatement, ";");
-            endPos = endToken ? endToken?.endPos - 1 : undefined;
+            // const endToken = this.consumeIfToken(ZrTokenType.EndOfStatement, ";");
+            // endPos = endToken ? endToken?.endPos - 1 : undefined;
         }
 
         this.callContext.pop();
@@ -674,9 +651,9 @@ export class ZrParserV2 {
         // Handling function calling + identifiers
         if (this.isToken(ZrTokenType.Identifier)) {
             // If we're currently inside a command call, we'll treat identifiers as strings.
-            if (useSimpleCallSyntax) {
-                return this.parseIdentifierAsString();
-            }
+            // if (useSimpleCallSyntax) {
+            //     return this.parseIdentifierAsString();
+            // }
 
             const id = this.parseVariableAccessExpression();
 
@@ -740,13 +717,64 @@ export class ZrParserV2 {
     }
 
     /**
+     * Attempts to parse a declaration statement, if there is any
+     * 
+     * This will match a `VariableDeclaration`, `FunctionDeclaration` or `EnumDeclaration`.
+     */
+     private tryParseDeclaration(): DeclarationStatement | undefined {
+        const exportToken = this.consumeIfToken(ZrTokenType.Keyword, Keywords.EXPORT);
+
+        // If `function` -
+        if (this.isKeywordToken(Keywords.FUNCTION)) {
+            return this.parseFunctionDeclaration();
+        }
+
+        // If `enum` - 
+        if (this.isKeywordToken(Keywords.ENUM)) {
+            return this.parseEnumDeclaration();
+        }
+
+
+
+        if (exportToken) {
+            this.parserErrorAtCurrentToken(DiagnosticErrors.UnexpectedKeyword(exportToken));
+        }
+    }
+
+    private parseForStatement(): ForInStatement {
+        this.consumeToken(ZrTokenType.Keyword, Keywords.FOR);
+
+        const statement = this.createNode(ZrNodeKind.ForInStatement);
+        statement.initializer = this.parseIdentifier();
+        this.consumeToken(ZrTokenType.Keyword, Keywords.IN);
+        statement.expression = this.mutateExpression(this.parseNextExpression());
+        statement.statement = this.parseBlock();
+
+        return this.finishNode(statement);
+    }
+
+    private tryParseControl(): Option<ForInStatement> {
+        // If `for`
+        if (this.isKeywordToken(Keywords.FOR)) {
+            return Option.some(this.parseForStatement())
+        }
+
+        return Option.none();
+    }
+
+    /**
      * Attempts to parse the next statement
      */
     private parseNextStatement(): Statement {
         // We'll first try and parse any VariableDeclaration, FunctionDeclaration or EnumDeclaration statements
-        const declaration = this.tryParseDeclarationStatement();
+        const declaration = this.tryParseDeclaration();
         if (declaration !== undefined) {
             return declaration;
+        }
+        
+        const flow = this.tryParseControl();
+        if (flow.isSome()) {
+            return flow.unwrap();
         }
 
         if (this.isToken(ZrTokenType.EndOfStatement, "\n")) {
@@ -757,6 +785,8 @@ export class ZrParserV2 {
         const expressionStatement = this.createNode(ZrNodeKind.ExpressionStatement);
         const expression = this.mutateExpression(this.parseNextExpression());
         expressionStatement.expression = expression;
+
+        this.consumeToken(ZrTokenType.EndOfStatement, ";");
 
         return this.finishNode(expressionStatement, expression.endPos);
     }
