@@ -32,10 +32,13 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 					"{",
 				);
 			} else {
-				print(prefix, CmdSyntaxKind[node.kind], `\`${getIdText(node.expression)}\``, "{");
+				print(prefix, CmdSyntaxKind[node.kind], `\`${getIdText(node.expression)}\``, `'${node.rawText}'`, "{");
 			}
 
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
+
+			print("");
+			print(prefix + "\t", "@[Arguments]");
 			prettyPrintNodes(node.arguments, prefix + "\t", verbose);
 			if (isNode(node, CmdSyntaxKind.CallExpression)) {
 				prettyPrintNodes(node.options, prefix + "\t", verbose);
@@ -166,7 +169,6 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
 			print(prefix, "}");
-			print("");
 		} else if (isNode(node, CmdSyntaxKind.ArrayLiteralExpression)) {
 			print(prefix, "ArrayLiteralExpression", "{");
 			prettyPrintNodes(node.values, prefix + "\t", verbose);
@@ -232,9 +234,13 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 				prettyPrintNodes([node.condition], prefix + "\t", verbose);
 			}
 			if (node.thenStatement) {
+				print("");
+				print(prefix + "\t", "@[True]");
 				prettyPrintNodes([node.thenStatement], prefix + "\t", verbose);
 			}
 			if (node.elseStatement) {
+				print("");
+				print(prefix + "\t", "@[False]");
 				prettyPrintNodes([node.elseStatement], prefix + "\t", verbose);
 			}
 			print(prefix, "}");

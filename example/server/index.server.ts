@@ -30,7 +30,35 @@ globals.registerGlobal(
 	}),
 );
 
-let source = `print(true)`;
+let source = `
+	print()
+	print(true, "lol")
+	print "What the hell";
+	for i in 1..10 {
+		function test() {
+			print!
+			print({
+				a: 10
+			}, [1, 2, 3])
+		}
+
+		if 10 == 20 {
+
+		}
+
+		if 10 > 20 {
+
+		} else if true {
+
+		} else if print("hi there") {
+			
+		} else {
+
+		}
+
+		if 10 == 20: true else: false
+	}
+`;
 
 function rangeToString(range?: [x: number, y: number]) {
 	if (range) {
@@ -40,17 +68,12 @@ function rangeToString(range?: [x: number, y: number]) {
 	}
 }
 
-const flags = new Set(
-	$env
-		.string("ZIRCONIUM_TEST_FLAGS", "")
-		.split(";")
-		.filter(f => f !== ""),
-);
+let len = source.size();
 
 const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)));
 lex.parseAstWithThrow().match(
 	source => {
-		print("AST", source);
+		print("AST", source, len);
 		prettyPrintNodes([source], undefined, false);
 	},
 	err => {

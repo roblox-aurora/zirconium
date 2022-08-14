@@ -25,6 +25,7 @@ import {
 	ElementAccessExpression,
 	VariableAccessExpression,
 	ForInStatement,
+	IfStatement,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -184,8 +185,7 @@ export class ZrParserV2 {
 			let isMatchingValue = expectedValue === undefined || expectedValue === value?.value;
 
 			if ((expectedValue !== undefined && !isMatchingType) || !isMatchingValue) {
-				const prev = this.lexer.prev();
-				this.parserErrorAtPosition(prev.startPos, prev.endPos, DiagnosticErrors.Expected(expectedValue!));
+				this.parserErrorAtCurrentToken(DiagnosticErrors.Expected(expectedValue!), value);
 			} else if (!isMatchingType) {
 				this.parserErrorAtCurrentToken(DiagnosticErrors.ExpectedToken(kind), value);
 			}
@@ -560,6 +560,7 @@ export class ZrParserV2 {
 		this.callContext.pop();
 		this.functionCallScope -= 1;
 
+		callExpression.startPos = expression.startPos;
 		return this.finishNode(callExpression, endPos);
 	}
 
@@ -732,6 +733,7 @@ export class ZrParserV2 {
 			if (this.isToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
 				const callExpression = this.createNode(ZrNodeKind.CallExpression);
 				callExpression.isSimpleCall = true;
+				callExpression.startPos = id.startPos;
 				callExpression.expression = id;
 				const bang = this.consumeToken(ZrTokenType.Operator, "!");
 				return this.finishNode(callExpression, bang!.startPos);
@@ -835,6 +837,61 @@ export class ZrParserV2 {
 		return Option.none();
 	}
 
+	private tryParseIfStatement(): Option<IfStatement> {
+		if (this.isKeywordToken(Keywords.IF)) {
+			this.consumeToken(ZrTokenType.Keyword, Keywords.IF);
+
+			const expression = this.mutateExpression(this.parseNextExpression());
+			if (!expression) {
+				throw `No expression`;
+			}
+
+			const ifStatement = this.createNode(ZrNodeKind.IfStatement);
+			ifStatement.condition = expression;
+
+			// Handle `if cond:`
+			if (this.isToken(ZrTokenType.Special, ":")) {
+				this.consumeToken(ZrTokenType.Special, ":");
+				const ifExpression = this.mutateExpression(this.parseNextExpression());
+				ifStatement.thenStatement = factory.createExpressionStatement(ifExpression);
+
+				// Handle 'else:'
+				if (this.isKeywordToken(Keywords.ELSE)) {
+					this.consumeToken(ZrTokenType.Keyword, Keywords.ELSE);
+					this.consumeToken(ZrTokenType.Special, ":");
+					ifStatement.elseStatement = factory.createExpressionStatement(
+						this.mutateExpression(this.parseNextExpression()),
+					);
+				}
+			} else {
+				// handle `if cond { ... }`
+				const block = this.parseBlock();
+				ifStatement.thenStatement = block;
+
+				// if cond { ... } else ...
+				if (this.isKeywordToken(Keywords.ELSE)) {
+					this.consumeToken(ZrTokenType.Keyword, Keywords.ELSE);
+
+					const elseIfStatement = this.tryParseIfStatement();
+
+					if (elseIfStatement.isSome()) {
+						ifStatement.elseStatement = elseIfStatement.unwrap();
+					} else if (this.isToken(ZrTokenType.Special, ":")) {
+						this.consumeToken();
+						ifStatement.elseStatement = factory.createExpressionStatement(
+							this.mutateExpression(this.parseNextExpression()),
+						);
+					} else {
+						ifStatement.elseStatement = this.parseBlock();
+					}
+				}
+			}
+
+			return Option.some(this.finishNode(ifStatement));
+		}
+		return Option.none();
+	}
+
 	/**
 	 * Attempts to parse the next statement
 	 */
@@ -848,6 +905,11 @@ export class ZrParserV2 {
 		const flow = this.tryParseControl();
 		if (flow.isSome()) {
 			return flow.unwrap();
+		}
+
+		const conditional = this.tryParseIfStatement();
+		if (conditional.isSome()) {
+			return conditional.unwrap();
 		}
 
 		if (this.isToken(ZrTokenType.EndOfStatement, "\n")) {
