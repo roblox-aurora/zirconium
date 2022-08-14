@@ -3,7 +3,7 @@
 		// required
 		"allowSyntheticDefaultImports": true,
 		"downlevelIteration": true,
-        "noLib": true,
+		"noLib": true,
 		"strict": true,
 		"target": "ESNext",
 		"moduleResolution": "Node",
@@ -25,17 +25,17 @@
 		"jsxFactory": "Roact.createElement",
 		"plugins": [
 			{
-			  "transform": "rbxts-transform-debug",
-			  "verbose": true,
-			  "enabled": true,
-			  "environmentRequires": {
-				"NODE_ENV": "development"
-			  }
+				"transform": "rbxts-transform-env"
+			},
+			{
+				"transform": "rbxts-transform-debug",
+				"verbose": true,
+				"enabled": true,
+				"environmentRequires": {
+					"NODE_ENV": "development"
+				}
 			}
-		  ]
+		]
 	},
-	"exclude": [
-		"example/**/*",
-        "out"
-	]
+	"exclude": ["example/**/*", "out"]
 }

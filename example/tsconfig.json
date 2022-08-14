@@ -28,10 +28,16 @@
 
     "plugins": [
       {
+        "transform": "rbxts-transform-env",
+        "verbose": true,
+        "defaultEnvironment": "development",
+      },
+      {
         "transform": "rbxts-transform-debug",
         "environmentRequires": {
           "NODE_ENV": "development"
-        }
+        },
+        "verbose": true,
       }
     ]
   },

@@ -8,6 +8,10 @@ export interface TextRange {
     endPos: number;
 }
 
+export class TextPosition {
+    public constructor(public line: number, public character: number) {}
+}
+
 /**
  * Creates a text range
  * @param startPos The start position of this range

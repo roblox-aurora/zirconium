@@ -1,12 +1,13 @@
-import { ZrNode } from "../Nodes/NodeTypes";
+import { Expression, ZrNode } from "../Nodes/NodeTypes";
 import { isNode } from "../Nodes/Guards";
 import { CmdSyntaxKind } from "../Nodes";
 import { getNodeKindName } from "../Nodes/Functions";
-import { ZrNodeFlag } from "../Nodes/Enum";
+import { ZrNodeFlag, ZrNodeKind } from "../Nodes/Enum";
+import getIdText from "./PrettyPrintId";
 
 function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 	if (!nodes) return;
-	
+
 	for (const node of nodes) {
 		if (isNode(node, CmdSyntaxKind.String)) {
 			const str = node.quotes !== undefined ? `${node.quotes}${node.text}${node.quotes}` : `\`${node.text}\``;
@@ -21,9 +22,17 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			}
 		} else if (isNode(node, CmdSyntaxKind.CallExpression)) {
 			if (verbose) {
-				print(prefix, CmdSyntaxKind[node.kind], node.isSimpleCall ? "<!>" : "<()>", `'${node.rawText}'`, `[${node.startPos}:${node.endPos}]`, "{");
+				print(
+					prefix,
+					CmdSyntaxKind[node.kind],
+					node.isSimpleCall ? "<!>" : "<()>",
+					`\`${getIdText(node.expression)}\``,
+					`'${node.rawText}'`,
+					`[${node.startPos}:${node.endPos}]`,
+					"{",
+				);
 			} else {
-				print(prefix, CmdSyntaxKind[node.kind], "{");
+				print(prefix, CmdSyntaxKind[node.kind], `\`${getIdText(node.expression)}\``, "{");
 			}
 
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
@@ -109,7 +118,7 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 		} else if (isNode(node, CmdSyntaxKind.Source)) {
 			if (verbose) {
 				print(prefix, CmdSyntaxKind[node.kind], `[${node.startPos}:${node.endPos}]`, "{");
-				print(prefix + "\t", `[[ ${node.rawText} ]]`)
+				print(prefix + "\t", `[[ ${node.rawText} ]]`);
 			} else {
 				print(prefix, CmdSyntaxKind[node.kind], "{");
 			}
@@ -154,7 +163,7 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			} else {
 				print(prefix, "ExpressionStatement", "{");
 			}
-			
+
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
 			print(prefix, "}");
 			print("");
