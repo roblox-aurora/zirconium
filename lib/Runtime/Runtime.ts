@@ -28,7 +28,7 @@ import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
 import { types } from "../Ast";
-import { InferUserdataKeys, ZrInstanceUserdata, ZrUserdata } from "../Data/Userdata";
+import { InferUserdataKeys, ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
@@ -368,22 +368,19 @@ export default class ZrRuntime {
 		expression: PropertyAccessExpression["expression"],
 		userdata: ZrUserdata<defined>,
 		key: string,
-		value: ZrValue,
-	) {
-		if (userdata.isInstance()) {
-			this.runtimeError(
-				"Runtime Violation: Instance properties are read-only via Zirconium",
-				ZrRuntimeErrorCode.InstanceSetViolation,
-				expression,
-			);
-		} else {
-			const object = userdata.value() as Record<string, unknown>;
-			try {
-				object[key] = value;
-			} catch (err) {
-				this.runtimeError(tostring(err), ZrRuntimeErrorCode.InstanceSetViolation, expression);
-			}
+		value: ZrValue | ZrUndefined,
+	): void {
+		if (userdata.properties && key in userdata.properties) {
+			return userdata.properties[key].set!(userdata, value !== ZrUndefined ? value : undefined);
+		} else if (typeIs(userdata.set, "function")) {
+			return userdata.set(key, value !== ZrUndefined ? value : undefined);
 		}
+
+		this.runtimeError(
+			`Cannot write to property '${key}' on userdata`,
+			ZrRuntimeErrorCode.InvalidPropertyAccess,
+			expression,
+		);
 	}
 
 	private getUserdata<T extends ZrUserdata<defined>>(
@@ -391,16 +388,17 @@ export default class ZrRuntime {
 		userdata: T,
 		key: string,
 	) {
-		if (userdata.isInstance()) {
-			try {
-				return userdata.get(key as InferUserdataKeys<T>);
-			} catch (err) {
-				this.runtimeError(tostring(err), ZrRuntimeErrorCode.InstanceGetViolation, expression);
-			}
-		} else {
-			const object = userdata.value() as Record<string, ZrValue>;
-			return object[key];
+		if (userdata.properties && key in userdata.properties) {
+			return userdata.properties[key].get!(userdata);
+		} else if (typeIs(userdata.get, "function")) {
+			return userdata.get(key);
 		}
+
+		this.runtimeError(
+			`Cannot access property '${key}' on userdata`,
+			ZrRuntimeErrorCode.InvalidPropertyAccess,
+			expression,
+		);
 	}
 
 	private evaluateElementAccessExpression(node: ElementAccessExpression): ZrValue | ZrUndefined | undefined {
@@ -554,30 +552,7 @@ export default class ZrRuntime {
 
 	public evaluateBinaryExpression(node: BinaryExpression, input = ZrInputStream.empty()) {
 		const { left, operator, right } = node;
-		if (operator === "|") {
-			this.runtimeAssert(
-				types.isCallableExpression(left) &&
-					(types.isCallableExpression(right) || isNode(right, ZrNodeKind.BinaryExpression)),
-				"Pipe expression only works with two command statements",
-				ZrRuntimeErrorCode.PipeError,
-			);
-			const output = new ZrOutputStream();
-			const context = ZrContext.createPipedContext(this, input, output);
-			const result = this.evaluateFunctionCall(left, context);
-
-			if (result !== undefined && result !== ZrUndefined) {
-				output.write(result);
-			}
-
-			if (types.isCallableExpression(right)) {
-				this.evaluateFunctionCall(
-					right,
-					ZrContext.createPipedContext(this, output._toInputStream(), this.context.getOutput()),
-				);
-			} else {
-				this.evaluateBinaryExpression(right, output._toInputStream());
-			}
-		} else if (operator === "&&") {
+		if (operator === "&&") {
 			if (types.isCallableExpression(left)) {
 				const result = this.evaluateFunctionCall(left, this.context);
 				if (result === undefined || (result !== undefined && result !== ZrUndefined)) {

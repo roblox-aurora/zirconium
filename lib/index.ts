@@ -1,5 +1,5 @@
 import { ZrValue } from "Data/Locals";
-import { ZrLuauArgument } from "Data/LuauFunction";
+import { ZrUnknown } from "Data/LuauFunction";
 import { ZirconiumLogging } from "Logging";
 import { $package } from "rbxts-transform-debug";
 import { $env } from "rbxts-transform-env";
@@ -32,7 +32,7 @@ namespace Zr {
 	}
 
 	export type Value = ZrValue;
-	export type Argument = ZrLuauArgument;
+	export type Argument = ZrUnknown;
 
 	if ($env.boolean("ZIRCONIUM_VERBOSE")) {
 		ZirconiumLogging.Info("Initialized Zirconium v{VERSION}", $package.version);

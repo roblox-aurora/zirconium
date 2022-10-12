@@ -7,32 +7,19 @@ import ZrUndefined from "./Undefined";
  *
  * Where the real magic happens.
  */
-type TypeId = "string" | "number" | "boolean";
-type InferTypeName<T> = T extends "string"
-	? string
-	: T extends "number"
-	? number
-	: T extends "boolean"
-	? boolean
-	: never;
-
-type ArgTypes<T> = { readonly [P in keyof T]: InferTypeName<T[P]> };
-
-export type ZrLuauArgument = ZrValue | ZrUndefined;
+export type ZrUnknown = ZrValue | ZrUndefined;
 export default class ZrLuauFunction {
-	constructor(
-		private callback: (ctx: ZrContext, ...args: readonly ZrLuauArgument[]) => ZrValue | ZrUndefined | void,
-	) {}
+	constructor(private callback: (ctx: ZrContext, ...args: readonly ZrUnknown[]) => ZrUnknown | void) {}
 
 	/**
 	 * Create a dynamic function (one that takes any value per argument)
 	 */
-	public static createDynamic(fn: (context: ZrContext, ...args: readonly ZrLuauArgument[]) => ZrValue | void) {
+	public static createDynamic(fn: (context: ZrContext, ...args: readonly ZrUnknown[]) => ZrValue | void) {
 		return new ZrLuauFunction(fn);
 	}
 
 	/** @internal */
-	public call(context: ZrContext, ...args: ZrLuauArgument[]) {
+	public call(context: ZrContext, ...args: ZrUnknown[]) {
 		return this.callback(context, ...args);
 	}
 

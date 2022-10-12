@@ -5,7 +5,7 @@ import ZrParser, { ZrParserError, ZrScriptMode, ZrScriptVersion } from "../Ast/P
 import prettyPrintNodes from "../Ast/Utility/PrettyPrintNodes";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
-import ZrLuauFunction, { ZrLuauArgument } from "../Data/LuauFunction";
+import ZrLuauFunction, { ZrUnknown } from "../Data/LuauFunction";
 import { ZrRuntimeError } from "./Runtime";
 import ZrScript from "./Script";
 
@@ -38,7 +38,7 @@ export default class ZrScriptContext {
 		}
 	}
 
-	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrLuauArgument[]) => ZrValue | undefined) {
+	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrUnknown[]) => ZrValue | undefined) {
 		this.registerGlobal(name, new ZrLuauFunction(fn));
 	}
 
