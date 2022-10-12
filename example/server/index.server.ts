@@ -5,6 +5,7 @@ import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { $env } from "rbxts-transform-env";
+import ZrRuntime from "Runtime/Runtime";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
@@ -58,6 +59,10 @@ let source = `
 
 		if 10 == 20: true else: false
 	}
+
+	let expression = 10;
+
+	print("Test is", false ?? 10, false || "hi there", true && false);
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -75,6 +80,11 @@ lex.parseAstWithThrow().match(
 	source => {
 		print("AST", source, len);
 		prettyPrintNodes([source], undefined, false);
+
+		const zr = Zr.createContext();
+		const zrScript = zr.createScript(source);
+		zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
+		zrScript.executeOrThrow();
 	},
 	err => {
 		const [source, errs] = err;

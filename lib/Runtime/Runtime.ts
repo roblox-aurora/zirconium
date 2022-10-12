@@ -36,6 +36,8 @@ import ZrRange from "Data/Range";
 import { ZrEnum } from "Data/Enum";
 import { ZrEnumItem } from "Data/EnumItem";
 import { $print } from "rbxts-transform-debug";
+import { OperatorTokens } from "Ast/Tokens/Grammar";
+import { ZrRuntimeHelpers } from "./Helpers";
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -56,6 +58,9 @@ export enum ZrRuntimeErrorCode {
 	InvalidEnumItem,
 	OutOfRange,
 	UnassignedVariable,
+	InvalidGreaterThanComparison,
+	InvalidArithmeticOperands,
+	RedeclareBlockScopedVariable,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -164,7 +169,16 @@ export default class ZrRuntime {
 			const isLocalAssignment = isConstant || (flags & ZrNodeFlag.Let) !== 0;
 
 			if (isLocalAssignment) {
-				this.getLocals().setLocal(identifier.name, value === ZrUndefined ? undefined : value, isConstant);
+				const localValue = this.getLocals().getScopedLocal(identifier.name);
+				if (localValue && localValue[1] !== undefined) {
+					this.runtimeError(
+						`Cannot redeclare block-scoped variable '${identifier.name}'`,
+						ZrRuntimeErrorCode.RedeclareBlockScopedVariable,
+						node.identifier,
+					);
+				}
+
+				this.getLocals().setScopedLocal(identifier.name, value === ZrUndefined ? undefined : value, isConstant);
 			} else {
 				const result = this.getLocals().setUpValueOrLocal(
 					identifier.name,
@@ -201,7 +215,7 @@ export default class ZrRuntime {
 
 	private evaluateFunctionDeclaration(node: FunctionDeclaration) {
 		const declaration = new ZrUserFunction(node);
-		this.locals.setLocal(node.name.name, declaration, true);
+		this.locals.setScopedLocal(node.name.name, declaration, true);
 		return declaration;
 	}
 
@@ -214,7 +228,7 @@ export default class ZrRuntime {
 		);
 
 		$print(declaration.getItems(), "declaration");
-		this.locals.setLocal(name, declaration, true);
+		this.locals.setScopedLocal(name, declaration, true);
 		return declaration;
 	}
 
@@ -311,21 +325,21 @@ export default class ZrRuntime {
 		if (value instanceof ZrObject) {
 			for (const [k, v] of value.toMap()) {
 				this.push();
-				this.locals.setLocal(initializer.name, [k, v]);
+				this.locals.setScopedLocal(initializer.name, [k, v]);
 				this.evaluateNode(statement);
 				this.pop();
 			}
 		} else if (value instanceof ZrRange) {
 			for (const item of value.Iterator()) {
 				this.push();
-				this.locals.setLocal(initializer.name, item);
+				this.locals.setScopedLocal(initializer.name, item);
 				this.evaluateNode(statement);
 				this.pop();
 			}
 		} else {
 			for (const [, v] of pairs(value)) {
 				this.push();
-				this.locals.setLocal(initializer.name, v);
+				this.locals.setScopedLocal(initializer.name, v);
 				this.evaluateNode(statement);
 				this.pop();
 			}
@@ -490,14 +504,14 @@ export default class ZrRuntime {
 					this.runtimeAssertNotUndefined(nodeValue, "Huh?", ZrRuntimeErrorCode.EvaluationError, node);
 
 					if (nodeValue !== ZrUndefined) {
-						this.locals.setLocal(param.name.name, nodeValue);
+						this.locals.setScopedLocal(param.name.name, nodeValue);
 					}
 				}
 			}
 			for (const option of options) {
 				const value = this.evaluateNode(option.expression);
 				if (value !== undefined && value !== ZrUndefined) {
-					this.locals.setLocal(option.option.flag, value);
+					this.locals.setScopedLocal(option.option.flag, value);
 				}
 			}
 
@@ -550,6 +564,65 @@ export default class ZrRuntime {
 		}
 	}
 
+	private arithmeticOperation = (operator: string, operation: (left: number, right: number) => boolean | number) => {
+		return (
+			node: BinaryExpression,
+			left: ZrValue | ZrUndefined | undefined,
+			right: ZrValue | ZrUndefined | undefined,
+		) => {
+			if (typeIs(left, "number") && typeIs(right, "number")) {
+				return operation(left, right);
+			}
+
+			this.runtimeError(
+				`Attempt to perform (${operator}) on ${typeOf(left)} and ${typeOf(right)}`,
+				ZrRuntimeErrorCode.InvalidArithmeticOperands,
+				node,
+			);
+		};
+	};
+
+	private binaryOperations: Partial<
+		Record<
+			OperatorTokens | `${OperatorTokens}${OperatorTokens}`,
+			(
+				node: BinaryExpression,
+				left: ZrValue | ZrUndefined | undefined,
+				right: ZrValue | ZrUndefined | undefined,
+			) => ZrValue | ZrUndefined
+		>
+	> = {
+		"+": this.arithmeticOperation("add", (a, b) => a + b),
+		"-": this.arithmeticOperation("sub", (a, b) => a - b),
+		"*": this.arithmeticOperation("mul", (a, b) => a / b),
+		"/": this.arithmeticOperation("div", (a, b) => a / b),
+		">": (node, left, right) => {
+			if (typeIs(left, "number") && typeIs(right, "number")) {
+				return left > right;
+			}
+
+			this.runtimeError(
+				`Attempt to compare '>' ${typeOf(left)} and ${typeOf(right)}`,
+				ZrRuntimeErrorCode.InvalidArithmeticOperands,
+				node,
+			);
+		},
+		"<": (node, left, right) => {
+			if (typeIs(left, "number") && typeIs(right, "number")) {
+				return left < right;
+			}
+
+			this.runtimeError(
+				`Attempt to compare '<' ${typeOf(left)} and ${typeOf(right)}`,
+				ZrRuntimeErrorCode.InvalidArithmeticOperands,
+				node,
+			);
+		},
+		"??": (_, left, right) => {
+			return left && left !== ZrUndefined ? left : right ?? ZrUndefined;
+		},
+	};
+
 	public evaluateBinaryExpression(node: BinaryExpression, input = ZrInputStream.empty()) {
 		const { left, operator, right } = node;
 		if (operator === "&&") {
@@ -561,7 +634,7 @@ export default class ZrRuntime {
 			} else {
 				const result = this.evaluateNode(left);
 				if (result !== undefined && result !== ZrUndefined) {
-					return this.evaluateNode(right);
+					return result && this.evaluateNode(right);
 				}
 			}
 		} else if (operator === "||") {
@@ -571,7 +644,9 @@ export default class ZrRuntime {
 					return this.evaluateNode(right);
 				}
 			} else {
-				this.runtimeError("Binary OR not handled", ZrRuntimeErrorCode.EvaluationError);
+				const leftValue = this.evaluateNode(left);
+				const rightValue = this.evaluateNode(right);
+				return leftValue || rightValue;
 			}
 		} else if (operator === "..") {
 			const leftValue = this.evaluateNode(left);
@@ -602,6 +677,26 @@ export default class ZrRuntime {
 			} else {
 				return assignment.unwrap();
 			}
+		} else if (operator === "==") {
+			const leftValue = this.evaluateNode(left);
+			const rightValue = this.evaluateNode(right);
+			if (leftValue instanceof ZrUserdata) {
+				if (!(rightValue instanceof ZrUserdata)) {
+					return false;
+				}
+
+				return leftValue.equals?.(rightValue) || leftValue === rightValue;
+			} else if (typeOf(leftValue) === typeOf(rightValue)) {
+				return leftValue === rightValue;
+			} else {
+				return false;
+			}
+		} else if (this.binaryOperations[operator as OperatorTokens]) {
+			return this.binaryOperations[operator as OperatorTokens]?.(
+				node,
+				this.evaluateNode(left),
+				this.evaluateNode(right),
+			);
 		} else {
 			this.runtimeError(`Unhandled expression '${operator}'`, ZrRuntimeErrorCode.EvaluationError);
 		}
@@ -659,6 +754,8 @@ export default class ZrRuntime {
 			return this.getLocals().evaluateInterpolatedString(node);
 		} else if (isNode(node, ZrNodeKind.VariableStatement)) {
 			return this.executeSetVariable(node.declaration);
+		} else if (isNode(node, ZrNodeKind.VariableDeclaration)) {
+			return this.executeSetVariable(node);
 		} else if (isNode(node, ZrNodeKind.FunctionExpression)) {
 			return this.evaluateFunctionExpression(node);
 		} else if (isNode(node, ZrNodeKind.Block)) {

@@ -38,7 +38,8 @@
   },
   "dependencies": {
     "@rbxts/log": "^0.6.3",
-    "@rbxts/rust-classes": "^0.12.0"
+    "@rbxts/rust-classes": "^0.12.0",
+    "@rbxts/variant": "^1.0.1"
   },
   "repository": {
     "type": "git",

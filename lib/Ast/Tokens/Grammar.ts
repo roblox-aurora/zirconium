@@ -49,6 +49,7 @@ const Grammar = {
 		"..": 1,
 		"!": 2,
 		"=": 2,
+		"??": 2,
 		"+=": 2,
 		"-=": 2,
 		"|": 3,
@@ -60,6 +61,7 @@ const Grammar = {
 		"<=": 7,
 		"==": 7,
 		"!=": 7,
+
 		"+": Precedence.Addition,
 		"-": Precedence.Subtraction,
 		"*": Precedence.Multiplication,
@@ -72,7 +74,7 @@ const Grammar = {
 		BodyEnd: "}",
 		FunctionParameterBegin: "(",
 		FunctionParameterEnd: ")",
-	}
+	},
 } as const;
 
 export const enum OperatorTokenId {
@@ -81,21 +83,20 @@ export const enum OperatorTokenId {
 	UnaryNot = "!",
 }
 
-
 export const enum SpecialTokenId {
-    BodyBegin = "{",
-    BodyEnd = "}",
-    FunctionParametersBegin = "(",
-    FunctionParametersEnd = ")",
-    FunctionParametersSeparator = ",",
-    SimpleCallInlineExpressionDelimiter = "$",
-    ArrayBegin = "[",
+	BodyBegin = "{",
+	BodyEnd = "}",
+	FunctionParametersBegin = "(",
+	FunctionParametersEnd = ")",
+	FunctionParametersSeparator = ",",
+	SimpleCallInlineExpressionDelimiter = "$",
+	ArrayBegin = "[",
 	ElementBegin = "[",
 	ElementEnd = "]",
-    ArrayEnd = "]",
-    ObjectBegin = "{",
-    ObjectEnd = "}",
-    Dot = "."
+	ArrayEnd = "]",
+	ObjectBegin = "{",
+	ObjectEnd = "}",
+	Dot = ".",
 }
 
 export type OperatorTokens = typeof Grammar["Operators"][number];
@@ -111,7 +112,7 @@ function makeKeywordMap<K extends ReadonlyArray<string>>(value: K) {
 	for (const item of value) {
 		items[item.upper()] = item;
 	}
-	return (items as unknown) as KeywordMap<K>;
+	return items as unknown as KeywordMap<K>;
 }
 
 export const Keywords = makeKeywordMap(Grammar.Keywords);

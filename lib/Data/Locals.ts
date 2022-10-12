@@ -21,7 +21,8 @@ export type ZrValue =
 	| ZrLuauFunction
 	| ZrEnum
 	| ZrEnumItem
-	| ZrUserdata<defined> | ZrRange;
+	| ZrUserdata<defined>
+	| ZrRange;
 
 export const enum StackValueType {
 	Constant,
@@ -83,7 +84,11 @@ export default class ZrLocalStack {
 	 * Will set the value at the stack it was first declared
 	 * @internal
 	 */
-	public setUpValueOrLocal(name: string, value: ZrValue | ZrUndefined | undefined, constant?: boolean): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
+	public setUpValueOrLocal(
+		name: string,
+		value: ZrValue | ZrUndefined | undefined,
+		constant?: boolean,
+	): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const stackValue = stack.get(name);
 		if (stackValue) {
@@ -93,7 +98,7 @@ export default class ZrLocalStack {
 			}
 		}
 
-		if (value !== undefined && value  !== ZrUndefined) {
+		if (value !== undefined && value !== ZrUndefined) {
 			stack.set(name, [value, constant]);
 			return Result.ok(value);
 		} else {
@@ -102,7 +107,10 @@ export default class ZrLocalStack {
 		}
 	}
 
-	public setUpValueOrLocalIfDefined(name: string, value: ZrValue | ZrUndefined | undefined): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
+	public setUpValueOrLocalIfDefined(
+		name: string,
+		value: ZrValue | ZrUndefined | undefined,
+	): Result<ZrValue | ZrUndefined, StackValueAssignmentError> {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const existingValue = stack.get(name);
 		if (existingValue !== undefined) {
@@ -120,7 +128,7 @@ export default class ZrLocalStack {
 	 * Will set the value on the last stack
 	 * @internal
 	 */
-	public setLocal(name: string, value: ZrValue | undefined, constant?: boolean) {
+	public setScopedLocal(name: string, value: ZrValue | undefined, constant?: boolean) {
 		const last = this.current();
 		if (value === undefined) {
 			last.set(name, [ZrUndefined, constant]);
@@ -150,6 +158,15 @@ export default class ZrLocalStack {
 		}
 
 		return undefined;
+	}
+
+	public getScopedLocal(name: string) {
+		const last = this.current();
+		if (last) {
+			return last.get(name);
+		} else {
+			return undefined;
+		}
 	}
 
 	/** @internal */

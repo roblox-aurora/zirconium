@@ -26,6 +26,8 @@ import {
 	VariableAccessExpression,
 	ForInStatement,
 	IfStatement,
+	VariableDeclaration,
+	AssignableExpression,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -811,8 +813,31 @@ export class ZrParserV2 {
 			return this.parseEnumDeclaration();
 		}
 
+		if (this.isKeywordToken(Keywords.CONST)) {
+			return this.parseVariableDeclaration(ZrNodeFlag.Const);
+		} else if (this.isKeywordToken(Keywords.LET)) {
+			return this.parseVariableDeclaration(ZrNodeFlag.Let);
+		}
+
 		if (exportToken) {
 			this.parserErrorAtCurrentToken(DiagnosticErrors.UnexpectedKeyword(exportToken));
+		}
+	}
+
+	private parseVariableDeclaration(flags: VariableDeclaration["flags"]): VariableDeclaration {
+		const keyword = this.consumeToken(ZrTokenType.Keyword);
+		const variableDeclaration = this.createNode(ZrNodeKind.VariableDeclaration, keyword!.startPos);
+		variableDeclaration.flags = flags;
+		variableDeclaration.identifier = this.parseIdentifier();
+
+		if (this.isNextToken(ZrTokenType.Operator, ";")) {
+			variableDeclaration.expression = factory.createUndefined();
+			return this.finishNode(variableDeclaration);
+		} else {
+			this.consumeToken(ZrTokenType.Operator, "=");
+			variableDeclaration.expression = this.mutateExpression(this.parseNextExpression()) as AssignableExpression;
+
+			return this.finishNode(variableDeclaration);
 		}
 	}
 
