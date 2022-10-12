@@ -19,6 +19,7 @@
 		// optional
 		"baseUrl": "lib",
 		"declaration": true,
+		"moduleDetection": "force",
 
 		// optional, non-configurable
 		"jsx": "react",

@@ -172,7 +172,7 @@ export default class ZrRuntime {
 					isConstant,
 				);
 				if (result.isErr()) {
-					const { errValue } = result;
+					const errValue = result.unwrapErr();
 					if (errValue === StackValueAssignmentError.ReassignConstant) {
 						this.runtimeError(
 							`Unable to reassign constant or readonly '${identifier.name}'`,
@@ -210,7 +210,7 @@ export default class ZrRuntime {
 
 		const declaration = ZrEnum.fromArray(
 			node.name.name,
-			node.values.map((v) => v.name.name),
+			node.values.map(v => v.name.name),
 		);
 
 		$print(declaration.getItems(), "declaration");
@@ -538,7 +538,9 @@ export default class ZrRuntime {
 		}
 	}
 
-	public getFullName(id: PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression | Identifier): string {
+	public getFullName(
+		id: PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression | Identifier,
+	): string {
 		if (types.isIdentifier(id)) {
 			return id.name;
 		} else if (types.isArrayIndexExpression(id)) {

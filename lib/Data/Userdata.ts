@@ -1,11 +1,11 @@
 import { $print } from "rbxts-transform-debug";
 import { ZrValue } from "./Locals";
 
-export abstract class ZrUserdata<T> {
+export abstract class ZrUserdata<T extends defined> {
 	public abstract value(): T;
 
 	public abstract isInstance(): this is ZrInstanceUserdata<Instance>;
-	public abstract isObject<T>(obj: { new (): T }): this is ZrObjectUserdata<T>;
+	public abstract isObject<T extends defined>(obj: { new (): T }): this is ZrObjectUserdata<T>;
 
 	public static fromInstance<TInstance extends Instance>(instance: TInstance) {
 		return new ZrInstanceUserdata(instance);
@@ -36,7 +36,7 @@ export class ZrObjectUserdata<T extends defined> extends ZrUserdata<T> {
 		return false;
 	}
 
-	public isObject<T>(klass: { new (): T }): this is ZrObjectUserdata<T> {
+	public isObject<T extends defined>(klass: { new (): T }): this is ZrObjectUserdata<T> {
 		return this.object instanceof klass;
 	}
 

@@ -6,7 +6,8 @@ import ZrRichTextHighlighter from "./Syntax/RichTextHighlighter";
 import * as factory from "./Nodes/Create";
 import * as ZrVisitors from "./Utility/NodeVisitor";
 import { typeGuards as types } from "./Nodes";
-const AST_VERSION = PKG_VERSION;
+import { $package } from "rbxts-transform-debug";
+const AST_VERSION = $package.version;
 
 export {
 	ZrVisitors,

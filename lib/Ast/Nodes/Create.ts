@@ -52,8 +52,7 @@ export function createNode<T extends keyof ZrNodeKinds>(kind: T) {
 /** @internal */
 export function updateNodeInternal<TNode extends ZrNode>(node: TNode, props: Partial<TNode>) {
 	for (const [key, prop] of pairs(props)) {
-		/** @ts-ignore */
-		node[key] = prop;
+		node[key as never] = prop as never;
 	}
 	return node;
 }
