@@ -1,4 +1,5 @@
 import { Result, unit, UnitType } from "@rbxts/rust-classes";
+import variantModule, { TypeNames, VariantOf } from "@rbxts/variant";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
 import { ZrEnum } from "./Enum";
@@ -6,6 +7,7 @@ import { ZrEnumItem } from "./EnumItem";
 import ZrLuauFunction from "./LuauFunction";
 import ZrObject from "./Object";
 import ZrRange from "./Range";
+import { ZrVariant, ZrVariants } from "./Types";
 import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
@@ -16,20 +18,29 @@ export type ZrValue =
 	| boolean
 	| ZrObject
 	| Array<ZrValue>
+	| ReadonlyArray<ZrValue>
 	| Map<string, ZrValue>
+	| ReadonlyMap<string, ZrValue>
 	| ZrUserFunction
 	| ZrLuauFunction
 	| ZrEnum
 	| ZrEnumItem
 	| ZrUserdata<defined>
-	| ZrRange;
+	| ZrRange
+	| ZrUndefined;
 
 export const enum StackValueType {
 	Constant,
 	Function,
 }
 
-type StackValue = [value: ZrValue | ZrUndefined, constant?: boolean, exports?: StackValueType];
+// type StackValue = [value: ZrValue | ZrUndefined, constant?: boolean, exports?: StackValueType];
+
+export const StackValue = variantModule({
+	const: (data: ZrVariant, exportsValue = false) => ({ data, exportsValue }),
+	let: (data: ZrVariant, exportsValue = false) => ({ data, exportsValue }),
+});
+export type StackValue<T extends TypeNames<typeof StackValue> = undefined> = VariantOf<typeof StackValue, T>;
 
 export const enum StackValueAssignmentError {
 	ReassignConstant,
@@ -43,7 +54,7 @@ export default class ZrLocalStack {
 		if (inject) {
 			const newLocals = new Map<string, StackValue>();
 			for (const [name, value] of pairs(inject)) {
-				newLocals.set(name, [value, value instanceof ZrLuauFunction]);
+				newLocals.set(name, StackValue.const(ZrVariants.from(value)));
 			}
 			this.locals.push(newLocals);
 		}
@@ -69,7 +80,7 @@ export default class ZrLocalStack {
 	 */
 	public setGlobal(name: string, value: ZrValue, constant?: boolean) {
 		const first = this.locals[0];
-		first.set(name, [value, constant]);
+		first.set(name, constant ? StackValue.const(ZrVariants.from(value)) : StackValue.let(ZrVariants.from(value)));
 	}
 
 	/**
@@ -92,14 +103,16 @@ export default class ZrLocalStack {
 		const stack = this.getUpValueStack(name) ?? this.current();
 		const stackValue = stack.get(name);
 		if (stackValue) {
-			const [, constant] = stackValue;
-			if (constant) {
+			if (stackValue.type === "const") {
 				return Result.err(StackValueAssignmentError.ReassignConstant);
 			}
 		}
 
 		if (value !== undefined && value !== ZrUndefined) {
-			stack.set(name, [value, constant]);
+			stack.set(
+				name,
+				constant ? StackValue.const(ZrVariants.from(value)) : StackValue.let(ZrVariants.from(value)),
+			);
 			return Result.ok(value);
 		} else {
 			stack.delete(name);
@@ -131,9 +144,12 @@ export default class ZrLocalStack {
 	public setScopedLocal(name: string, value: ZrValue | undefined, constant?: boolean) {
 		const last = this.current();
 		if (value === undefined) {
-			last.set(name, [ZrUndefined, constant]);
+			last.set(name, constant ? StackValue.const(ZrVariant.undefined()) : StackValue.let(ZrVariant.undefined()));
 		} else {
-			last.set(name, [value, constant]);
+			last.set(
+				name,
+				constant ? StackValue.const(ZrVariants.from(value)) : StackValue.let(ZrVariants.from(value)),
+			);
 		}
 	}
 
@@ -180,9 +196,9 @@ export default class ZrLocalStack {
 	}
 
 	public toMap() {
-		const map = new Map<string, ZrValue | ZrUndefined>();
+		const map = new Map<string, ZrValue>();
 		for (const currentLocals of this.locals) {
-			currentLocals.forEach((v, k) => map.set(k, v[0]));
+			currentLocals.forEach((v, k) => map.set(k, v.data.value as ZrValue));
 		}
 		return map as ReadonlyMap<string, ZrValue>;
 	}

@@ -1,9 +1,12 @@
 import { ZrEnumItem } from "./EnumItem";
+import { ZrValue } from "./Locals";
+import ZrUndefined from "./Undefined";
+import { ZrInstanceUserdata, ZrUserdata, ZrUserdataProperty } from "./Userdata";
 
 /**
  * The built-in Enum type in Zirconium
  */
-export class ZrEnum {
+export class ZrEnum extends ZrUserdata<Array<ZrEnumItem>> {
 	private items = new Array<ZrEnumItem>();
 
 	/**
@@ -20,7 +23,35 @@ export class ZrEnum {
 		enumFactory: (value: string, index: number) => ZrEnumItem = (value, index) =>
 			new ZrEnumItem(this, index, value),
 	) {
+		super();
 		this.items = items.map(enumFactory);
+
+		for (const item of this.items) {
+			this.properties[item.getName()] = {
+				get: () => item,
+			};
+			this.properties[item.getValue()] = {
+				get: () => item,
+			};
+		}
+	}
+
+	public toValue(): ZrEnumItem[] {
+		return this.items;
+	}
+
+	public get(index: string): ZrValue | ZrUndefined {
+		return this.items.find(f => f.getName() === index) ?? ZrUndefined;
+	}
+
+	public properties: Record<string | number, ZrUserdataProperty<ZrEnum> | undefined> = {
+		items: {
+			get: () => this.getItems() as ZrEnumItem[],
+		},
+	};
+
+	public isInstance() {
+		return false;
 	}
 
 	/**
@@ -38,11 +69,14 @@ export class ZrEnum {
 	}
 
 	public getItemByName(name: string) {
-		return this.items.find((f) => f.getName() === name);
+		return this.items.find(f => f.getName() === name);
 	}
 
+	/**
+	 * @internal
+	 */
 	public getItemByIndex(idx: number) {
-		return this.items.find((f) => f.getValue() === idx);
+		return this.items.find(f => f.getValue() === idx);
 	}
 
 	public getItems() {

@@ -1,10 +1,24 @@
 import { ZrEnum } from "./Enum";
+import { ZrValue } from "./Locals";
+import { ZrUserdata, ZrUserdataProperty } from "./Userdata";
 
 /**
  * The built-in Zirconium enum item type
  */
-export class ZrEnumItem {
-	public constructor(private parentEnum: ZrEnum, private value: number, private name: string) {}
+export class ZrEnumItem extends ZrUserdata<number> {
+	public constructor(private parentEnum: ZrEnum, private value: number, private name: string) {
+		super();
+	}
+
+	public properties = {
+		get_enum: {
+			get: () => this.parentEnum,
+		},
+	};
+
+	public toValue(): number {
+		return this.value;
+	}
 
 	public getEnum() {
 		return this.parentEnum;

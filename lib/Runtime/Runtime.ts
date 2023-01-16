@@ -170,7 +170,7 @@ export default class ZrRuntime {
 
 			if (isLocalAssignment) {
 				const localValue = this.getLocals().getScopedLocal(identifier.name);
-				if (localValue && localValue[1] !== undefined) {
+				if (localValue && localValue.type === "const") {
 					this.runtimeError(
 						`Cannot redeclare block-scoped variable '${identifier.name}'`,
 						ZrRuntimeErrorCode.RedeclareBlockScopedVariable,
@@ -290,7 +290,7 @@ export default class ZrRuntime {
 		let value: ZrValue | ZrUndefined | undefined;
 
 		if (isNode(expression, ZrNodeKind.Identifier)) {
-			value = this.locals.getLocalOrUpValue(expression.name)?.[0] ?? ZrUndefined;
+			value = this.locals.getLocalOrUpValue(expression.name)?.data.value ?? ZrUndefined;
 		} else if (
 			types.isCallableExpression(expression) ||
 			isNode(expression, ZrNodeKind.ArrayLiteralExpression) ||
@@ -339,7 +339,7 @@ export default class ZrRuntime {
 		} else {
 			for (const [, v] of pairs(value)) {
 				this.push();
-				this.locals.setScopedLocal(initializer.name, v);
+				this.locals.setScopedLocal(initializer.name, v as ZrValue);
 				this.evaluateNode(statement);
 				this.pop();
 			}
@@ -385,7 +385,7 @@ export default class ZrRuntime {
 		value: ZrValue | ZrUndefined,
 	): void {
 		if (userdata.properties && key in userdata.properties) {
-			return userdata.properties[key].set!(userdata, value !== ZrUndefined ? value : undefined);
+			return userdata.properties[key]!.set!(userdata, value !== ZrUndefined ? value : undefined);
 		} else if (typeIs(userdata.set, "function")) {
 			return userdata.set(key, value !== ZrUndefined ? value : undefined);
 		}
@@ -403,7 +403,7 @@ export default class ZrRuntime {
 		key: string,
 	) {
 		if (userdata.properties && key in userdata.properties) {
-			return userdata.properties[key].get!(userdata);
+			return userdata.properties[key]!.get!(userdata);
 		} else if (typeIs(userdata.get, "function")) {
 			return userdata.get(key);
 		}
@@ -489,7 +489,7 @@ export default class ZrRuntime {
 		} else if (types.isElementAccessExpression(expression)) {
 			matching = this.evaluateNode(expression);
 		} else {
-			matching = this.locals.getLocalOrUpValue(expression.name)?.[0];
+			matching = this.locals.getLocalOrUpValue(expression.name)?.data.value;
 		}
 
 		// const matching = this.locals.getLocalOrUpValue(name)?.[0];
@@ -713,7 +713,7 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.String)) {
 			return node.text;
 		} else if (isNode(node, ZrNodeKind.Identifier)) {
-			return this.getLocals().getLocalOrUpValue(node.name)?.[0] ?? ZrUndefined;
+			return this.getLocals().getLocalOrUpValue(node.name)?.data.value ?? ZrUndefined;
 		} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 			return this.evaluateArrayIndexExpression(node);
 		} else if (isNode(node, ZrNodeKind.ElementAccessExpression)) {

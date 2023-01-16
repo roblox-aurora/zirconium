@@ -11,22 +11,22 @@ import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
 
-function valueOf<T>() {
+function valueType<T extends ZrValue>() {
 	return (value: T) => ({ value });
 }
 
 export const ZrVariant = variantModule({
-	string: valueOf<string>(),
-	number: valueOf<number>(),
-	boolean: valueOf<boolean>(),
-	userdata: valueOf<ZrUserdata<any>>(),
-	range: valueOf<ZrRange>(),
-	function: valueOf<ZrLuauFunction | ZrUserFunction>(),
-	object: valueOf<ZrObject>(),
-	array: valueOf<ZrValue[]>(),
-	undefined: () => ({ value: ZrUndefined }),
-	enum: valueOf<ZrEnum>(),
-	enumItem: valueOf<ZrEnumItem>(),
+	string: valueType<string>(),
+	number: valueType<number>(),
+	boolean: valueType<boolean>(),
+	userdata: valueType<ZrUserdata<any>>(),
+	range: valueType<ZrRange>(),
+	function: valueType<ZrLuauFunction | ZrUserFunction>(),
+	object: valueType<ZrObject>(),
+	array: valueType<ZrValue[]>(),
+	undefined: () => ({ value: undefined }),
+	enum: valueType<ZrEnum>(),
+	enumItem: valueType<ZrEnumItem>(),
 });
 export type ZrVariant<T extends TypeNames<typeof ZrVariant> = undefined> = VariantOf<typeof ZrVariant, T>;
 
@@ -35,14 +35,14 @@ export namespace ZrVariants {
 		return value.type;
 	}
 
-	export function from(value: ZrValue | ZrUndefined): ZrVariant {
+	export function from(value: ZrValue | undefined): ZrVariant {
 		if (typeIs(value, "string")) {
 			return ZrVariant.string(value);
 		} else if (typeIs(value, "number")) {
 			return ZrVariant.number(value);
 		} else if (typeIs(value, "boolean")) {
 			return ZrVariant.boolean(value);
-		} else if (value === ZrUndefined) {
+		} else if (value === ZrUndefined || value === undefined) {
 			return ZrVariant.undefined();
 		} else if (isArray(value)) {
 			return ZrVariant.array(value);
@@ -52,12 +52,10 @@ export namespace ZrVariants {
 			return ZrVariant.range(value);
 		} else if (value instanceof ZrObject) {
 			return ZrVariant.object(value);
-		} else if (value instanceof ZrUserdata) {
-			return ZrVariant.userdata(value);
 		} else if (value instanceof ZrEnum) {
 			return ZrVariant.enum(value);
-		} else if (value instanceof ZrEnumItem) {
-			return ZrVariant.enumItem(value);
+		} else if (value instanceof ZrUserdata) {
+			return ZrVariant.userdata(value);
 		} else {
 			throw `Not implemented`;
 		}

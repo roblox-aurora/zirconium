@@ -3,15 +3,17 @@ import { ZrValue } from "./Locals";
 import ZrObject from "./Object";
 import ZrUndefined from "./Undefined";
 
-interface ZrUserdataProperty<T extends ZrUserdata<defined>> {
-	get?: ((userdata: T) => ZrValue) | undefined;
-	set?: ((userdata: T, value: ZrValue | undefined) => void) | undefined;
+export interface ZrUserdataProperty<
+	T extends ZrUserdata<defined>,
+	TGet extends ZrValue = ZrValue,
+	TSet extends ZrValue = ZrValue,
+> {
+	get?: ((userdata: T) => TGet) | undefined;
+	set?: ((userdata: T, value: TSet | undefined) => void) | undefined;
 }
 
 export abstract class ZrUserdata<T extends defined> {
 	public abstract toValue(): T;
-
-	public abstract isInstance(): this is ZrInstanceUserdata<Instance>;
 
 	public static is<T extends keyof CreatableInstances>(
 		userdata: ZrUserdata<any>,
@@ -56,7 +58,7 @@ export abstract class ZrUserdata<T extends defined> {
 	/** @internal */
 	public iter?(): Generator<ZrValue, void, unknown>;
 
-	public abstract properties?: { [P in string]: ZrUserdataProperty<any> };
+	public abstract properties?: { [P in string | number]: ZrUserdataProperty<any> | undefined };
 
 	public toString() {
 		return "userdata";
