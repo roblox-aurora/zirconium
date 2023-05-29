@@ -25,19 +25,30 @@ import ZrObject from "../Data/Object";
 import ZrLocalStack, { StackValueAssignmentError, ZrValue } from "../Data/Locals";
 import { isArray, isMap } from "../Util";
 import ZrUserFunction from "../Data/UserFunction";
-import ZrLuauFunction from "../Data/LuauFunction";
+import ZrLuauFunction, { ZrUnknown } from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
 import { types } from "../Ast";
-import { InferUserdataKeys, ZrUserdata } from "../Data/Userdata";
+import { ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
-import { ZrInputStream, ZrOutputStream } from "../Data/Stream";
+import { ZrInputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
 import ZrRange from "Data/Range";
 import { ZrEnum } from "Data/Enum";
 import { ZrEnumItem } from "Data/EnumItem";
 import { $print } from "rbxts-transform-debug";
 import { OperatorTokens } from "Ast/Tokens/Grammar";
-import { ZrRuntimeHelpers } from "./Helpers";
+
+export interface ZrRuntimeResult {
+	/**
+	 * The returned result of this runtime
+	 */
+	value: ZrValue;
+	/**
+	 * The result of each expression
+	 * @internal
+	 */
+	expressionEval: readonly ZrValue[];
+}
 
 export enum ZrRuntimeErrorCode {
 	NodeValueError,
@@ -478,7 +489,7 @@ export default class ZrRuntime {
 
 		let options = new Array<OptionExpression>();
 		if (types.isCallExpression(node)) {
-			({ options } = node);
+			options = node.options ?? [];
 		}
 
 		let matching: ZrValue | ZrUndefined | undefined;
@@ -508,6 +519,7 @@ export default class ZrRuntime {
 					}
 				}
 			}
+
 			for (const option of options) {
 				const value = this.evaluateNode(option.expression);
 				if (value !== undefined && value !== ZrUndefined) {
@@ -515,8 +527,10 @@ export default class ZrRuntime {
 				}
 			}
 
-			this.evaluateNode(matching.getBody());
+			const result = this.evaluateNode(matching.getBody());
 			this.pop();
+
+			return result;
 		} else if (matching instanceof ZrLuauFunction) {
 			const args = new Array<ZrValue | ZrUndefined>();
 			let i = 0;
@@ -528,9 +542,7 @@ export default class ZrRuntime {
 				i++;
 			}
 			const result = matching.call(context, ...args);
-			if (result !== undefined) {
-				return result;
-			}
+			return result as ZrValue;
 		} else {
 			this.runtimeError(
 				this.getFullName(expression) + " is not a function",
@@ -707,6 +719,10 @@ export default class ZrRuntime {
 	public evaluateNode(node: ZrNode): ZrValue | ZrUndefined | undefined {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const subNode of node.children) {
+				if (isNode(subNode, ZrNodeKind.ReturnStatement)) {
+					return this.evaluateNode(subNode);
+				}
+
 				this.evaluateNode(subNode);
 			}
 			return undefined;
@@ -725,6 +741,8 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.EnumDeclaration)) {
 			return this.evaluateEnumDeclaration(node);
 		} else if (isNode(node, ZrNodeKind.ParenthesizedExpression)) {
+			return this.evaluateNode(node.expression);
+		} else if (isNode(node, ZrNodeKind.ReturnStatement)) {
 			return this.evaluateNode(node.expression);
 		} else if (isNode(node, ZrNodeKind.BinaryExpression)) {
 			return this.evaluateBinaryExpression(node);
@@ -761,6 +779,12 @@ export default class ZrRuntime {
 		} else if (isNode(node, ZrNodeKind.Block)) {
 			this.push();
 			for (const statement of node.statements) {
+				if (isNode(statement, ZrNodeKind.ReturnStatement)) {
+					const result = this.evaluateNode(statement);
+					this.pop();
+					return result;
+				}
+
 				this.evaluateNode(statement);
 			}
 			this.pop();
@@ -775,8 +799,10 @@ export default class ZrRuntime {
 		return this.executingPlayer;
 	}
 
-	public execute() {
-		this.evaluateNode(this.source);
-		return this.context.getOutput();
+	public execute(): ZrRuntimeResult {
+		return {
+			value: this.evaluateNode(this.source) ?? ZrUndefined,
+			expressionEval: this.context.getOutput().values(),
+		};
 	}
 }

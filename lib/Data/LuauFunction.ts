@@ -2,12 +2,13 @@ import ZrContext from "./Context";
 import { ZrValue } from "./Locals";
 import ZrUndefined from "./Undefined";
 
+export type ZrUnknown = ZrValue | ZrUndefined;
+
 /**
  * A lua-side function.
  *
  * Where the real magic happens.
  */
-export type ZrUnknown = ZrValue | ZrUndefined;
 export default class ZrLuauFunction {
 	constructor(private callback: (ctx: ZrContext, ...args: readonly ZrUnknown[]) => ZrUnknown | void) {}
 

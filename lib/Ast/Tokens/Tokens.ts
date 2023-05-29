@@ -37,6 +37,8 @@ export interface TokenTypes {
 	[ZrTokenType.Comment]: CommentToken;
 }
 
+export type Token = TokenTypes[keyof TokenTypes];
+
 export const enum ZrTokenFlag {
 	None = 0,
 	UnterminatedString = 1 << 0,

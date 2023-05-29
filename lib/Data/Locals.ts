@@ -12,7 +12,7 @@ import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
 
-export type ZrValue =
+export type ZrDefined =
 	| number
 	| string
 	| boolean
@@ -26,8 +26,8 @@ export type ZrValue =
 	| ZrEnum
 	| ZrEnumItem
 	| ZrUserdata<defined>
-	| ZrRange
-	| ZrUndefined;
+	| ZrRange;
+export type ZrValue = ZrDefined | ZrUndefined;
 
 export const enum StackValueType {
 	Constant,

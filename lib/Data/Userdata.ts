@@ -118,6 +118,12 @@ export class ZrInstanceUserdata<T extends Instance = Instance> extends ZrUserdat
 		return this.toValue() === other.toValue();
 	}
 
+	public isA<TClassName extends keyof Instances>(
+		className: TClassName,
+	): this is ZrInstanceUserdata<Instances[TClassName]> {
+		return this.toValue().IsA(className);
+	}
+
 	/**
 	 * @internal
 	 */

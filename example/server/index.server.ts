@@ -1,11 +1,11 @@
 import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
 import { ZrParserV2 } from "Ast/ParserV2";
+import { ZrBinder } from "Binder";
 import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { $env } from "rbxts-transform-env";
-import ZrRuntime from "Runtime/Runtime";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
@@ -32,8 +32,8 @@ globals.registerGlobal(
 );
 
 let source = `
-	print()
-	print(true, "lol")
+	print();
+	print(true, "lol");
 	print "What the hell";
 	for i in 1..10 {
 		function test() {
@@ -63,6 +63,13 @@ let source = `
 	let expression = 10;
 
 	print("Test is", false ?? 10, false || "hi there", true && false);
+
+	function test() {
+		return "Hi this works correctly!"
+	}
+
+	"okay this is being weird lol";
+	test()
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -75,16 +82,23 @@ function rangeToString(range?: [x: number, y: number]) {
 
 let len = source.size();
 
-const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)));
+const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)), {
+	RustLikeReturnExpression: true,
+});
 lex.parseAstWithThrow().match(
 	source => {
 		print("AST", source, len);
 		prettyPrintNodes([source], undefined, false);
 
+		const types = new ZrBinder();
+		types.bindSourceFile(source);
+
 		const zr = Zr.createContext();
 		const zrScript = zr.createScript(source);
 		zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
-		zrScript.executeOrThrow();
+
+		const result = zrScript.executeOrThrow();
+		print("result is", result);
 	},
 	err => {
 		const [source, errs] = err;

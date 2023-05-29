@@ -20,6 +20,10 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			if (node.isUnterminated) {
 				print(prefix, "Unterminated String");
 			}
+		} else if (isNode(node, CmdSyntaxKind.ReturnStatement)) {
+			print("");
+			print(prefix + "\t", "@[Return]");
+			prettyPrintNodes([node.expression], prefix + "\t", verbose);
 		} else if (isNode(node, CmdSyntaxKind.CallExpression)) {
 			if (verbose) {
 				print(

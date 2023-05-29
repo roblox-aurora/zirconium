@@ -1,8 +1,10 @@
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
 import ZrLuauFunction from "../Data/LuauFunction";
 import ZrLocalStack, { ZrValue } from "../Data/Locals";
-import ZrRuntime, { ZrRuntimeError } from "./Runtime";
+import ZrRuntime, { ZrRuntimeResult, ZrRuntimeError } from "./Runtime";
 import { $print } from "rbxts-transform-debug";
+import { stringify } from "Functions/BuiltInFunctions";
+import { Result } from "@rbxts/rust-classes";
 
 export default class ZrScript {
 	private runtime: ZrRuntime;
@@ -16,23 +18,21 @@ export default class ZrScript {
 		this.runtime.getLocals().setGlobal(name, func, true); //?
 	}
 
-	public async execute() {
-		return Promise.defer<readonly string[]>(
-			(resolve: (value: readonly string[]) => void, reject: (err: ZrRuntimeError[]) => void) => {
-				try {
-					resolve(this.runtime.execute()._toStringArray());
-				} catch (e) {
-					reject(this.runtime.getErrors());
-				}
-			},
-		);
+	public execute(): Result<ZrRuntimeResult, ZrRuntimeError[]> {
+		try {
+			return Result.ok(this.runtime.execute());
+		} catch (e) {
+			return Result.err(this.runtime.getErrors());
+		}
 	}
 
-	public executeOrThrow() {
-		const results = this.runtime.execute().toArray();
-		for (const result of results) {
-			$print(">", result);
+	public executeOrThrow(): ZrValue {
+		const results = this.runtime.execute();
+		for (const result of results.expressionEval) {
+			$print(">", stringify(result));
 		}
+
+		return results.value;
 	}
 
 	/** @internal Testing function */

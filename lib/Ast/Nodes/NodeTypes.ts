@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ZrSymbol } from "Binder";
+import { ZrSymbol, ZrSymbolTable } from "Binder";
 import type { ZrNodeKind, ZrNodeFlag } from "./Enum";
 import { ASSIGNABLE } from "./Guards";
 
@@ -104,6 +104,8 @@ export interface ObjectLiteralElement extends NamedDeclaration {
 	readonly name?: PropertyName;
 }
 
+interface TypeSymbol {}
+
 export interface LeftHandSideExpression extends Expression {
 	/** @deprecated */
 	readonly _nominal_LeftHandSide: unique symbol;
@@ -188,6 +190,7 @@ export interface FunctionDeclaration extends DeclarationStatement {
 export interface SourceFile extends ZrNode {
 	kind: ZrNodeKind.Source;
 	children: Array<ZrNode>;
+	locals?: ZrSymbolTable;
 }
 
 export interface InterpolatedStringExpression extends ValuesExpression {
@@ -244,11 +247,12 @@ export interface InvalidNode extends ZrNode {
 
 export interface VariableDeclaration extends DeclarationStatement {
 	kind: ZrNodeKind.VariableDeclaration;
+	type: TypeReference | undefined;
 	identifier: Identifier | PropertyAccessExpression | ArrayIndexExpression;
 	expression: AssignableExpression;
 }
 
-export interface VariableStatement extends Statement {
+export interface VariableStatement extends Statement, Expression {
 	kind: ZrNodeKind.VariableStatement;
 	modifiers?: Array<ExportKeyword>;
 	declaration: VariableDeclaration;
@@ -358,7 +362,7 @@ export interface PrefixExpression extends Expression {
 	expression: StringLiteral | NumberLiteral | InterpolatedStringExpression | BooleanLiteral;
 }
 
-export interface Identifier extends Declaration, LeftHandSideExpression {
+export interface Identifier extends Declaration, LeftHandSideExpression, TypeSymbol {
 	name: string;
 	prefix: string;
 }

@@ -28,6 +28,7 @@ import {
 	IfStatement,
 	VariableDeclaration,
 	AssignableExpression,
+	ReturnStatement,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -45,11 +46,29 @@ import {
 import { DiagnosticErrors, ZrDiagnostic } from "./DiagnosticMap";
 import { ZrParserError, ZrParserErrorCode } from "./Diagnostics";
 import * as factory from "Ast/Nodes/Create";
-import { ZrNodeKind } from "Ast/Nodes";
+import { isNode, ZrNodeKind } from "Ast/Nodes";
 import { ZrNodeFlag, ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { TextLocation, TextRanges } from "Ast/Types";
 import { ZirconiumLogging } from "Logging";
 import getIdText from "Ast/Utility/PrettyPrintId";
+
+export interface ParserOptions {
+	/**
+	 * If enabled, will treat
+	 *
+	 * ```ts
+	 * print("Test");
+	 * expression
+	 * ```
+	 *
+	 * like
+	 * ```
+	 * print("Test");
+	 * return expression;
+	 * ```
+	 */
+	RustLikeReturnExpression?: boolean;
+}
 
 export interface ZrParserFunctionContext {
 	name: string;
@@ -68,7 +87,7 @@ export class ZrParserV2 {
 	private contextFlags = 0;
 	public readonly nodes = new Array<ZrNode>();
 
-	public constructor(private lexer: ZrLexer) {}
+	public constructor(private lexer: ZrLexer, private options: ParserOptions) {}
 
 	private contextAddFlag(flag: ZrNodeFlag) {
 		this.contextFlags |= flag;
@@ -862,6 +881,24 @@ export class ZrParserV2 {
 		return Option.none();
 	}
 
+	private tryParseReturnStatement(): Option<ReturnStatement> {
+		if (this.isKeywordToken(Keywords.RETURN)) {
+			this.consumeToken(ZrTokenType.Keyword, Keywords.RETURN);
+
+			const node = this.createNode(ZrNodeKind.ReturnStatement);
+
+			// if (!this.getToken() || this.isEndOfStatement()) {
+			// 	node.expression = factory.createUndefined();
+			// } else {
+			node.expression = this.parseNextExpression();
+			//}
+
+			return Option.some(this.finishNode(node));
+		}
+
+		return Option.none();
+	}
+
 	private tryParseIfStatement(): Option<IfStatement> {
 		if (this.isKeywordToken(Keywords.IF)) {
 			this.consumeToken(ZrTokenType.Keyword, Keywords.IF);
@@ -942,6 +979,11 @@ export class ZrParserV2 {
 			return factory.createEmptyStatement();
 		}
 
+		const ret = this.tryParseReturnStatement();
+		if (ret.isSome()) {
+			return ret.unwrap();
+		}
+
 		const expressionStatement = this.createNode(ZrNodeKind.ExpressionStatement);
 		const expression = this.mutateExpression(this.parseNextExpression());
 		expressionStatement.expression = expression;
@@ -982,16 +1024,26 @@ export class ZrParserV2 {
 
 			// We're wanting to fetch statements here, the source file is composed of statements
 			const statement = this.mutateStatement(this.parseNextStatement());
-			source.push(statement);
 
-			if (this.isToken(ZrTokenType.EndOfStatement, ";")) {
-				this.consumeToken(ZrTokenType.EndOfStatement);
+			if (isNode(statement, ZrNodeKind.ExpressionStatement)) {
+				if (!this.lexer.hasNext() && this.options.RustLikeReturnExpression) {
+					source.push(factory.createReturnStatement(statement.expression));
+				} else {
+					source.push(statement);
+				}
+			} else {
+				source.push(statement);
+			}
+
+			if (this.lexer.hasNext() && this.isNextToken(ZrTokenType.EndOfStatement, ";")) {
+				this.consumeToken(ZrTokenType.EndOfStatement, ";");
 			}
 
 			this.skipAllWhitespace();
 		}
 
 		sourceFile.children = source;
+
 		return this.finishNode(sourceFile);
 	}
 
