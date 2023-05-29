@@ -1,12 +1,11 @@
 import { Result } from "@rbxts/rust-classes";
+import { ZrParserV2, ZrParserOptions } from "Ast/ParserV2";
+import { ZrParserError } from "Ast/ParserV2/Diagnostics";
 import { ZrTextStream, ZrLexer } from "../Ast";
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
-import ZrParser, { ZrParserError, ZrScriptMode, ZrScriptVersion } from "../Ast/Parser";
-import prettyPrintNodes from "../Ast/Utility/PrettyPrintNodes";
 import ZrContext from "../Data/Context";
 import { ZrValue } from "../Data/Locals";
 import ZrLuauFunction, { ZrUnknown } from "../Data/LuauFunction";
-import { ZrRuntimeError } from "./Runtime";
 import ZrScript from "./Script";
 
 export enum ZrScriptCreateResult {
@@ -20,6 +19,7 @@ interface ZrCreateScriptSuccess {
 }
 interface ZrCreateScriptError {
 	result: ZrScriptCreateResult.ParserError;
+	sourceFileWithErrors: SourceFile;
 	errors: readonly ZrParserError[];
 	message: string;
 }
@@ -62,27 +62,25 @@ export default class ZrScriptContext {
 	/**
 	 * Creates a source file, and returns a `Result<T, E>` of the result of parsing the file
 	 */
-	public parseSource(
-		source: string,
-		version = ZrScriptVersion.Zr2020,
-		mode = ZrScriptMode.CommandLike,
-	): Result<SourceFile, ZrCreateScriptError> {
+	public parseSource(source: string, options: ZrParserOptions): Result<SourceFile, ZrCreateScriptError> {
 		const stream = new ZrTextStream(source);
 		const lexer = new ZrLexer(stream);
-		const parser = new ZrParser(lexer, { version, mode });
+		const parser = new ZrParserV2(lexer, options);
 
-		try {
-			const nodes = parser.parseOrThrow();
-			return Result.ok(nodes);
-		} catch (error) {
-			warn(error);
-			return Result.err(
-				identity<ZrCreateScriptError>({
-					result: ZrScriptCreateResult.ParserError,
-					errors: parser.getErrors(),
-					message: tostring(error),
-				}),
-			);
-		}
+		return parser.parseAst().match(
+			sourceFile => {
+				return Result.ok(sourceFile);
+			},
+			err => {
+				return Result.err(
+					identity<ZrCreateScriptError>({
+						result: ZrScriptCreateResult.ParserError,
+						errors: err[1],
+						sourceFileWithErrors: err[0],
+						message: tostring(error),
+					}),
+				);
+			},
+		);
 	}
 }

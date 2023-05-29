@@ -52,7 +52,7 @@ import { TextLocation, TextRanges } from "Ast/Types";
 import { ZirconiumLogging } from "Logging";
 import getIdText from "Ast/Utility/PrettyPrintId";
 
-export interface ParserOptions {
+export interface ZrParserOptions {
 	/**
 	 * If enabled, will convert the last expression to a return statement if it's not explicit
 	 */
@@ -76,7 +76,7 @@ export class ZrParserV2 {
 	private contextFlags = 0;
 	public readonly nodes = new Array<ZrNode>();
 
-	public constructor(private lexer: ZrLexer, private options: ParserOptions) {}
+	public constructor(private lexer: ZrLexer, private options: ZrParserOptions) {}
 
 	private contextAddFlag(flag: ZrNodeFlag) {
 		this.contextFlags |= flag;
@@ -1051,7 +1051,7 @@ export class ZrParserV2 {
 	 * Attempts to parse the AST, returns `SourceFile` if successful; else `[SourceFile, ZrParserError[]]` if there are errors.
 	 * @returns
 	 */
-	public parseAst(): Result<SourceFile, [source: SourceFile, errors: ZrParserError[]]> {
+	public parseAst(): Result<SourceFile, [source: SourceFile, errors: readonly ZrParserError[]]> {
 		try {
 			const source = this.parseSourceFile();
 
