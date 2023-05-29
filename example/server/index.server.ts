@@ -64,6 +64,7 @@ let source = `
 
 	print("Test is", false ?? 10, false || "hi there", true && false);
 
+	// Test function
 	function test() {
 		return "Hi this works correctly!"
 	}
@@ -83,7 +84,7 @@ function rangeToString(range?: [x: number, y: number]) {
 let len = source.size();
 
 const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)), {
-	RustLikeReturnExpression: true,
+	FinalExpressionImplicitReturn: true,
 });
 lex.parseAstWithThrow().match(
 	source => {

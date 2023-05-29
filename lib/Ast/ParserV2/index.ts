@@ -54,20 +54,9 @@ import getIdText from "Ast/Utility/PrettyPrintId";
 
 export interface ParserOptions {
 	/**
-	 * If enabled, will treat
-	 *
-	 * ```ts
-	 * print("Test");
-	 * expression
-	 * ```
-	 *
-	 * like
-	 * ```
-	 * print("Test");
-	 * return expression;
-	 * ```
+	 * If enabled, will convert the last expression to a return statement if it's not explicit
 	 */
-	RustLikeReturnExpression?: boolean;
+	FinalExpressionImplicitReturn?: boolean;
 }
 
 export interface ZrParserFunctionContext {
@@ -1026,7 +1015,7 @@ export class ZrParserV2 {
 			const statement = this.mutateStatement(this.parseNextStatement());
 
 			if (isNode(statement, ZrNodeKind.ExpressionStatement)) {
-				if (!this.lexer.hasNext() && this.options.RustLikeReturnExpression) {
+				if (!this.lexer.hasNext() && this.options.FinalExpressionImplicitReturn) {
 					source.push(factory.createReturnStatement(statement.expression));
 				} else {
 					source.push(statement);
