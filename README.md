@@ -27,30 +27,30 @@
 - [x] If/Else
     ```ts
     // Shorthand if
-    if value: print "Hello, World!"
+    if value: print "Hello, World!";
 
     // Longhand if
     if value { // brackets are optional
-        print "Hello, World!"
+        print "Hello, World!";
     }
 
     // If else
     if value {
-        print "Value is true!"
+        print "Value is true!";
     } else {
-        print "Value is false!"
+        print "Value is false!";
     }
     ```
 - [x] For-In Statement
     ```ts
     // Iterate array/object - like for _, value in pairs(myArray)
     for value in myArray {
-        print $value
+        print $value;
     }
 
     // Iterate range (Print numbers 1 to 10), like for i = 1, 10 do
     for value in 1..10 {
-        print $value
+        print $value;
     }
     ```
 
@@ -58,8 +58,9 @@
     ```ts
     // Command calls
     test! // no arguments, exclaimation is because otherwise it's evaluated as the variable itself
-    print "Hello, World!" 42 true // arguments
-    print $[10, 20, 30] ${a: 10} 1..10 $variable // inline objects
+    print "Hello, World!" 42 true; // arguments
+    print $[10, 20, 30] ${a: 10} 1..10 $variable; // inline objects
+    // NOTE: When using command call syntax, semicolon is required for any statements following the call
 
     // Script calls
     test() //  no arguments
@@ -68,9 +69,10 @@
     // Declaring and using user functions
     function example() {
         print "Hello from example!"
+        return "Example return!"
     }
 
-    example!
+    print(example!) // will print 'Example return!'
     ```
 
 - [x] Arrays (including indexing)

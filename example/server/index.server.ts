@@ -32,8 +32,8 @@ globals.registerGlobal(
 );
 
 let source = `
-	print();
-	print(true, "lol");
+	print()
+	print(true, "lol")
 	print "What the hell";
 	for i in 1..10 {
 		function test() {
@@ -69,8 +69,8 @@ let source = `
 		return "Hi this works correctly!"
 	}
 
-	"okay this is being weird lol";
-	test()
+	"okay this is being weird lol"
+	test!
 `;
 
 function rangeToString(range?: [x: number, y: number]) {

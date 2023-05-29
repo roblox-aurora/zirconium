@@ -22,8 +22,9 @@ function prettyPrintNodes(nodes: ZrNode[], prefix = "", verbose = false) {
 			}
 		} else if (isNode(node, CmdSyntaxKind.ReturnStatement)) {
 			print("");
-			print(prefix + "\t", "@[Return]");
+			print(prefix, CmdSyntaxKind[node.kind], "{");
 			prettyPrintNodes([node.expression], prefix + "\t", verbose);
+			print(prefix, "}");
 		} else if (isNode(node, CmdSyntaxKind.CallExpression)) {
 			if (verbose) {
 				print(
