@@ -153,9 +153,20 @@ export class ZrCompiler {
 		}
 	}
 
+	private uniques = new Map<string, number>();
+	protected getUniqueName(name: string) {
+		const uniqueIdx = this.uniques.get(name) ?? 0;
+		this.uniques.set(name, uniqueIdx + 1);
+		return `${name}_${uniqueIdx}`;
+	}
+
 	protected astToVM(node: ZrNode) {
 		if (isNode(node, ZrNodeKind.Source)) {
 			for (const statement of node.children) {
+				this.astToVM(statement);
+			}
+		} else if (isNode(node, ZrNodeKind.Block)) {
+			for (const statement of node.statements) {
 				this.astToVM(statement);
 			}
 		} else if (isNode(node, ZrNodeKind.ExpressionStatement)) {
@@ -167,6 +178,25 @@ export class ZrCompiler {
 			this.parseExpression(node.expression, true);
 			if (isNode(node.identifier, ZrNodeKind.Identifier)) {
 				this.builder.push(ZrOP.SETUPVALUE, Operand.string(node.identifier.name));
+			}
+		} else if (isNode(node, ZrNodeKind.IfStatement)) {
+			if (node.condition) {
+				const ifTrueLabel = this.getUniqueName("if_true");
+				const endLabel = this.getUniqueName("end");
+
+				this.parseExpression(node.condition, true); // push expr
+
+				if (node.thenStatement && node.elseStatement) {
+					// push if_true
+					this.builder.push(ZrOP.JMPIFK, Operand.string(ifTrueLabel)); // JMPIF cond
+					this.astToVM(node.elseStatement); // false condition
+					this.builder.push(ZrOP.JMPK, Operand.string(endLabel)); // JMP end
+
+					// true label
+					this.builder.label(ifTrueLabel);
+					this.astToVM(node.thenStatement);
+					this.builder.label(endLabel);
+				}
 			}
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
 			this.builder.push(ZrOP.CLOSURE, Operand.string(node.name.name));

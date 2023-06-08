@@ -33,24 +33,28 @@ globals.registerGlobal(
 );
 
 let source = `
-	let x = 10;
+	function test(value) {
+		if (value) {
+			print "value was true";
 
-	function test_x() {
-		print "hi there";
+			if (1) {
+				print(1);
+			} else {
+				print(2);
+			}
 
-		let x = 10;
-
-		return 10;
-	}
-
-	function this_is_a_test(x, y, z) {
-		function mr_trippy() {
-			
+		} else {
+			print "value was false";
 		}
+
+		return value;
 	}
 
-	let result = test_x!;
-	this_is_a_test(10, 20, 30);
+	if test(1) {
+		print "test returned true";
+	} else {
+		print "test returned false";
+	}
 `;
 
 function rangeToString(range?: [x: number, y: number]) {

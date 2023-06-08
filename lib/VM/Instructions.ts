@@ -85,7 +85,12 @@ export const enum ZrOP {
 	LT,
 
 	/**
-	 * @deprecated TODO
+	 *  TODO: Change to use registers?
+	 *
+	 * `EQ [invert: 1 | 0] [value: CONST_OR_UPVALUE_ID]`
+	 *
+	 * `EQ 1` (equals false)
+	 * `EQ 0` (equals true)
 	 */
 	EQ,
 
