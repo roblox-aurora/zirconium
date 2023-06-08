@@ -293,6 +293,12 @@ export class ZrParserV2 {
 
 				// We'll attempt to parse the inner statements inside the block
 				statements.push(this.parseNextStatement());
+
+				if (this.lexer.hasNext() && this.isNextToken(ZrTokenType.EndOfStatement, ";")) {
+					this.consumeToken(ZrTokenType.EndOfStatement, ";");
+				}
+
+				this.skipAllWhitespace();
 			}
 
 			this.consumeToken(ZrTokenType.Special, Grammar.SpecialTokenId.BodyEnd);
