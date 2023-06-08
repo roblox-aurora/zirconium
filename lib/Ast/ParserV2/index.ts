@@ -494,7 +494,8 @@ export class ZrParserV2 {
 				elementAccess.expression = left;
 				elementAccess.argumentExpression = this.mutateExpression(this.parseNextExpression());
 				elementAccess.startPos = left.startPos;
-				this.consumeIfToken(ZrTokenType.Special, SpecialTokenId.ElementEnd);
+
+				this.consumeToken(ZrTokenType.Special, SpecialTokenId.ElementEnd);
 				return this.mutateVariableAccessExpression(this.finishNode(elementAccess));
 			}
 		}
