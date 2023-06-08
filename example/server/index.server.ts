@@ -6,6 +6,7 @@ import { ZrEnum } from "Data/Enum";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { $env } from "rbxts-transform-env";
+import { ZrCompiler } from "VM/Compiler";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
@@ -32,45 +33,24 @@ globals.registerGlobal(
 );
 
 let source = `
-	print()
-	print(true, "lol")
-	print "What the hell";
-	for i in 1..10 {
-		function test() {
-			print!
-			print({
-				a: 10
-			}, [1, 2, 3])
-		}
+	let x = 10;
 
-		if 10 == 20 {
+	function test_x() {
+		print "hi there";
 
-		}
+		let x = 10;
 
-		if 10 > 20 {
+		return 10;
+	}
 
-		} else if true {
-
-		} else if print("hi there") {
+	function this_is_a_test(x, y, z) {
+		function mr_trippy() {
 			
-		} else {
-
 		}
-
-		if 10 == 20: true else: false
 	}
 
-	let expression = 10;
-
-	print("Test is", false ?? 10, false || "hi there", true && false);
-
-	// Test function
-	function test() {
-		return "Hi this works correctly!"
-	}
-
-	"okay this is being weird lol"
-	test!
+	let result = test_x!;
+	this_is_a_test(10, 20, 30);
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -94,10 +74,16 @@ lex.parseAstWithThrow().match(
 		const types = new ZrBinder();
 		types.bindSourceFile(source);
 
+		const compiler = ZrCompiler.loadFile(source);
+
+		const compiled = compiler.compile();
+		print(compiled);
+
+		print("Compiled Source\n", ZrCompiler.toPrettyString(compiled));
+
 		const zr = Zr.createContext();
 		const zrScript = zr.createScript(source);
 		zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
-
 		const result = zrScript.executeOrThrow();
 		print("result is", result);
 	},

@@ -1,6 +1,7 @@
-import { ZrCompiledCode } from "./Compiler";
+import ZrLocalStack, { ZrValue } from "Data/Locals";
+import { ZrVariants } from "Data/Types";
+import { ZrChunk } from "./Compiler";
 import { ZrInstruction } from "./Instructions";
-import { Operand } from "./Operand";
 
 interface ZrFrame {
 	retAddr: number;
@@ -9,24 +10,40 @@ function ZrFrame(retAddr: number) {
 	return identity<ZrFrame>({ retAddr });
 }
 
+export class ZrStack {
+	private stack = new Array<ZrValue>();
+
+	public push(value: ZrValue) {
+		this.stack.push(value);
+	}
+
+	public pop() {
+		const value = this.stack.pop();
+		assert(value);
+		return value;
+	}
+}
+
 export class ZrVM {
+	public readonly env = new ZrLocalStack();
+	public readonly stack = new ZrStack();
+
 	private ip = 0;
 	private callStack = new Array<ZrFrame>();
-	private stack = new Array<Operand>();
 
-	public constructor(private compiled: ZrCompiledCode, private instructions: readonly ZrInstruction[]) {
-		let frame = ZrFrame(compiled.code.size());
+	public constructor(private compiled: ZrChunk, private instructions: readonly ZrInstruction[]) {
+		let frame = ZrFrame(compiled.instructions.size());
 		this.callStack.push(frame);
 	}
 
 	private next() {
-		let code = this.compiled.code[this.ip];
+		let code = this.compiled.instructions[this.ip];
 		this.ip += 1;
 		return code;
 	}
 
 	public getDataAtIndex(index: number) {
-		return this.compiled.data[index];
+		return this.compiled.constants[index];
 	}
 
 	public jump(label: string) {
@@ -41,17 +58,17 @@ export class ZrVM {
 		this.ip = frame.retAddr;
 	}
 
-	public call(label: string) {
+	public call(label: string, argc: number) {
 		this.callStack.push(ZrFrame(this.ip));
 		print("calling", label);
 		this.jump(label);
 	}
 
-	public push(value: Operand) {
+	public stackPush(value: ZrValue) {
 		this.stack.push(value);
 	}
 
-	public pop() {
+	public stackPop() {
 		const value = this.stack.pop();
 		assert(value, "opstack empty");
 		return value;
@@ -59,7 +76,7 @@ export class ZrVM {
 
 	public run() {
 		while (true) {
-			if (this.ip >= this.compiled.code.size()) {
+			if (this.ip >= this.compiled.instructions.size()) {
 				break;
 			}
 

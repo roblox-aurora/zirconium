@@ -2,6 +2,7 @@ import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import variantModule, { TypeNames, VariantOf } from "@rbxts/variant";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
+import { ZrClosure } from "./Closure";
 import { ZrEnum } from "./Enum";
 import { ZrEnumItem } from "./EnumItem";
 import ZrLuauFunction from "./LuauFunction";
@@ -21,7 +22,7 @@ export type ZrDefined =
 	| ReadonlyArray<ZrValue>
 	| Map<string, ZrValue>
 	| ReadonlyMap<string, ZrValue>
-	| ZrUserFunction
+	| ZrClosure
 	| ZrLuauFunction
 	| ZrEnum
 	| ZrEnumItem

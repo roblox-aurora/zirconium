@@ -1,16 +1,72 @@
 import { isOfVariant } from "@rbxts/variant";
-import { ZrCompiledCode } from "./Compiler";
+import { ZrChunk, ZrCompilerConstant } from "./Compiler";
 import { ZrInstruction, ZrOP } from "./Instructions";
 import { Operand } from "./Operand";
 
+const MAIN = "@ZrMain";
+
+interface ZrFunctionChunk {
+	name: string;
+	instructions: number[];
+	locals: Map<string, [startPc: number, endPc: number]>;
+	labels: Map<string, number>;
+	returns: boolean;
+}
+
 export class ZrCodeBuilder {
-	private instructions = new Array<number>();
-	private data = new Array<Operand>();
+	private stackPtr = 0;
+
+	private chunkStack = new Array<ZrFunctionChunk>();
+	private chunks = new Array<ZrFunctionChunk>();
+
+	private data = new Array<ZrCompilerConstant>();
 	private labels = new Map<string, number>();
 
-	public constructor(private instructionTable: readonly ZrInstruction[]) {}
+	public constructor(private instructionTable: readonly ZrInstruction[]) {
+		const main: ZrFunctionChunk = {
+			name: MAIN,
+			instructions: [],
+			locals: new Map(),
+			labels: new Map(),
+			returns: false,
+		};
+
+		this.chunks.push(main);
+		this.chunkStack.push(main);
+	}
+
+	public closure(name: string, parameters: string[], withClosure: () => void): void {
+		const arr = new Array<number>();
+
+		const chunk = identity<ZrFunctionChunk>({
+			name,
+			instructions: arr,
+			locals: new Map(),
+			labels: new Map(),
+			returns: false,
+		});
+
+		this.chunkStack.push(chunk);
+		this.stackPtr += 1;
+
+		withClosure();
+		for (const parameter of parameters) {
+			chunk.locals.set(parameter, [0, chunk.instructions.size()]);
+		}
+
+		this.chunkStack.pop();
+		this.stackPtr -= 1;
+		this.chunks.push(chunk);
+	}
+
+	public chunk(): Readonly<ZrFunctionChunk> {
+		return this.chunkStack[this.stackPtr];
+	}
 
 	public push(code: ZrOP, ...args: (Operand | number)[]) {
+		const chunk = this.chunkStack[this.stackPtr];
+		const bytes = chunk.instructions;
+
 		const instr = this.instructionTable.find(instr => instr[0] === code);
 		assert(instr, `Instruction not found at code ${code}`);
 
@@ -20,96 +76,64 @@ export class ZrCodeBuilder {
 			error(`Instruction ${name} has arity of ${arity} but ${args.size()} was provided`);
 		}
 
-		this.instructions.push(code);
+		bytes.push(code);
+
+		if (code === ZrOP.RET) {
+			chunk.returns = true;
+		}
+
 		for (const arg of args) {
 			if (typeIs(arg, "number")) {
-				this.instructions.push(arg);
+				bytes.push(arg);
 			} else {
-				const existing = this.data.findIndex(f => f.type === arg.type && f.value === arg.value);
-				let pos = existing !== -1 ? existing : this.data.push(arg) - 1;
-				this.instructions.push(pos);
+				const existing = this.data.findIndex(f => f === arg.value);
+				let pos = existing !== -1 ? existing : this.data.push(arg.value) - 1;
+				bytes.push(pos);
 			}
 		}
 	}
 
 	public labelAt(name: string, at: number) {
-		this.labels.set(name, at);
+		const labels = this.chunkStack[this.stackPtr].labels;
+		labels.set(name, at);
 	}
 
 	public label(name: string) {
-		let idx = this.instructions.size();
-		this.labels.set(name, idx);
-	}
+		const closure = this.chunkStack[this.stackPtr];
 
-	public toPrettyString() {
-		const strs = new Array<string>();
-
-		for (let ip = 0; ip < this.instructions.size(); ) {
-			const opCode = this.instructions[ip];
-			const instr = this.instructionTable.find(f => f[0] === opCode);
-
-			for (const [label, labelPtr] of this.labels) {
-				if (labelPtr === ip) {
-					strs.push(`.${label}`);
-				}
-			}
-
-			assert(instr);
-			const [, name, arity] = instr;
-			let str = [name.upper()];
-
-			for (let i = 1; i <= arity; i++) {
-				const arg = this.instructions[ip + i];
-				str.push(tostring(arg));
-			}
-
-			if (opCode === ZrOP.ADD) {
-				str.push("\t\t; Pops & adds the last two values on the stack, pushes the result");
-			} else if (opCode === ZrOP.CALLK) {
-				str.push(
-					`\t\t; calls '${this.data[this.instructions[ip + 1]].value}' with ${
-						this.instructions[ip + 2]
-					} arguments`,
-				);
-			} else if (opCode === ZrOP.LOADK) {
-				const ptr = this.instructions[ip + 1];
-				str.push(`\t\t; load constant @${ptr} (${this.data[ptr].value}) onto the stack`);
-			} else if (opCode === ZrOP.SETUPVALUE) {
-				str.push(
-					`\t\t; sets the upvalue ${
-						this.data[this.instructions[ip + 1]].value
-					} to the last value in the stack`,
-				);
-			}
-
-			strs.push(`\t${str.join(" ")}`);
-			ip += arity + 1;
-		}
-
-		strs.push("-- constants --");
-		let i = 0;
-		for (const constant of this.data) {
-			strs.push(`\t@${i} = ${constant.value}`);
-			i++;
-		}
-
-		return strs.join("\n");
+		let idx = closure.instructions.size();
+		closure.labels.set(name, idx);
 	}
 
 	public build() {
 		let labels = new Array<[number, string]>();
 
-		for (const [key, value] of this.labels) {
-			labels.push([value, key]);
+		let instructions = new Array<number>();
+
+		for (const chunk of this.chunks) {
+			let offset = instructions.size();
+			labels.push([offset, chunk.name]);
+
+			for (const instruction of chunk.instructions) {
+				instructions.push(instruction);
+			}
+
+			for (const [label, lp] of chunk.labels) {
+				labels.push([offset + lp, label]);
+			}
+
+			if (!chunk.returns) {
+				instructions.push(ZrOP.RET);
+			}
 		}
 
 		labels.sort((a, b) => a[0] < b[0]);
 
-		return identity<ZrCompiledCode>({
-			symbols: [],
+		return identity<ZrChunk>({
 			labels,
-			data: this.data,
-			code: this.instructions,
+			locals: [],
+			constants: this.data,
+			instructions,
 		});
 	}
 }
