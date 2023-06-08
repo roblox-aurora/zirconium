@@ -743,7 +743,7 @@ export class ZrParserV2 {
 
 			const id = this.parseVariableAccessExpression();
 
-			ZirconiumLogging.Verbose("access id {Id} {tkn}", getIdText(id), this.getToken()?.value);
+			// ZirconiumLogging.Verbose("access id {Id} {tkn}", getIdText(id), this.getToken()?.value);
 
 			// Handle bang calls e.g. 'execute!'
 			if (this.isToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
@@ -766,13 +766,10 @@ export class ZrParserV2 {
 					this.isToken(ZrTokenType.Number) ||
 					this.isToken(ZrTokenType.Boolean) ||
 					this.isToken(ZrTokenType.Identifier) ||
-					this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter) ||
-					this.isToken(ZrTokenType.Special, SpecialTokenId.ArrayBegin) ||
-					this.isToken(ZrTokenType.Special, SpecialTokenId.ObjectBegin)) &&
+					this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)) &&
 				!useSimpleCallSyntax
 			) {
 				const expr = this.parseCallExpression(id, false);
-				// this.consumeToken(ZrTokenType.EndOfStatement, ";");
 				return expr;
 			}
 
