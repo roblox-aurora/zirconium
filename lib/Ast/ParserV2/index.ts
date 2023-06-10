@@ -29,6 +29,7 @@ import {
 	VariableDeclaration,
 	AssignableExpression,
 	ReturnStatement,
+	FunctionExpression,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -365,6 +366,31 @@ export class ZrParserV2 {
 		}
 
 		return this.createMissingNode(ZrNodeKind.FunctionDeclaration, false, DiagnosticErrors.IdentifierExpected);
+	}
+
+	/**
+	 * Parse the function declaration
+	 */
+	private parseFunctionExpression(): FunctionExpression {
+		const functionDeclaration = this.createNode(ZrNodeKind.FunctionExpression);
+
+		this.consumeToken(ZrTokenType.Keyword, Keywords.FUNCTION); // consume 'function'
+
+		this.functionContext.push({ name: "<anonymous " + game.GetService("HttpService").GenerateGUID(false) + ">" });
+		const parameters = this.parseFunctionDeclarationParameters();
+		functionDeclaration.parameters = parameters;
+
+		if (this.isToken(ZrTokenType.Special, "{")) {
+			const body = this.parseBlock();
+			functionDeclaration.body = body;
+		} else if (this.isToken(ZrTokenType.Special, ":")) {
+			this.parserErrorAtCurrentToken(DiagnosticErrors.Expected("{"));
+		} else {
+			this.parserErrorAtCurrentToken(DiagnosticErrors.Expected("{"));
+		}
+
+		this.functionContext.pop();
+		return this.finishNode(functionDeclaration);
 	}
 
 	private parseEnumItems(): EnumItemExpression[] {
@@ -722,6 +748,10 @@ export class ZrParserV2 {
 			}
 
 			return this.mutateExpression(this.parseParenthesizedExpression());
+		}
+
+		if (this.isToken(ZrTokenType.Keyword, Keywords.FUNCTION)) {
+			return this.parseFunctionExpression();
 		}
 
 		// Handle parenthesized expressions (which are just for order of operation stuff; mainly)
