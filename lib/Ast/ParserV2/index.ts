@@ -58,6 +58,8 @@ export interface ZrParserOptions {
 	 * If enabled, will convert the last expression to a return statement if it's not explicit
 	 */
 	FinalExpressionImplicitReturn?: boolean;
+
+	ExperimentalArrowFunctions?: boolean;
 }
 
 export interface ZrParserFunctionContext {
@@ -77,7 +79,11 @@ export class ZrParserV2 {
 	private contextFlags = 0;
 	public readonly nodes = new Array<ZrNode>();
 
-	public constructor(private lexer: ZrLexer, private options: ZrParserOptions) {}
+	private arrowFunctionsEnabled: boolean;
+
+	public constructor(private lexer: ZrLexer, private options: ZrParserOptions) {
+		this.arrowFunctionsEnabled = this.options?.ExperimentalArrowFunctions ?? false;
+	}
 
 	private contextAddFlag(flag: ZrNodeFlag) {
 		this.contextFlags |= flag;
@@ -712,10 +718,37 @@ export class ZrParserV2 {
 		return this.finishNode(emptyNode);
 	}
 
+	private parseArrowFunction(): FunctionExpression {
+		const node = this.createNode(ZrNodeKind.FunctionExpression);
+
+		const params = this.parseFunctionDeclarationParameters();
+		node.parameters = params;
+
+		this.consumeToken(ZrTokenType.Operator, "=>");
+		const body = this.parseBlock();
+		node.body = body;
+
+		return this.finishNode(node, node.body.endPos);
+	}
+
 	/**
 	 * Attempts to parse the next expression
 	 */
 	private parseNextExpression(useSimpleCallSyntax = false): Expression {
+		// not a fan of this atm, but experimental for now.
+		if (this.arrowFunctionsEnabled && this.isToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersBegin)) {
+			const arrowOp = this.lexer.findToken(10, ZrTokenType.Operator, "=>");
+			if (arrowOp) {
+				const beforeToken = this.lexer.peekNext(arrowOp[1]); // -1 because = and > are two diff ops
+				if (
+					beforeToken?.kind === ZrTokenType.Special &&
+					beforeToken.value === SpecialTokenId.FunctionParametersEnd
+				) {
+					return this.parseArrowFunction();
+				}
+			}
+		}
+
 		// Handle our unary expressions
 		if (
 			this.isToken(ZrTokenType.Operator, OperatorTokenId.UnaryMinus) ||
@@ -824,7 +857,7 @@ export class ZrParserV2 {
 			const otherPrecedence = Grammar.OperatorPrecedence[token.value];
 			const opToken = this.consumeToken(ZrTokenType.Operator);
 
-			assert(otherPrecedence !== undefined, `No precedence for '${token.value}'`);
+			assert(otherPrecedence !== undefined, `No precedence for '${token.value}' after ` + ZrNodeKind[left.kind]);
 			if (otherPrecedence > precedence) {
 				return factory.createBinaryExpression(
 					left,
@@ -1012,10 +1045,9 @@ export class ZrParserV2 {
 		}
 
 		const expressionStatement = this.createNode(ZrNodeKind.ExpressionStatement);
+
 		const expression = this.mutateExpression(this.parseNextExpression());
 		expressionStatement.expression = expression;
-
-		// this.consumeToken(ZrTokenType.EndOfStatement, ";");
 
 		return this.finishNode(expressionStatement, expression.endPos);
 	}

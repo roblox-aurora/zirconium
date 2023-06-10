@@ -8,6 +8,14 @@ export default class ZrTextStream {
 
 	public constructor(private source: string) {}
 
+	public clone() {
+		const stream = new ZrTextStream(this.source);
+		stream.ptr = this.ptr;
+		stream.row = this.row;
+		stream.column = this.column;
+		return stream;
+	}
+
 	/**
 	 * Consume and return the next character in the stream
 	 */
