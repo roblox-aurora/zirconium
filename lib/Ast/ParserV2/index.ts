@@ -30,6 +30,7 @@ import {
 	AssignableExpression,
 	ReturnStatement,
 	FunctionExpression,
+	ExpressionStatement,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -285,11 +286,16 @@ export class ZrParserV2 {
 	/**
 	 * Parses a block - which is a `SourceBlock` of `Statement`s
 	 */
-	private parseBlock(): SourceBlock {
+	private parseBlock(
+		allowsSingleStatement = false,
+		singleWrapKind: ZrNodeKind.ExpressionStatement | ZrNodeKind.ReturnStatement = ZrNodeKind.ExpressionStatement,
+	): SourceBlock {
 		const block = this.createNode(ZrNodeKind.Block);
 
 		// Consume the first '{'
-		if (this.consumeToken(ZrTokenType.Special, Grammar.SpecialTokenId.BodyBegin)) {
+		if (this.isToken(ZrTokenType.Special, Grammar.SpecialTokenId.BodyBegin) || !allowsSingleStatement) {
+			this.consumeToken(ZrTokenType.Special, Grammar.SpecialTokenId.BodyBegin);
+
 			const statements = new Array<Statement>();
 
 			while (this.lexer.hasNext()) {
@@ -310,7 +316,15 @@ export class ZrParserV2 {
 
 			this.consumeToken(ZrTokenType.Special, Grammar.SpecialTokenId.BodyEnd);
 			block.statements = statements;
+		} else {
+			const stmt = this.createNode(singleWrapKind);
+			stmt.expression = this.mutateExpression(this.parseNextExpression());
+			this.finishNode<ExpressionStatement | ReturnStatement>(stmt, stmt.expression.endPos);
+
+			block.statements = [stmt];
+			return this.finishNode(block, stmt.endPos);
 		}
+
 		return this.finishNode(block);
 	}
 
@@ -725,7 +739,7 @@ export class ZrParserV2 {
 		node.parameters = params;
 
 		this.consumeToken(ZrTokenType.Operator, "=>");
-		const body = this.parseBlock();
+		const body = this.parseBlock(true, ZrNodeKind.ReturnStatement);
 		node.body = body;
 
 		return this.finishNode(node, node.body.endPos);
@@ -739,7 +753,7 @@ export class ZrParserV2 {
 		if (this.arrowFunctionsEnabled && this.isToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersBegin)) {
 			const parenEnd = this.lexer.findTokenAhead(ZrTokenType.Special, SpecialTokenId.FunctionParametersEnd);
 			if (parenEnd) {
-				const afterToken = this.lexer.peekNext(parenEnd[1] + 1); // -1 because = and > are two diff ops
+				const afterToken = this.lexer.peekNext(parenEnd[1] + 1); // + 1 to get the => after the ) if it exists.
 				if (afterToken?.kind === ZrTokenType.Operator && afterToken.value === "=>") {
 					return this.parseArrowFunction();
 				}
