@@ -737,13 +737,10 @@ export class ZrParserV2 {
 	private parseNextExpression(useSimpleCallSyntax = false): Expression {
 		// not a fan of this atm, but experimental for now.
 		if (this.arrowFunctionsEnabled && this.isToken(ZrTokenType.Special, SpecialTokenId.FunctionParametersBegin)) {
-			const arrowOp = this.lexer.findToken(10, ZrTokenType.Operator, "=>");
-			if (arrowOp) {
-				const beforeToken = this.lexer.peekNext(arrowOp[1]); // -1 because = and > are two diff ops
-				if (
-					beforeToken?.kind === ZrTokenType.Special &&
-					beforeToken.value === SpecialTokenId.FunctionParametersEnd
-				) {
+			const parenEnd = this.lexer.findTokenAhead(ZrTokenType.Special, SpecialTokenId.FunctionParametersEnd);
+			if (parenEnd) {
+				const afterToken = this.lexer.peekNext(parenEnd[1] + 1); // -1 because = and > are two diff ops
+				if (afterToken?.kind === ZrTokenType.Operator && afterToken.value === "=>") {
 					return this.parseArrowFunction();
 				}
 			}

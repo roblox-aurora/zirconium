@@ -432,10 +432,27 @@ export default class ZrLexer {
 		return tokens;
 	}
 
-	public findToken(tokensToLookAt: number, kind: ZrTokenType, value?: string) {
-		const tokens = this.lookAhead(tokensToLookAt);
-		return tokens.find(f => f[0].kind === kind && (value === undefined || f[0].value === value));
+	public findTokenAhead(kind: ZrTokenType, value?: string): readonly [token: ZrToken, offset: number] | undefined {
+		const start = this.stream.getPtr();
+		let i = 1;
+		while (i < this.stream.size() - start) {
+			this.readWhile(this.isWhitespace);
+			const nextToken = this.readNext();
+			if (nextToken?.kind === kind && (value === undefined || value === nextToken.value)) {
+				this.stream.setPtr(start);
+				return [nextToken, i];
+			}
+			i++;
+		}
+
+		this.stream.setPtr(start);
+		return undefined;
 	}
+
+	// public findTokenAheadLimited(tokensToLookAt: number, kind: ZrTokenType, value?: string) {
+	// 	const tokens = this.lookAhead(tokensToLookAt);
+	// 	return tokens.find(f => f[0].kind === kind && (value === undefined || f[0].value === value));
+	// }
 
 	/**
 	 * Gets the next token
