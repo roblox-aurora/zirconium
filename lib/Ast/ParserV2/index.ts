@@ -43,7 +43,6 @@ import {
 	TokenTypes,
 	ZrTokenType,
 	ZrTokenFlag,
-	KEYWORDS,
 } from "Ast/Tokens/Tokens";
 import { DiagnosticErrors, ZrDiagnostic } from "./DiagnosticMap";
 import { ZrParserError, ZrParserErrorCode } from "./Diagnostics";
@@ -51,8 +50,6 @@ import * as factory from "Ast/Nodes/Create";
 import { isNode, ZrNodeKind } from "Ast/Nodes";
 import { ZrNodeFlag, ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { TextLocation, TextRanges } from "Ast/Types";
-import { ZirconiumLogging } from "Logging";
-import getIdText from "Ast/Utility/PrettyPrintId";
 
 export interface ZrParserOptions {
 	/**
@@ -60,6 +57,14 @@ export interface ZrParserOptions {
 	 */
 	FinalExpressionImplicitReturn?: boolean;
 
+	/**
+	 * Allow the legacy command syntax - may be buggy but will allow command calls
+	 */
+	UseLegacyCommandCallSyntax?: boolean;
+
+	/**
+	 * Allow experimental arrow functions
+	 */
 	ExperimentalArrowFunctions?: boolean;
 }
 
@@ -81,9 +86,11 @@ export class ZrParserV2 {
 	public readonly nodes = new Array<ZrNode>();
 
 	private arrowFunctionsEnabled: boolean;
+	private commandSyntax: boolean;
 
 	public constructor(private lexer: ZrLexer, private options: ZrParserOptions) {
-		this.arrowFunctionsEnabled = this.options?.ExperimentalArrowFunctions ?? false;
+		this.arrowFunctionsEnabled = this.options.ExperimentalArrowFunctions ?? false;
+		this.commandSyntax = this.options.UseLegacyCommandCallSyntax ?? false;
 	}
 
 	private contextAddFlag(flag: ZrNodeFlag) {
@@ -820,32 +827,34 @@ export class ZrParserV2 {
 
 			// ZirconiumLogging.Verbose("access id {Id} {tkn}", getIdText(id), this.getToken()?.value);
 
-			// Handle bang calls e.g. 'execute!'
-			if (this.isToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
-				const callExpression = this.createNode(ZrNodeKind.CallExpression);
-				callExpression.isSimpleCall = true;
-				callExpression.startPos = id.startPos;
-				callExpression.expression = id;
-				const bang = this.consumeToken(ZrTokenType.Operator, "!");
-				return this.finishNode(callExpression, bang!.startPos);
-			}
-
 			// Handle script calls - e.g. `player.add_item("iron_sword", 20)`
 			if (this.isToken(ZrTokenType.Special, "(") && !useSimpleCallSyntax) {
 				return this.parseCallExpression(id, true);
 			}
 
-			// Handle command calls e.g. `player.add_item "iron_sword" 20`
-			if (
-				(this.isToken(ZrTokenType.String) ||
-					this.isToken(ZrTokenType.Number) ||
-					this.isToken(ZrTokenType.Boolean) ||
-					this.isToken(ZrTokenType.Identifier) ||
-					this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)) &&
-				!useSimpleCallSyntax
-			) {
-				const expr = this.parseCallExpression(id, false);
-				return expr;
+			if (this.commandSyntax) {
+				// Handle bang calls e.g. 'execute!'
+				if (this.isToken(ZrTokenType.Operator, "!") && !useSimpleCallSyntax) {
+					const callExpression = this.createNode(ZrNodeKind.CallExpression);
+					callExpression.isSimpleCall = true;
+					callExpression.startPos = id.startPos;
+					callExpression.expression = id;
+					const bang = this.consumeToken(ZrTokenType.Operator, "!");
+					return this.finishNode(callExpression, bang!.startPos);
+				}
+
+				// Handle command calls e.g. `player.add_item "iron_sword" 20`
+				if (
+					(this.isToken(ZrTokenType.String) ||
+						this.isToken(ZrTokenType.Number) ||
+						this.isToken(ZrTokenType.Boolean) ||
+						this.isToken(ZrTokenType.Identifier) ||
+						this.isToken(ZrTokenType.Special, SpecialTokenId.SimpleCallInlineExpressionDelimiter)) &&
+					!useSimpleCallSyntax
+				) {
+					const expr = this.parseCallExpression(id, false);
+					return expr;
+				}
 			}
 
 			// Otherwise, we'll return this as a regular identifier.
