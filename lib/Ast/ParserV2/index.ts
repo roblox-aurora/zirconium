@@ -1,5 +1,5 @@
 import { Option, Result } from "@rbxts/rust-classes";
-import { ZrLexer } from "Ast";
+import { prettyPrintNodes, ZrLexer } from "Ast";
 import {
 	ArrayIndexExpression,
 	ArrayLiteralExpression,
@@ -31,6 +31,7 @@ import {
 	ReturnStatement,
 	FunctionExpression,
 	ExpressionStatement,
+	CallExpression,
 } from "Ast/Nodes/NodeTypes";
 import Grammar, { Keywords, OperatorTokenId, SpecialTokenId } from "Ast/Tokens/Grammar";
 import {
@@ -50,6 +51,8 @@ import * as factory from "Ast/Nodes/Create";
 import { isNode, ZrNodeKind } from "Ast/Nodes";
 import { ZrNodeFlag, ZrTypeKeyword } from "Ast/Nodes/Enum";
 import { TextLocation, TextRanges } from "Ast/Types";
+import inspect from "@rbxts/inspect";
+import { $NODE_ENV } from "rbxts-transform-env";
 
 export interface ZrParserOptions {
 	/**
@@ -66,6 +69,15 @@ export interface ZrParserOptions {
 	 * Allow experimental arrow functions
 	 */
 	ExperimentalArrowFunctions?: boolean;
+
+	/**
+	 * @internal
+	 */
+	TransformDebug?: {
+		[name: string]:
+			| readonly [ZrNodeKind.Source, (expr: SourceBlock) => Expression]
+			| readonly [ZrNodeKind.CallExpression, (expr: CallExpression) => Expression];
+	};
 }
 
 export interface ZrParserFunctionContext {
@@ -87,10 +99,12 @@ export class ZrParserV2 {
 
 	private arrowFunctionsEnabled: boolean;
 	private commandSyntax: boolean;
+	private internalDebugMacros: boolean;
 
 	public constructor(private lexer: ZrLexer, private options: ZrParserOptions) {
 		this.arrowFunctionsEnabled = this.options.ExperimentalArrowFunctions ?? false;
 		this.commandSyntax = this.options.UseLegacyCommandCallSyntax ?? false;
+		this.internalDebugMacros = this.options.TransformDebug !== undefined;
 	}
 
 	private contextAddFlag(flag: ZrNodeFlag) {
@@ -830,6 +844,26 @@ export class ZrParserV2 {
 			// Handle script calls - e.g. `player.add_item("iron_sword", 20)`
 			if (this.isToken(ZrTokenType.Special, "(") && !useSimpleCallSyntax) {
 				return this.parseCallExpression(id, true);
+			}
+
+			if ($NODE_ENV === "development") {
+				if (this.internalDebugMacros && this.isToken(ZrTokenType.Operator, "!")) {
+					if (isNode(id, ZrNodeKind.Identifier)) {
+						this.consumeToken(ZrTokenType.Operator, "!");
+
+						for (const [name, br] of pairs(this.options.TransformDebug!)) {
+							if (name === id.name) {
+								const [transformTarget, transform] = br;
+
+								if (transformTarget === ZrNodeKind.Source) {
+									return transform(this.parseBlock());
+								} else if (transformTarget === ZrNodeKind.CallExpression) {
+									return transform(this.parseCallExpression(id));
+								}
+							}
+						}
+					}
+				}
 			}
 
 			if (this.commandSyntax) {

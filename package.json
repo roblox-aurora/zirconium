@@ -21,6 +21,7 @@
   "types": "out/index.d.ts",
   "devDependencies": {
     "@rbxts/compiler-types": "2.0.4-types.0",
+    "@rbxts/inspect": "^1.0.1",
     "@rbxts/roact": "1.4.4-ts.0",
     "@rbxts/types": "^1.0.642",
     "@typescript-eslint/eslint-plugin": "^5.40.0",
