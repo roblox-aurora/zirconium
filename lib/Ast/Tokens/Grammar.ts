@@ -20,6 +20,7 @@ const Grammar = {
 		"in",
 		"enum",
 		"declare",
+		"async",
 		"function",
 		"let",
 		"export",

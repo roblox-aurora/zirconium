@@ -972,6 +972,10 @@ export class ZrParserV2 {
 			return factory.createEmptyStatement();
 		}
 
+		if (this.isToken(ZrTokenType.Special, SpecialTokenId.BodyBegin)) {
+			return this.parseBlock();
+		}
+
 		const ret = this.tryParseReturnStatement();
 		if (ret.isSome()) {
 			return ret.unwrap();

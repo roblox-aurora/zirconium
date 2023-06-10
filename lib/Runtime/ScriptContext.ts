@@ -25,11 +25,21 @@ interface ZrCreateScriptError {
 }
 type ZrCreateScriptResult = ZrCreateScriptError | ZrCreateScriptSuccess;
 
+export type ZrLibrary = Record<string, ZrValue>;
+
 export default class ZrScriptContext {
 	private globals = identity<Record<string, ZrValue>>({});
 
 	public registerGlobal(name: string, value: ZrValue) {
 		this.globals[name] = value;
+	}
+
+	public loadLibrary<TLibrary extends ZrLibrary>(lib: TLibrary, filter?: (keyof TLibrary)[]) {
+		for (const [name, value] of pairs(lib as ZrLibrary)) {
+			if (filter === undefined || filter.includes(name)) {
+				this.registerGlobal(name, value);
+			}
+		}
 	}
 
 	public importGlobals(context: ZrScriptContext) {

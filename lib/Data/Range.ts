@@ -1,16 +1,19 @@
 import { ZrValue } from "./Locals";
+import ZrLuauFunction from "./LuauFunction";
 
 export default class ZrRange {
 	private rng = new Random();
 
 	public static properties: Record<string, (range: ZrRange) => ZrValue> = {
-		random_int: (range) => {
+		random_int: range => {
 			return range.GetRandomInteger();
 		},
-		random: (range) => range.GetRandomNumber(),
-		min: (range) => range.GetMin(),
-		max: (range) => range.GetMax(),
+		random: range => range.GetRandomNumber(),
+		min: range => range.GetMin(),
+		max: range => range.GetMax(),
 	};
+
+	private static next = (range: ZrRange) => range.GetRandomInteger();
 
 	public constructor(private range: NumberRange) {}
 	public GetValue() {

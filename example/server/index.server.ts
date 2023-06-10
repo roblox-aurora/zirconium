@@ -2,75 +2,25 @@ import Zr from "@zirconium";
 import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
 import { ZrParserV2 } from "Ast/ParserV2";
 import { ZrBinder } from "Binder";
-import { ZrEnum } from "Data/Enum";
-import ZrLuauFunction from "Data/LuauFunction";
-import ZrObject from "Data/Object";
 import { $env } from "rbxts-transform-env";
-import { ZrValue } from "./Data/Locals";
-import ZrUndefined from "./Data/Undefined";
-import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
-
-const globals = Zr.createContext();
-globals.registerGlobal("print", ZrPrint);
-globals.registerGlobal("range", ZrRange);
-globals.registerGlobal("debug", ZrDebug);
-globals.registerGlobal("TestEnum", ZrEnum.fromArray("TestEnum", ["A", "B"]));
-globals.registerGlobal(
-	"values",
-	new ZrLuauFunction((context, ...args) => {
-		return `[ ${args.map(tostring).join(", ")} ]`;
-	}),
-);
-globals.registerGlobal("null", ZrUndefined as unknown as ZrValue);
-globals.registerGlobal(
-	"test",
-	ZrObject.fromRecord({
-		example: new ZrLuauFunction((_, input) => {
-			print("Example worked", input);
-		}),
-	}),
-);
+import { ZrLibs } from "std/Globals";
 
 let source = `
-	print()
-	print(true, "lol")
-	print "What the hell";
-	for i in 1..10 {
-		function test() {
-			print!
-			print({
-				a: 10
-			}, [1, 2, 3])
-		}
+	print(_VERSION)
+	print(typeof, print, warn, error, Array, Object);
+	print(typeof(Array), typeof(Array) == "userdata");
+	assert(typeof(Array) == "userdata");
+	print(Array.sized(10));
+	print(math, math.clamp 200 0 100);
 
-		if 10 == 20 {
-
-		}
-
-		if 10 > 20 {
-
-		} else if true {
-
-		} else if print("hi there") {
-			
-		} else {
-
-		}
-
-		if 10 == 20: true else: false
-	}
-
-	let expression = 10;
-
-	print("Test is", false ?? 10, false || "hi there", true && false);
-
-	// Test function
 	function test() {
-		return "Hi this works correctly!"
+		print "this was called from task.spawn!";
 	}
+	task.defer(test)
+	print "I'm cool!";
 
-	"okay this is being weird lol"
-	test!
+	task.delay 5 test;
+	error "you suck lol";
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -95,9 +45,10 @@ lex.parseAstWithThrow().match(
 		types.bindSourceFile(source);
 
 		const zr = Zr.createContext();
-		const zrScript = zr.createScript(source);
-		zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
+		zr.loadLibrary(ZrLibs.stdlib);
+		zr.loadLibrary(ZrLibs.experimentallib);
 
+		const zrScript = zr.createScript(source);
 		const result = zrScript.executeOrThrow();
 		print("result is", result);
 	},

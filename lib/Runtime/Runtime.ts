@@ -28,7 +28,7 @@ import ZrUserFunction from "../Data/UserFunction";
 import ZrLuauFunction, { ZrUnknown } from "../Data/LuauFunction";
 import ZrContext from "../Data/Context";
 import { types } from "../Ast";
-import { ZrUserdata } from "../Data/Userdata";
+import { ZrObjectUserdata, ZrUserdata } from "../Data/Userdata";
 import ZrUndefined from "../Data/Undefined";
 import { ZrInputStream } from "../Data/Stream";
 import { ZrNodeFlag } from "Ast/Nodes/Enum";
@@ -37,6 +37,8 @@ import { ZrEnum } from "Data/Enum";
 import { ZrEnumItem } from "Data/EnumItem";
 import { $print } from "rbxts-transform-debug";
 import { OperatorTokens } from "Ast/Tokens/Grammar";
+import { ZrBinaryOperation, ZrValidation } from "Data/Types";
+const { add, div, sub, mul, nullc, gt, lt, range } = ZrBinaryOperation;
 
 export interface ZrRuntimeResult {
 	/**
@@ -72,6 +74,7 @@ export enum ZrRuntimeErrorCode {
 	InvalidGreaterThanComparison,
 	InvalidArithmeticOperands,
 	RedeclareBlockScopedVariable,
+	InvalidLessThanComparison,
 }
 export interface ZrRuntimeError {
 	message: string;
@@ -90,6 +93,8 @@ const getTypeName = (value: ZrValue | ZrUndefined) => {
 		return typeOf(value);
 	}
 };
+
+const pass = <T>(value: T) => value;
 
 /**
  * Handles a block
@@ -484,6 +489,20 @@ export default class ZrRuntime {
 		}
 	}
 
+	public executeFunction(userFunction: ZrUserFunction, args: ZrValue[]): ZrValue | undefined {
+		this.push();
+
+		const params = userFunction.getParameters();
+		for (let i = 0; i < params.size(); i++) {
+			this.locals.setScopedLocal(params[i].name.name, args[i] ?? ZrUndefined);
+		}
+
+		const result = this.evaluateNode(userFunction.getBody());
+		this.pop();
+
+		return result;
+	}
+
 	private evaluateFunctionCall(node: CallExpression | SimpleCallExpression, context: ZrContext) {
 		const { expression, children, arguments: callArgs } = node;
 
@@ -545,7 +564,7 @@ export default class ZrRuntime {
 			return result as ZrValue;
 		} else {
 			this.runtimeError(
-				this.getFullName(expression) + " is not a function",
+				this.getFullName(expression) + ` (${ZrValidation.typeOf(matching)})` + "  is not a function",
 				ZrRuntimeErrorCode.NotCallable,
 				node,
 			);
@@ -576,27 +595,9 @@ export default class ZrRuntime {
 		}
 	}
 
-	private arithmeticOperation = (operator: string, operation: (left: number, right: number) => boolean | number) => {
-		return (
-			node: BinaryExpression,
-			left: ZrValue | ZrUndefined | undefined,
-			right: ZrValue | ZrUndefined | undefined,
-		) => {
-			if (typeIs(left, "number") && typeIs(right, "number")) {
-				return operation(left, right);
-			}
-
-			this.runtimeError(
-				`Attempt to perform (${operator}) on ${typeOf(left)} and ${typeOf(right)}`,
-				ZrRuntimeErrorCode.InvalidArithmeticOperands,
-				node,
-			);
-		};
-	};
-
 	private binaryOperations: Partial<
 		Record<
-			OperatorTokens | `${OperatorTokens}${OperatorTokens}`,
+			OperatorTokens | `${OperatorTokens}${OperatorTokens}` | "..",
 			(
 				node: BinaryExpression,
 				left: ZrValue | ZrUndefined | undefined,
@@ -604,35 +605,36 @@ export default class ZrRuntime {
 			) => ZrValue | ZrUndefined
 		>
 	> = {
-		"+": this.arithmeticOperation("add", (a, b) => a + b),
-		"-": this.arithmeticOperation("sub", (a, b) => a - b),
-		"*": this.arithmeticOperation("mul", (a, b) => a / b),
-		"/": this.arithmeticOperation("div", (a, b) => a / b),
+		"+": (node, left, right) =>
+			add(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidArithmeticOperands, node),
+			),
+		"-": (node, left, right) =>
+			sub(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidArithmeticOperands, node),
+			),
+		"*": (node, left, right) =>
+			mul(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidArithmeticOperands, node),
+			),
+		"/": (node, left, right) =>
+			div(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidArithmeticOperands, node),
+			),
 		">": (node, left, right) => {
-			if (typeIs(left, "number") && typeIs(right, "number")) {
-				return left > right;
-			}
-
-			this.runtimeError(
-				`Attempt to compare '>' ${typeOf(left)} and ${typeOf(right)}`,
-				ZrRuntimeErrorCode.InvalidArithmeticOperands,
-				node,
+			return gt(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidGreaterThanComparison, node),
 			);
 		},
+
 		"<": (node, left, right) => {
-			if (typeIs(left, "number") && typeIs(right, "number")) {
-				return left < right;
-			}
-
-			this.runtimeError(
-				`Attempt to compare '<' ${typeOf(left)} and ${typeOf(right)}`,
-				ZrRuntimeErrorCode.InvalidArithmeticOperands,
-				node,
+			return lt(left, right).match(pass, err =>
+				this.runtimeError(err, ZrRuntimeErrorCode.InvalidLessThanComparison, node),
 			);
 		},
-		"??": (_, left, right) => {
-			return left && left !== ZrUndefined ? left : right ?? ZrUndefined;
-		},
+		"??": (_, left, right) => nullc(left, right ?? ZrUndefined),
+		"..": (node, left, right) =>
+			range(left, right).match(pass, err => this.runtimeError(err, ZrRuntimeErrorCode.InvalidRangeError, node)),
 	};
 
 	public evaluateBinaryExpression(node: BinaryExpression, input = ZrInputStream.empty()) {
@@ -659,14 +661,6 @@ export default class ZrRuntime {
 				const leftValue = this.evaluateNode(left);
 				const rightValue = this.evaluateNode(right);
 				return leftValue || rightValue;
-			}
-		} else if (operator === "..") {
-			const leftValue = this.evaluateNode(left);
-			const rightValue = this.evaluateNode(right);
-			if (typeIs(leftValue, "number") && typeIs(rightValue, "number")) {
-				return new ZrRange(new NumberRange(leftValue, rightValue));
-			} else {
-				this.runtimeError("Range operator expects two numbers", ZrRuntimeErrorCode.InvalidRangeError, node);
 			}
 		} else if (operator === "=" && types.isIdentifier(left)) {
 			const assignment = this.getLocals().setUpValueOrLocalIfDefined(left.name, this.evaluateNode(right));

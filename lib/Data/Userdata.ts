@@ -12,6 +12,8 @@ export interface ZrUserdataProperty<
 	set?: ((userdata: T, value: TSet | undefined) => void) | undefined;
 }
 
+export type ZrUserdataProperties = { [P in string | number]: ZrUserdataProperty<any> | undefined };
+
 export abstract class ZrUserdata<T extends defined> {
 	public abstract toValue(): T;
 
