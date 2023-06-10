@@ -851,9 +851,9 @@ export class ZrParserV2 {
 					if (isNode(id, ZrNodeKind.Identifier)) {
 						this.consumeToken(ZrTokenType.Operator, "!");
 
-						for (const [name, br] of pairs(this.options.TransformDebug!)) {
+						for (const [name, transformer] of pairs(this.options.TransformDebug!)) {
 							if (name === id.name) {
-								const [transformTarget, transform] = br;
+								const [transformTarget, transform] = transformer;
 
 								if (transformTarget === ZrNodeKind.Source) {
 									return transform(this.parseBlock());
