@@ -11,6 +11,7 @@
 		"resolveJsonModule": true,
 		"module": "commonjs",
 		"stripInternal": true,
+		"experimentalDecorators": true,
 
 		// required, configurable
 		"rootDir": "lib",

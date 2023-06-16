@@ -12,6 +12,7 @@
     "removeComments": true,
     "resolveJsonModule": true,
     "moduleDetection": "force",
+    "experimentalDecorators": true,
 
     "rootDirs": ["server", "client", "../lib"],
 

@@ -856,7 +856,7 @@ export class ZrParserV2 {
 								const [transformTarget, transform] = transformer;
 
 								if (transformTarget === ZrNodeKind.Source) {
-									return transform(this.parseBlock());
+									return transform(this.parseBlock(true));
 								} else if (transformTarget === ZrNodeKind.CallExpression) {
 									return transform(this.parseCallExpression(id));
 								}
