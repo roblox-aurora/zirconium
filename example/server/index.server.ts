@@ -5,11 +5,21 @@ import { isNode, ZrNodeKind } from "Ast/Nodes";
 import { CallExpression, Expression, SourceBlock, StringLiteral } from "Ast/Nodes/NodeTypes";
 import { ZrParserV2 } from "Ast/ParserV2";
 import { ZrBinder } from "Binder";
+import { InstanceConstructor, ZrInstanceUserdata } from "Data/Instances";
 import { $env } from "rbxts-transform-env";
 import { ZrLibs } from "std/Globals";
 
 let source = `
-	math.min 0 100
+	let part = Instance.create("Part")
+	part.name = "testing lol"
+
+	let test = {}
+	test.a = 10
+	test.b = "I am a value lol"
+
+	print(part, part.name, part.parent, test)
+
+	part
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -24,7 +34,7 @@ let len = source.size();
 
 const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)), {
 	FinalExpressionImplicitReturn: true,
-	UseLegacyCommandCallSyntax: true,
+	UseLegacyCommandCallSyntax: false,
 	ExperimentalArrowFunctions: true,
 	TransformDebug: {
 		pretty_print: [
@@ -72,6 +82,9 @@ lex.parseAstWithThrow().match(
 		const zr = Zr.createContext();
 		zr.loadLibrary(ZrLibs.stdlib);
 		zr.loadLibrary(ZrLibs.experimentallib);
+		zr.registerGlobal("Instance", InstanceConstructor);
+
+		const testObject = new ZrInstanceUserdata(new Instance("Part"));
 
 		const zrScript = zr.createScript(source);
 		const result = zrScript.executeOrThrow();

@@ -25,7 +25,7 @@ export type ZrDefined =
 	| ZrLuauFunction
 	| ZrEnum
 	| ZrEnumItem
-	| ZrUserdata<defined>
+	| ZrUserdata<any>
 	| ZrRange;
 export type ZrValue = ZrDefined | ZrUndefined;
 

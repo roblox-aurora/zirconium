@@ -35,7 +35,7 @@ class ZrScopedLib<T extends ZrLibrary> extends ZrObjectUserdata<T> {
 	}
 
 	public toString(): string {
-		return `[ZrLibrary ${this.name}: ${keys(this.toValue()).join(", ")}]`;
+		return `[ZrLibrary ${this.name}: ${keys(this.unwrap()).join(", ")}]`;
 	}
 }
 

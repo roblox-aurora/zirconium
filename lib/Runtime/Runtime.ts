@@ -400,8 +400,9 @@ export default class ZrRuntime {
 		key: string,
 		value: ZrValue | ZrUndefined,
 	): void {
-		if (userdata.properties && key in userdata.properties) {
-			return userdata.properties[key]!.set!(userdata, value !== ZrUndefined ? value : undefined);
+		const proto = userdata.proto;
+		if (key in proto.properties) {
+			return proto.properties[key]!.set!(userdata, value);
 		} else if (typeIs(userdata.set, "function")) {
 			return userdata.set(key, value !== ZrUndefined ? value : undefined);
 		}
@@ -413,13 +414,14 @@ export default class ZrRuntime {
 		);
 	}
 
-	private getUserdata<T extends ZrUserdata<defined>>(
+	private getUserdata<T extends ZrUserdata<any>>(
 		expression: PropertyAccessExpression["expression"],
 		userdata: T,
 		key: string,
 	) {
-		if (userdata.properties && key in userdata.properties) {
-			return userdata.properties[key]!.get!(userdata);
+		const proto = userdata.proto;
+		if (key in proto.properties) {
+			return proto.properties[key]!.get!(userdata.unwrap());
 		} else if (typeIs(userdata.get, "function")) {
 			return userdata.get(key);
 		}
@@ -501,6 +503,19 @@ export default class ZrRuntime {
 		this.pop();
 
 		return result;
+	}
+
+	private evaluateArguments(callArgs: ZrNode[]) {
+		const args = new Array<ZrValue | ZrUndefined>();
+		let i = 0;
+		for (const child of callArgs) {
+			const value = this.evaluateNode(child);
+			if (value !== undefined) {
+				args[i] = value;
+			}
+			i++;
+		}
+		return args;
 	}
 
 	private evaluateFunctionCall(node: CallExpression | SimpleCallExpression, context: ZrContext) {
@@ -662,26 +677,54 @@ export default class ZrRuntime {
 				const rightValue = this.evaluateNode(right);
 				return leftValue || rightValue;
 			}
-		} else if (operator === "=" && types.isIdentifier(left)) {
-			const assignment = this.getLocals().setUpValueOrLocalIfDefined(left.name, this.evaluateNode(right));
-			if (assignment.isErr()) {
-				const err = assignment.unwrapErr();
-				switch (err) {
-					case StackValueAssignmentError.ReassignConstant:
-						this.runtimeError(
-							`Cannot reassign constant '${left.name}'`,
-							ZrRuntimeErrorCode.ReassignConstant,
-							left,
-						);
-					case StackValueAssignmentError.VariableNotDeclared:
-						this.runtimeError(
-							`Unable to assign to undeclared '${left.name}' - use 'let' or 'const'`,
-							ZrRuntimeErrorCode.UnassignedVariable,
-							left,
-						);
+		} else if (operator === "=") {
+			if (types.isIdentifier(left)) {
+				const assignment = this.getLocals().setUpValueOrLocalIfDefined(left.name, this.evaluateNode(right));
+				if (assignment.isErr()) {
+					const err = assignment.unwrapErr();
+					switch (err) {
+						case StackValueAssignmentError.ReassignConstant:
+							this.runtimeError(
+								`Cannot reassign constant '${left.name}'`,
+								ZrRuntimeErrorCode.ReassignConstant,
+								left,
+							);
+						case StackValueAssignmentError.VariableNotDeclared:
+							this.runtimeError(
+								`Unable to assign to undeclared '${left.name}' - use 'let' or 'const'`,
+								ZrRuntimeErrorCode.UnassignedVariable,
+								left,
+							);
+					}
+				} else {
+					return assignment.unwrap();
 				}
-			} else {
-				return assignment.unwrap();
+			} else if (types.isPropertyAccessExpression(left)) {
+				const lookup = this.evaluateNode(left.expression);
+				if (lookup instanceof ZrUserdata) {
+					const proto = lookup.proto.properties;
+					const setter = proto[left.name.name].set;
+
+					if (setter) {
+						setter(lookup.unwrap(), this.evaluateNode(right) ?? ZrUndefined);
+						return;
+					} else {
+						this.runtimeError(
+							`Cannot assign readonly property '${left.name.name}'`,
+							ZrRuntimeErrorCode.InvalidPropertyAccess,
+							left,
+						);
+					}
+				} else if (lookup instanceof ZrObject) {
+					lookup.set(left.name.name, this.evaluateNode(right) ?? ZrUndefined);
+					return;
+				}
+
+				this.runtimeError(
+					`Cannot assign field '${left.name.name}' to ${ZrValidation.typeOf(lookup)}`,
+					ZrRuntimeErrorCode.InvalidPropertyAccess,
+					left,
+				);
 			}
 		} else if (operator === "==") {
 			const leftValue = this.evaluateNode(left);
@@ -691,7 +734,8 @@ export default class ZrRuntime {
 					return false;
 				}
 
-				return leftValue.equals?.(rightValue) || leftValue === rightValue;
+				return leftValue.unwrap() === rightValue.unwrap();
+				// return leftValue.equals?.(rightValue) || leftValue === rightValue;
 			} else if (typeOf(leftValue) === typeOf(rightValue)) {
 				return leftValue === rightValue;
 			} else {
@@ -783,6 +827,20 @@ export default class ZrRuntime {
 			}
 			this.pop();
 		} else if (types.isCallableExpression(node)) {
+			if (types.isPropertyAccessExpression(node.expression)) {
+				const { expression, name } = node.expression;
+				const callTarget = this.evaluateNode(expression);
+
+				// Handle userdata method calls
+				if (callTarget instanceof ZrUserdata) {
+					const method = callTarget.proto.methods[name.name];
+					if (method) {
+						const args = this.evaluateArguments(node.arguments);
+						return method(callTarget.unwrap(), ...args);
+					}
+				}
+			}
+
 			return this.evaluateFunctionCall(node, this.context);
 		} else {
 			this.runtimeError(`Failed to evaluate ${getFriendlyName(node)}`, ZrRuntimeErrorCode.EvaluationError, node);
