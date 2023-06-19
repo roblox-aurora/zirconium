@@ -10,9 +10,10 @@ import {
 } from "./Guards";
 import * as typeGuards from "./Guards";
 import { getKindName, getNodeKindName } from "./Functions";
+import { ZrNode } from "./NodeTypes";
 export {
 	ZrNodeKind as CmdSyntaxKind,
-	ZrNodeKind,
+	ZrNodeKind as ZrNodeKind,
 	ZrNodeFlag as NodeFlag,
 	isNode,
 	isNodeIn,
@@ -24,4 +25,5 @@ export {
 	getKindName,
 	getNodeKindName,
 	typeGuards,
+	ZrNode as Node,
 };

@@ -1,12 +1,13 @@
 import { ZrNodeKind } from "./Enum";
 import {
-	Node,
+	ZrNode,
 	ParentNode,
 	BooleanLiteral,
 	ArrayIndexExpression,
 	Identifier,
 	PropertyAccessExpression,
-	NodeTypes,
+	ZrNodeKinds,
+	ElementAccessExpression,
 } from "./NodeTypes";
 
 export function getKindName(kind: ZrNodeKind | undefined) {
@@ -17,17 +18,19 @@ export function getKindName(kind: ZrNodeKind | undefined) {
 	return ZrNodeKind[kind];
 }
 
-function isNode<K extends keyof NodeTypes>(node: Node, kind: K): node is NodeTypes[K] {
+function isNode<K extends keyof ZrNodeKinds>(node: ZrNode, kind: K): node is ZrNodeKinds[K] {
 	return node.kind === kind;
 }
 
-function interpolate(node: Identifier | PropertyAccessExpression | ArrayIndexExpression): string {
+function interpolate(node: Identifier | PropertyAccessExpression | ArrayIndexExpression | ElementAccessExpression): string {
 	if (isNode(node, ZrNodeKind.Identifier)) {
 		return node.name;
 	} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
 		return node.name + "." + interpolate(node.expression);
 	} else if (isNode(node, ZrNodeKind.ArrayIndexExpression)) {
 		return interpolate(node.expression) + "." + node.index.value;
+	} else if (isNode(node, ZrNodeKind.ElementAccessExpression)) {
+		return "?";
 	}
 
 	throw `Invalid`;
@@ -37,7 +40,7 @@ export function getVariableName(node: Identifier | PropertyAccessExpression | Ar
 	return interpolate(node);
 }
 
-export function getFriendlyName(node: Node, isConst = false) {
+export function getFriendlyName(node: ZrNode, isConst = false) {
 	if (node.kind === ZrNodeKind.String || node.kind === ZrNodeKind.InterpolatedString) {
 		return "string";
 	} else if (node.kind === ZrNodeKind.Number) {
@@ -49,7 +52,7 @@ export function getFriendlyName(node: Node, isConst = false) {
 	return getKindName(node.kind);
 }
 
-export function getNodeKindName(node: Node) {
+export function getNodeKindName(node: ZrNode) {
 	if (node === undefined) {
 		return "<none>";
 	}
@@ -57,7 +60,7 @@ export function getNodeKindName(node: Node) {
 	return getKindName(node.kind);
 }
 
-export function isParentNode(node: Node): node is ParentNode {
+export function isParentNode(node: ZrNode): node is ParentNode {
 	return "children" in node;
 }
 

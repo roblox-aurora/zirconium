@@ -1,30 +1,19 @@
+import { Result } from "@rbxts/rust-classes";
 import ZrRuntime from "../Runtime/Runtime";
 import { ZrValue } from "./Locals";
+import ZrLuauFunction from "./LuauFunction";
 import { ZrInputStream, ZrOutputStream } from "./Stream";
+import ZrUndefined from "./Undefined";
+import ZrUserFunction from "./UserFunction";
 
 export default class ZrContext {
-	private input = ZrInputStream.empty();
 	private output = new ZrOutputStream();
 
 	constructor(private runtime: ZrRuntime) {}
 
-	public static createPipedContext(runtime: ZrRuntime, input: ZrInputStream, output: ZrOutputStream) {
-		const context = new ZrContext(runtime);
-		context.input = input;
-		context.output = output;
-		return context;
-	}
-
 	/** @internal */
 	public getLocals() {
 		return this.runtime.getLocals();
-	}
-
-	/**
-	 * Gets the input stream
-	 */
-	public getInput() {
-		return this.input;
 	}
 
 	public getExecutor() {
@@ -33,8 +22,17 @@ export default class ZrContext {
 
 	/**
 	 * Gets the output stream
+	 * @internal
 	 */
 	public getOutput() {
 		return this.output;
+	}
+
+	public call(fn: ZrUserFunction | ZrLuauFunction, ...args: ZrValue[]): ZrValue {
+		if (fn instanceof ZrUserFunction) {
+			return this.runtime.executeFunction(fn, args) ?? ZrUndefined;
+		} else {
+			return fn.call(this, ...args) ?? ZrUndefined;
+		}
 	}
 }

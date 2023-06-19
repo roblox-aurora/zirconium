@@ -1,104 +1,80 @@
 import { $print } from "rbxts-transform-debug";
 import { ZrValue } from "./Locals";
+import ZrLuauFunction from "./LuauFunction";
+import ZrObject from "./Object";
+import ZrUndefined from "./Undefined";
 
-export abstract class ZrUserdata<T> {
-	public abstract value(): T;
+export interface UserdataProperty<T extends defined> {
+	get?: (userdata: T) => ZrValue;
+	set?: (userdata: T, value: ZrValue) => void;
+}
 
-	public abstract isInstance(): this is ZrInstanceUserdata<Instance>;
-	public abstract isObject<T>(obj: { new (): T }): this is ZrObjectUserdata<T>;
+export interface UserdataProperties<T extends defined> {
+	[name: string]: UserdataProperty<T>;
+}
 
-	public static fromInstance<TInstance extends Instance>(instance: TInstance) {
-		return new ZrInstanceUserdata(instance);
+export type UserdataMethod<T extends defined> = (userdata: T, ...args: ZrValue[]) => ZrValue;
+export interface UserdataMethods<T extends defined> {
+	[name: string]: UserdataMethod<T>;
+}
+
+export interface ZrUserdataPrototype<T extends defined> {
+	readonly properties: UserdataProperties<T>;
+	readonly methods: UserdataMethods<T>;
+}
+
+export abstract class ZrUserdata<T extends defined> {
+	public constructor(public readonly proto: ZrUserdataPrototype<T>, public readonly className: string) {
+		// set methods pls.
+		for (const [methodName, method] of pairs(proto.methods)) {
+			proto.properties[methodName] = {
+				get: userdata => new ZrLuauFunction((_, ...args) => method(userdata, ...args)),
+			};
+		}
 	}
 
-	public static fromLazyInstance<TInstance extends Instance>(lazyFn: () => TInstance) {
-		return new ZrInstanceUserdata(lazyFn);
-	}
+	public abstract unwrap(): T;
 
-	public static fromRecord<T extends Record<string, ZrValue>>(record: T) {
-		return new ZrObjectUserdata(record);
-	}
+	public equals?(other: ZrUserdata<defined>): boolean;
+	public get?(index: string): ZrValue;
+	public set?(index: string, value: ZrValue | undefined): void;
 
-	public static fromObject<TObject extends defined>(object: TObject) {
-		return new ZrObjectUserdata(object);
+	/** @internal */
+	public iter?(): Generator<ZrValue, void, unknown>;
+
+	public toString() {
+		return `<userdata ${this.className}>`;
 	}
 }
 
-type PickZrValues<T> = { [P in keyof T]: T[P] extends ZrValue ? P : never }[keyof T];
-export type InferUserdataKeys<T> = T extends ZrInstanceUserdata<infer A> ? PickZrValues<A> : never;
+export class ZrObjectUserdata<T extends object> extends ZrUserdata<T> {
+	public get(index: string): ZrValue {
+		return this.object[index as never] ?? ZrUndefined;
+	}
 
-export class ZrObjectUserdata<T extends defined> extends ZrUserdata<T> {
+	public set(index: string, value: ZrValue | undefined) {
+		this.object[index as never] = value as never;
+	}
+
+	public equals(other: ZrUserdata<defined>): boolean {
+		return other.unwrap() === this.unwrap();
+	}
+
 	public constructor(private object: T) {
-		super();
-	}
-
-	public isInstance() {
-		return false;
-	}
-
-	public isObject<T>(klass: { new (): T }): this is ZrObjectUserdata<T> {
-		return this.object instanceof klass;
+		super(
+			{
+				properties: {},
+				methods: {},
+			},
+			"ObjectUserdata",
+		);
 	}
 
 	public toString() {
 		return "toString" in this.object ? tostring(this.object) : "[ZrObjectUserdata]";
 	}
 
-	public value() {
+	public unwrap() {
 		return this.object;
-	}
-}
-
-type MappedValues<T extends Instance> = T extends Instance ? ZrInstanceUserdata<T> : T;
-
-export class ZrInstanceUserdata<T extends Instance = Instance> extends ZrUserdata<T> {
-	public constructor(private instance: T | (() => T)) {
-		super();
-	}
-
-	public isInstance() {
-		return true;
-	}
-
-	public isObject(value: unknown) {
-		return false;
-	}
-
-	public toString() {
-		return tostring(this.value());
-	}
-
-	/**
-	 * Gets the property
-	 * @throws If the property isn't valid
-	 * @internal
-	 * @param name The name of the property
-	 */
-	public get<K extends PickZrValues<T> & string>(name: K): T[K] | ZrValue {
-		if (typeIs(this.instance, "function")) {
-			this.instance = this.instance();
-		}
-
-		const value = this.instance[name];
-		if (typeIs(value, "function")) {
-			throw `Cannot index function`;
-		} else if (typeIs(value, "Instance")) {
-			return new ZrInstanceUserdata(value);
-		} else {
-			return value;
-		}
-	}
-
-	public value() {
-		if (typeIs(this.instance, "function")) {
-			this.instance = this.instance();
-			$print("lazyGet", this.instance);
-		}
-
-		return this.instance;
-	}
-
-	public isA<T extends keyof Instances>(className: T): this is ZrInstanceUserdata<Instances[T]> {
-		return this.value().IsA(className);
 	}
 }

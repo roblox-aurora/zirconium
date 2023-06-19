@@ -1,0 +1,57 @@
+Identifier ::= [_A-Fa-f][_A-Fa-f0-9]+
+PropertyAccessExpression ::= Identifier ( '.' Identifier )
+ElementAccessExpression ::= Identifier '[' Expression ']'
+IdentifyingExpression ::= Identifier | PropertyAccessExpression | ElementAccessExpression
+QuotedString ::= [^"]*
+
+/* Literals */
+StringLiteral ::= '"' QuotedString '"' | "'" [^']* "'"
+NumberLiteral ::= '-'? [0-9].?[0-9]?+
+ArrayLiteral ::= '[' ( Expression | Expression (',' Expression)* ) ']'
+ObjectLiteral ::= '{' ( ObjectProperty | ObjectProperty ( ',' ObjectProperty )* )? '}'
+
+/* Objects */
+ObjectProperty ::= (Identifier | StringLiteral) ':' Expression
+
+/* Operators */
+UnaryOperator ::= '-' | '+' | '!'
+BinaryOperator ::= "*" | "+" | "/" | "-" | "!=" | "==" | "|" | '&' | "||" | "&&" | ">=" | "<=" 
+
+/* Statements */
+ExpressionStatement ::= Expression | '(' Expression ')'
+Statement ::= ExpressionStatement | FunctionDeclaration | VariableDeclaration | EnumDeclaration
+SourceBlock  ::= (Statement ';'*)*
+Block ::= '{' SourceBlock '}'
+
+/* Expressions */
+Expression ::= IdentifyingExpression
+            | StringLiteral
+            | InterpolatedStringExpression
+            | NumberLiteral
+            | ArrayLiteral
+            | ObjectLiteral
+            | BinaryExpression
+            | UnaryExpression
+            | FunctionExpression
+UnaryExpression ::= UnaryOperator Expression
+BinaryExpression ::= Expression BinaryOperator Expression
+InterpolatedStringExpression ::= '"' (QuotedString* ('$' Identifier)* QuotedString*)* '"'
+
+
+/* Call Expressions */
+SimpleCallArgument ::= '$(' Expression ')' | ( '$' IdentifyingExpression ) | NumberLiteral | BooleanLiteral | StringExpression | '$' ArrayLiteral | '$' ObjectLiteral
+SimpleCallExpression ::= IdentifyingExpression '!' | IdentifyingExpression SimpleCallArgument ( ' ' SimpleCallArgument )*
+
+CallExpression ::= IdentifyingExpression '(' (Expression | Expression (',' Expression)* ) ')'
+
+/* Enums */
+EnumItems ::= Identifier | Identifier (','  Identifier )*
+EnumDeclaration ::= 'enum' Identifier '{' EnumItems '}'
+
+/* Functions */
+FunctionParameters ::= Identifier | Identifier ( ',' Identifier )*
+FunctionDeclaration ::= 'function' Identifier '(' FunctionParameters? ')' Block
+FunctionExpression ::= 'function' '(' FunctionParameters ')' Block
+
+/* Variables */
+VariableDeclaration ::= ('export')? ('const' | 'let') Identifier '=' Expression

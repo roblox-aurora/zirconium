@@ -1,78 +1,111 @@
-import { Result } from "@rbxts/rust-classes";
+import inspect from "@rbxts/inspect";
 import Zr from "@zirconium";
-import { prettyPrintNodes, ZrLexer, ZrTextStream } from "Ast";
-import { ZrScriptVersion } from "Ast/Parser";
-import { Token } from "Ast/Tokens/Tokens";
-import { ZrEnum } from "Data/Enum";
-import ZrLuauFunction from "Data/LuauFunction";
-import ZrObject from "Data/Object";
-import { ZrValue } from "./Data/Locals";
-import ZrUndefined from "./Data/Undefined";
-import { ZrUserdata } from "./Data/Userdata";
-import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
-import { ZrScriptCreateResult } from "./Runtime/ScriptContext";
+import { factory, prettyPrintNodes, ZrLexer, ZrParser, ZrTextStream } from "Ast";
+import { isNode, ZrNodeKind } from "Ast/Nodes";
+import { CallExpression, Expression, SourceBlock, StringLiteral } from "Ast/Nodes/NodeTypes";
+import { ZrParserV2 } from "Ast/ParserV2";
+import { ZrBinder } from "Binder";
+import { InstanceConstructor, ZrInstanceUserdata } from "Data/Instances";
+import { $env } from "rbxts-transform-env";
+import { ZrLibs } from "std/Globals";
 
-const globals = Zr.createContext();
-globals.registerGlobal("print", ZrPrint);
-globals.registerGlobal("range", ZrRange);
-globals.registerGlobal("debug", ZrDebug);
-globals.registerGlobal("TestEnum", ZrEnum.fromArray("TestEnum", ["A", "B"]));
-globals.registerGlobal(
-	"values",
-	new ZrLuauFunction((context, ...args) => {
-		return `[ ${args.map(tostring).join(", ")} ]`;
-	}),
-);
-globals.registerGlobal("null", (ZrUndefined as unknown) as ZrValue);
-globals.registerGlobal(
-	"test",
-	ZrObject.fromRecord({
-		example: new ZrLuauFunction((_, input) => {
-			print("Example worked", input);
-		}),
-	}),
-);
+let source = `
+	let part = Instance.create("Part")
+	part.name = "testing lol"
 
-game.GetService("Players").PlayerAdded.Connect((player) => {
-	const playerContext = Zr.createPlayerContext(player);
-	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
-	playerContext.importGlobals(globals);
+	let test = {}
+	test.a = 10
+	test.b = "I am a value lol"
 
-	const source = `print( -10 )`;
+	print(part, part.name, part.parent, test)
 
-	const tokenizer = new ZrLexer(new ZrTextStream(source));
-	const results = new Array<Token>();
-	while (tokenizer.hasNext()) {
-		results.push(tokenizer.next()!);
+	part
+`;
+
+function rangeToString(range?: [x: number, y: number]) {
+	if (range) {
+		return `[ ${range[0]}, ${range[1]} ]`;
+	} else {
+		return `()`;
 	}
-	print("tokens", results);
+}
 
-	const sourceResult = playerContext.parseSource(source, ZrScriptVersion.Zr2022);
-	sourceResult.match(
-		(sourceFile) => {
-			prettyPrintNodes([sourceFile]);
+let len = source.size();
 
-			const sourceScript = playerContext.createScript(sourceFile);
-			// sourceScript._printScriptGlobals();
-			sourceScript.executeOrThrow();
-		},
-		(err) => {
-			const { message, errors } = err;
+const lex = new ZrParserV2(new ZrLexer(new ZrTextStream(source)), {
+	FinalExpressionImplicitReturn: true,
+	UseLegacyCommandCallSyntax: false,
+	ExperimentalArrowFunctions: true,
+	TransformDebug: {
+		pretty_print: [
+			ZrNodeKind.Source,
+			(expr: SourceBlock) => {
+				prettyPrintNodes(expr.statements);
+				return factory.createEmptyExpression();
+			},
+		],
+		inspect: [
+			ZrNodeKind.Source,
+			(expr: SourceBlock) => {
+				return factory.createStringNode(inspect(expr.statements));
+			},
+		] as const,
+		kind_name: [
+			ZrNodeKind.CallExpression,
+			(source: CallExpression) => {
+				return factory.createStringNode(ZrNodeKind[source.arguments[0].kind]);
+			},
+		] as const,
+		assert_kind: [
+			ZrNodeKind.CallExpression,
+			(source: CallExpression) => {
+				const [expression, kind] = source.arguments;
 
-			warn(
-				`${message} - ` +
-					errors
-						.map((e) => {
-							if (e.token) {
-								return `[${e.token.startPos}:${e.token.endPos}] ${e.message} '${e.token.value}'`;
-							} else if (e.node) {
-								return `<${e.node.kind}> ${e.message}`;
-							}
+				assert(isNode(kind, ZrNodeKind.String));
 
-							return e.message;
-						})
-						.join(", "),
-			);
-		},
-	);
+				return factory.createCallExpression(factory.createIdentifier("assert"), [
+					factory.createBooleanNode(ZrNodeKind[expression.kind] === kind.text),
+					factory.createStringNode(`Mismatch, expected ${kind.text} got ${ZrNodeKind[expression.kind]}`),
+				]);
+			},
+		],
+	},
 });
+lex.parseAstWithThrow().match(
+	source => {
+		// print("AST", source, len);
+		// prettyPrintNodes([source], undefined, false);
+
+		const types = new ZrBinder();
+		types.bindSourceFile(source);
+
+		const zr = Zr.createContext();
+		zr.loadEnv(ZrLibs.stdlib);
+		zr.loadEnv(ZrLibs.experimentallib);
+		zr.registerGlobal("Instance", InstanceConstructor);
+
+		const testObject = new ZrInstanceUserdata(new Instance("Part"));
+
+		const zrScript = zr.createScriptFromAst(source);
+		const result = zrScript.executeOrThrow();
+		print("result is", result);
+	},
+	err => {
+		const [source, errs] = err;
+		prettyPrintNodes([source], undefined, true);
+
+		errs.forEach(e =>
+			warn(`Error: ${rangeToString(e.range)} [${e.range ? lex.getSource(e.range) : ""}] ${e.message}`),
+		);
+
+		if ($env.boolean("ZIRCONIUM_TEST_PRINT_NODES")) {
+			print(lex.nodes);
+		}
+	},
+);
+
+// game.GetService("Players").PlayerAdded.Connect((player) => {
+// 	const playerContext = Zr.createPlayerContext(player);
+// 	playerContext.registerGlobal("player", ZrUserdata.fromInstance(player));
+// 	playerContext.importGlobals(globals);
+// });

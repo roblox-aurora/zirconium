@@ -31,7 +31,7 @@ export default class ZrObject {
 	public toString() {
 		const str = new Array<string>();
 		for (const [key, value] of this.map) {
-			str.push(`${key}: ${value}`);
+			str.push(`${key}: ${tostring(value)}`);
 		}
 		return `{${str.join(", ") || " "}}`;
 	}

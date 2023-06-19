@@ -1,6 +1,6 @@
 import {
-	NodeTypes,
-	Node,
+	ZrNodeKinds,
+	ZrNode,
 	VALID_PREFIX_CHARS,
 	VariableStatement,
 	StringLiteral,
@@ -26,7 +26,7 @@ import {
 	PropertyAccessExpression,
 	ReturnStatement,
 	ParameterDeclaration,
-	ObjectLiteral,
+	ObjectLiteralExpression,
 	ExportKeyword,
 	UndefinedKeyword,
 	PropertyAssignment,
@@ -34,33 +34,34 @@ import {
 	ParenthesizedExpression,
 	VariableDeclaration,
 	SourceBlock,
+	ElementAccessExpression,
 } from "./NodeTypes";
 import { ZrNodeFlag, ZrNodeKind } from "./Enum";
 import { getKindName, getNodeKindName } from "./Functions";
 
-export function isNode<K extends keyof NodeTypes>(node: Node, typeName: K): node is NodeTypes[K] {
+export function isNode<K extends keyof ZrNodeKinds>(node: ZrNode, typeName: K): node is ZrNodeKinds[K] {
 	return node !== undefined && node.kind === typeName;
 }
 
-export function hasNodeFlag<F extends ZrNodeFlag>(node: Node, flag: F) {
+export function hasNodeFlag<F extends ZrNodeFlag>(node: ZrNode, flag: F) {
 	return node.flags !== undefined && (node.flags & flag) !== 0;
 }
 
-export function assertIsNode<K extends keyof NodeTypes>(node: Node, typeName: K): asserts node is NodeTypes[K] {
+export function assertIsNode<K extends keyof ZrNodeKinds>(node: ZrNode, typeName: K): asserts node is ZrNodeKinds[K] {
 	if (!isNode(node, typeName)) {
 		error(`Expected ${getKindName(typeName)}, got ${getNodeKindName(node)}`);
 	}
 }
 
-export function getNodesOfType<K extends keyof NodeTypes>(nodes: Node[], typeName: K): Array<NodeTypes[K]> {
-	return nodes.filter((node): node is NodeTypes[K] => isNode(node, typeName));
+export function getNodesOfType<K extends keyof ZrNodeKinds>(nodes: ZrNode[], typeName: K): Array<ZrNodeKinds[K]> {
+	return nodes.filter((node): node is ZrNodeKinds[K] => isNode(node, typeName));
 }
 
-export function getSiblingNode(nodes: Node[], kind: ZrNodeKind) {
+export function getSiblingNode(nodes: ZrNode[], kind: ZrNodeKind) {
 	return nodes.find((f) => f.kind === kind);
 }
 
-export function isNodeIn<K extends keyof NodeTypes>(node: Node, typeName: readonly K[]): node is NodeTypes[K] {
+export function isNodeIn<K extends keyof ZrNodeKinds>(node: ZrNode, typeName: readonly K[]): node is ZrNodeKinds[K] {
 	return node !== undefined && (typeName as ReadonlyArray<ZrNodeKind>).includes(node.kind);
 }
 
@@ -85,7 +86,7 @@ const PREFIXABLE = [ZrNodeKind.String, ZrNodeKind.InterpolatedString, ZrNodeKind
 /**
  * Can this expression be prefixed?
  */
-export function isPrefixableExpression(node: Node): node is NodeTypes[typeof PREFIXABLE[number]] {
+export function isPrefixableExpression(node: ZrNode): node is ZrNodeKinds[typeof PREFIXABLE[number]] {
 	return isNodeIn(node, PREFIXABLE);
 }
 
@@ -111,12 +112,12 @@ export const ASSIGNABLE = [
 	ZrNodeKind.FunctionExpression,
 	ZrNodeKind.ParenthesizedExpression,
 ] as const;
-export type AssignableExpression = NodeTypes[typeof ASSIGNABLE[number]];
+export type AssignableExpression = ZrNodeKinds[typeof ASSIGNABLE[number]];
 
 /**
  * Can this expression be prefixed?
  */
-export function isAssignableExpression(node: Node): node is AssignableExpression {
+export function isAssignableExpression(node: ZrNode): node is AssignableExpression {
 	return isNodeIn(node, ASSIGNABLE);
 }
 
@@ -130,171 +131,175 @@ const LIT = [
 	ZrNodeKind.Number,
 	ZrNodeKind.Boolean,
 ] as const;
-export type LiteralExpression = NodeTypes[typeof LIT[number]];
+export type LiteralExpression = ZrNodeKinds[typeof LIT[number]];
 
 const EXPRESSIONABLE = [ZrNodeKind.VariableStatement, ZrNodeKind.BinaryExpression] as const;
 
-export function isSourceFile(node: Node): node is SourceFile {
+export function isSourceFile(node: ZrNode): node is SourceFile {
 	return node !== undefined && node.kind === ZrNodeKind.Source;
 }
 
 /** @deprecated */
 export const isSource = isSourceFile;
 
-export function isParameterDeclaration(node: Node): node is ParameterDeclaration {
+export function isParameterDeclaration(node: ZrNode): node is ParameterDeclaration {
 	return node !== undefined && node.kind === ZrNodeKind.Parameter;
 }
 
 // REGION Expressions
 
 /** @deprecated */
-export function isValidExpression(node: Node): node is NodeTypes[typeof EXPRESSIONABLE[number]] {
+export function isValidExpression(node: ZrNode): node is ZrNodeKinds[typeof EXPRESSIONABLE[number]] {
 	return isNodeIn(node, EXPRESSIONABLE);
 }
 
 /**
  * Is this expression considered a primitive type?
  */
-export function isPrimitiveExpression(node: Node): node is LiteralExpression {
+export function isPrimitiveExpression(node: ZrNode): node is LiteralExpression {
 	return isNodeIn(node, ASSIGNABLE);
 }
 
-export function isSimpleCallExpression(node: Node): node is SimpleCallExpression {
+export function isSimpleCallExpression(node: ZrNode): node is SimpleCallExpression {
 	return node !== undefined && node.kind === ZrNodeKind.SimpleCallExpression;
 }
 
-export function isCallExpression(node: Node): node is CallExpression {
+export function isCallExpression(node: ZrNode): node is CallExpression {
 	return node !== undefined && node.kind === ZrNodeKind.CallExpression;
 }
 
-export function isCallableExpression(node: Node): node is CallExpression | SimpleCallExpression {
+export function isCallableExpression(node: ZrNode): node is CallExpression | SimpleCallExpression {
 	return isSimpleCallExpression(node) || isCallExpression(node);
 }
 
-export function isOptionExpression(node: Node): node is OptionExpression {
+export function isOptionExpression(node: ZrNode): node is OptionExpression {
 	return node !== undefined && node.kind === ZrNodeKind.OptionExpression;
 }
 
-export function isExpressionStatement(node: Node): node is ExpressionStatement {
+export function isExpressionStatement(node: ZrNode): node is ExpressionStatement {
 	return node !== undefined && node.kind === ZrNodeKind.ExpressionStatement;
 }
 
-export function isUnaryExpression(node: Node): node is UnaryExpression {
+export function isUnaryExpression(node: ZrNode): node is UnaryExpression {
 	return node !== undefined && node.kind === ZrNodeKind.UnaryExpression;
 }
 
-export function isParenthesizedExpression(node: Node): node is ParenthesizedExpression {
+export function isParenthesizedExpression(node: ZrNode): node is ParenthesizedExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ParenthesizedExpression;
 }
 
 // REGION Statements
 
-export function isReturnStatement(node: Node): node is ReturnStatement {
+export function isReturnStatement(node: ZrNode): node is ReturnStatement {
 	return node !== undefined && node.kind === ZrNodeKind.ReturnStatement;
 }
 
-export function isBlock(node: Node): node is SourceBlock {
+export function isBlock(node: ZrNode): node is SourceBlock {
 	return node !== undefined && node.kind === ZrNodeKind.Block;
 }
 
 // REGION indexing
 
-export function isArrayIndexExpression(node: Node): node is ArrayIndexExpression {
+export function isArrayIndexExpression(node: ZrNode): node is ArrayIndexExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ArrayIndexExpression;
 }
 
-export function isPropertyAccessExpression(node: Node): node is PropertyAccessExpression {
+export function isElementAccessExpression(node: ZrNode): node is ElementAccessExpression {
+	return node !== undefined && node.kind === ZrNodeKind.ElementAccessExpression;
+}
+
+export function isPropertyAccessExpression(node: ZrNode): node is PropertyAccessExpression {
 	return node !== undefined && node.kind === ZrNodeKind.PropertyAccessExpression;
 }
 
-export function isPropertyAssignment(node: Node): node is PropertyAssignment {
+export function isPropertyAssignment(node: ZrNode): node is PropertyAssignment {
 	return node !== undefined && node.kind === ZrNodeKind.PropertyAssignment;
 }
 
 // REGION variables
 
-export function isVariableStatement(node: Node): node is VariableStatement {
+export function isVariableStatement(node: ZrNode): node is VariableStatement {
 	return node !== undefined && node.kind === ZrNodeKind.VariableStatement;
 }
 
-export function isVariableDeclaration(node: Node): node is VariableDeclaration {
+export function isVariableDeclaration(node: ZrNode): node is VariableDeclaration {
 	return node !== undefined && node.kind === ZrNodeKind.VariableDeclaration;
 }
 
 // REGION Iterable
 
-export function isForInStatement(node: Node): node is ForInStatement {
+export function isForInStatement(node: ZrNode): node is ForInStatement {
 	return node !== undefined && node.kind === ZrNodeKind.ForInStatement;
 }
 
-export function isStringExpression(node: Node): node is StringLiteral | InterpolatedStringExpression {
+export function isStringExpression(node: ZrNode): node is StringLiteral | InterpolatedStringExpression {
 	return node !== undefined && (node.kind === ZrNodeKind.String || node.kind === ZrNodeKind.InterpolatedString);
 }
 
 // REGION function checks
 
-export function isFunctionDeclaration(node: Node): node is FunctionDeclaration {
+export function isFunctionDeclaration(node: ZrNode): node is FunctionDeclaration {
 	return node !== undefined && node.kind === ZrNodeKind.FunctionDeclaration;
 }
 
-export function isFunctionExpression(node: Node): node is FunctionExpression {
+export function isFunctionExpression(node: ZrNode): node is FunctionExpression {
 	return node !== undefined && node.kind === ZrNodeKind.FunctionExpression;
 }
 
 /// REGION Literal Checks
 
-export function isIdentifier(node: Node): node is Identifier {
+export function isIdentifier(node: ZrNode): node is Identifier {
 	return node !== undefined && node.kind === ZrNodeKind.Identifier;
 }
 
-export function isObjectLiteralExpression(node: Node): node is ObjectLiteral {
+export function isObjectLiteralExpression(node: ZrNode): node is ObjectLiteralExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ObjectLiteralExpression;
 }
 
-export function isArrayLiteralExpression(node: Node): node is ArrayLiteralExpression {
+export function isArrayLiteralExpression(node: ZrNode): node is ArrayLiteralExpression {
 	return node !== undefined && node.kind === ZrNodeKind.ArrayLiteralExpression;
 }
 
-export function isBooleanLiteral(node: Node): node is BooleanLiteral {
+export function isBooleanLiteral(node: ZrNode): node is BooleanLiteral {
 	return node !== undefined && node.kind === ZrNodeKind.Boolean;
 }
 
-export function isNumberLiteral(node: Node): node is NumberLiteral {
+export function isNumberLiteral(node: ZrNode): node is NumberLiteral {
 	return node !== undefined && node.kind === ZrNodeKind.Number;
 }
 
-export function isStringLiteral(node: Node): node is StringLiteral {
+export function isStringLiteral(node: ZrNode): node is StringLiteral {
 	return node !== undefined && node.kind === ZrNodeKind.String;
 }
 
 /** @deprecated */
-export function isPrefixToken(node: Node): node is PrefixToken {
+export function isPrefixToken(node: ZrNode): node is PrefixToken {
 	return node !== undefined && node.kind === ZrNodeKind.PrefixToken;
 }
 
-export function isOperatorToken(node: Node): node is OperatorToken {
+export function isOperatorToken(node: ZrNode): node is OperatorToken {
 	return node !== undefined && node.kind === ZrNodeKind.OperatorToken;
 }
 
-export function isBinaryExpression(node: Node): node is BinaryExpression {
+export function isBinaryExpression(node: ZrNode): node is BinaryExpression {
 	return node !== undefined && node.kind === ZrNodeKind.BinaryExpression;
 }
 
-export function isOptionKey(node: Node): node is Option {
+export function isOptionKey(node: ZrNode): node is Option {
 	return node !== undefined && node.kind === ZrNodeKind.OptionKey;
 }
 
 /** @deprecated */
-export function isInvalid(node: Node): node is InvalidNode {
+export function isInvalid(node: ZrNode): node is InvalidNode {
 	return node !== undefined && node.kind === ZrNodeKind.Invalid;
 }
 
 // REGION Keywords
 
-export function isExportKeyword(node: Node): node is ExportKeyword {
+export function isExportKeyword(node: ZrNode): node is ExportKeyword {
 	return node !== undefined && node.kind === ZrNodeKind.ExportKeyword;
 }
 
-export function isUndefinedKeyword(node: Node): node is UndefinedKeyword {
+export function isUndefinedKeyword(node: ZrNode): node is UndefinedKeyword {
 	return node !== undefined && node.kind === ZrNodeKind.UndefinedKeyword;
 }

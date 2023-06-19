@@ -1,5 +1,11 @@
 import ZrTextStream from "./TextStream";
-import Grammar, { BooleanLiteralTokens, EndOfStatementTokens, Keywords, OperatorTokens, PunctuationTokens } from "./Tokens/Grammar";
+import Grammar, {
+	BooleanLiteralTokens,
+	EndOfStatementTokens,
+	Keywords,
+	OperatorTokens,
+	PunctuationTokens,
+} from "./Tokens/Grammar";
 import {
 	BooleanToken,
 	CommentToken,
@@ -15,12 +21,11 @@ import {
 	PropertyAccessToken,
 	SpecialToken,
 	StringToken,
-	Token,
+	ZrToken,
 	WhitespaceToken,
 	ZrTokenFlag,
-	ZrTokenKind,
+	ZrTokenType,
 } from "./Tokens/Tokens";
-
 
 const enum TokenCharacter {
 	Hash = "#",
@@ -30,7 +35,7 @@ const enum TokenCharacter {
 	Dot = ".",
 	Dash = "-",
 	Bang = "!",
-	Slash = "/"
+	Slash = "/",
 }
 
 export interface ZrLexerOptions {
@@ -57,8 +62,16 @@ export default class ZrLexer {
 	private static readonly SPECIAL = Grammar.Punctuation;
 	private static readonly BOOLEAN = Grammar.BooleanLiterals;
 
-	public static IsPrimitiveValueToken = (token: Token): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
-		return token.kind === ZrTokenKind.String || token.kind === ZrTokenKind.InterpolatedString || token.kind === ZrTokenKind.Number || token.kind === ZrTokenKind.Boolean || (token.kind === ZrTokenKind.Keyword && token.value === Keywords.UNDEFINED);
+	public static IsPrimitiveValueToken = (
+		token: ZrToken,
+	): token is StringToken | InterpolatedStringToken | NumberToken | BooleanToken => {
+		return (
+			token.kind === ZrTokenType.String ||
+			token.kind === ZrTokenType.InterpolatedString ||
+			token.kind === ZrTokenType.Number ||
+			token.kind === ZrTokenType.Boolean ||
+			(token.kind === ZrTokenType.Keyword && token.value === Keywords.UNDEFINED)
+		);
 	};
 
 	private options: ZrLexerOptions;
@@ -85,11 +98,39 @@ export default class ZrLexer {
 		return this.stream;
 	}
 
+	public clone() {
+		const lexer = new ZrLexer(this.stream.clone(), this.options);
+		return lexer;
+	}
+
 	/**
 	 * Resets the stream pointer to the beginning
 	 */
 	public reset() {
 		this.stream.reset();
+	}
+
+	public hasReachedEnd() {
+		return this.stream.getPtr() >= this.stream.size();
+	}
+
+	public finish() {
+		this.stream.finish();
+	}
+
+	public getPosition() {
+		return this.peek()?.startPos ?? this.stream.getPtr();
+	}
+
+	public getTokenRange(): [number, number] | undefined {
+		const range = this.prev();
+		if (range !== undefined) {
+			return [range.startPos, range.endPos];
+		}
+	}
+
+	public getTextAt() {
+		return this.stream.sub(1, this.stream.getPtr());
 	}
 
 	/**
@@ -100,7 +141,7 @@ export default class ZrLexer {
 		let idx = 0;
 		while (this.stream.hasNext() === true && condition(this.stream.peek(), this.stream.peek(1), idx) === true) {
 			src += this.stream.next();
-			idx ++;
+			idx++;
 		}
 		return src;
 	}
@@ -157,7 +198,7 @@ export default class ZrLexer {
 
 		if (variables.size() === 0) {
 			return identity<StringToken>({
-				kind: ZrTokenKind.String,
+				kind: ZrTokenType.String,
 				value: values.join(" "),
 				startPos,
 				closed,
@@ -168,7 +209,7 @@ export default class ZrLexer {
 			});
 		} else {
 			return identity<InterpolatedStringToken>({
-				kind: ZrTokenKind.InterpolatedString,
+				kind: ZrTokenType.InterpolatedString,
 				values,
 				value: joinInterpolatedString(values, variables),
 				variables,
@@ -197,7 +238,7 @@ export default class ZrLexer {
 	private readLiteralString() {
 		const startPos = this.stream.getPtr();
 		const literal = this.readWhile(
-			(c) =>
+			c =>
 				this.isNotEndOfStatement(c) &&
 				!this.isWhitespace(c) &&
 				!this.isSpecial(c) &&
@@ -210,7 +251,7 @@ export default class ZrLexer {
 
 		if (this.isKeyword(literal)) {
 			return identity<KeywordToken>({
-				kind: ZrTokenKind.Keyword,
+				kind: ZrTokenType.Keyword,
 				startPos,
 				endPos,
 				flags: ZrTokenFlag.None,
@@ -220,7 +261,7 @@ export default class ZrLexer {
 
 		if (ZrLexer.BOOLEAN.includes(literal as BooleanLiteralTokens)) {
 			return identity<BooleanToken>({
-				kind: ZrTokenKind.Boolean,
+				kind: ZrTokenType.Boolean,
 				startPos,
 				endPos,
 				flags: ZrTokenFlag.None,
@@ -231,9 +272,9 @@ export default class ZrLexer {
 
 		const previous = this.prev(2);
 
-		if (previous && this.prevIs(ZrTokenKind.Keyword, 2) && previous.value === "function") {
+		if (previous && this.prevIs(ZrTokenType.Keyword, 2) && previous.value === "function") {
 			return identity<IdentifierToken>({
-				kind: ZrTokenKind.Identifier,
+				kind: ZrTokenType.Identifier,
 				startPos,
 				endPos,
 				flags: ZrTokenFlag.FunctionName,
@@ -241,9 +282,9 @@ export default class ZrLexer {
 			});
 		}
 
-		if (previous && this.prevIs(ZrTokenKind.Keyword, 1) && previous.value === "enum") {
+		if (previous && this.prevIs(ZrTokenType.Keyword, 1) && previous.value === "enum") {
 			return identity<IdentifierToken>({
-				kind: ZrTokenKind.Identifier,
+				kind: ZrTokenType.Identifier,
 				startPos,
 				endPos,
 				flags: ZrTokenFlag.EnumName,
@@ -251,35 +292,38 @@ export default class ZrLexer {
 			});
 		}
 
-		if (previous && this.prevIs(ZrTokenKind.Keyword, 2) && (previous.value === "let" || previous.value === "const")) {
-
+		if (
+			previous &&
+			this.prevIs(ZrTokenType.Keyword, 2) &&
+			(previous.value === "let" || previous.value === "const")
+		) {
 			if (this.options.SyntaxHighlighterLexer && this.options.ExperimentalSyntaxHighlighter) {
 				const nextToken = this.peekNext(2);
-				if (nextToken?.kind === ZrTokenKind.Keyword && nextToken.value === "function") {
+				if (nextToken?.kind === ZrTokenType.Keyword && nextToken.value === "function") {
 					return identity<IdentifierToken>({
-						kind: ZrTokenKind.Identifier,
+						kind: ZrTokenType.Identifier,
 						startPos,
 						endPos,
 						flags: ZrTokenFlag.FunctionName,
 						value: literal,
-					});			
+					});
 				}
 			}
 
 			return identity<IdentifierToken>({
-				kind: ZrTokenKind.Identifier,
+				kind: ZrTokenType.Identifier,
 				startPos,
 				endPos,
 				flags: ZrTokenFlag.VariableDeclaration,
 				value: literal,
-			});			
+			});
 		}
 
 		if (this.options.SyntaxHighlighterLexer && this.options.ExperimentalSyntaxHighlighter) {
 			const nextToken = this.peekNext();
-			if (nextToken?.kind === ZrTokenKind.Special && nextToken.value === ":")  {
+			if (nextToken?.kind === ZrTokenType.Special && nextToken.value === ":") {
 				return identity<StringToken>({
-					kind: ZrTokenKind.String,
+					kind: ZrTokenType.String,
 					startPos,
 					endPos,
 					closed: true,
@@ -316,8 +360,9 @@ export default class ZrLexer {
 			return this.isNumeric(c);
 		});
 		const endPos = this.stream.getPtr() - 1;
+
 		return identity<NumberToken>({
-			kind: ZrTokenKind.Number,
+			kind: ZrTokenType.Number,
 			value: tonumber(number)!,
 			startPos,
 			flags: ZrTokenFlag.None,
@@ -333,7 +378,7 @@ export default class ZrLexer {
 		// skip $
 		this.stream.next();
 
-		return this.readIdentifier(flags,startPos);
+		return this.readIdentifier(flags, startPos);
 	}
 
 	private readOption(prefix: string) {
@@ -341,7 +386,7 @@ export default class ZrLexer {
 		const optionName = this.readWhile(this.isOptionId);
 		const endPos = this.stream.getPtr() - 1;
 		return identity<OptionToken>({
-			kind: ZrTokenKind.Option,
+			kind: ZrTokenType.Option,
 			value: optionName,
 			flags: ZrTokenFlag.None,
 			startPos,
@@ -353,10 +398,10 @@ export default class ZrLexer {
 	/**
 	 * Similar to `readNext`, except resets the pointer back to the start of the read afterwards.
 	 */
-	private peekNext(offset = 1) {
+	public peekNext(offset = 1) {
 		const start = this.stream.getPtr();
 		let i = 0;
-		let value: Token | undefined;
+		let value: ZrToken | undefined;
 		while (i < offset) {
 			this.readWhile(this.isWhitespace);
 			value = this.readNext();
@@ -367,9 +412,52 @@ export default class ZrLexer {
 	}
 
 	/**
+	 * Similar to `peekNext`, except will grab all the tokens, then resets the pointer back to the start of the read afterwards.
+	 */
+	public lookAhead(count: number): Array<readonly [token: ZrToken, offset: number]> {
+		const tokens = new Array<[token: ZrToken, offset: number]>();
+		const start = this.stream.getPtr();
+		let i = 0;
+		while (i < count) {
+			this.readWhile(this.isWhitespace);
+			const token = this.readNext();
+			if (token) {
+				tokens.push([token, i]);
+			} else {
+				break;
+			}
+			i++;
+		}
+		this.stream.setPtr(start);
+		return tokens;
+	}
+
+	public findTokenAhead(kind: ZrTokenType, value?: string): readonly [token: ZrToken, offset: number] | undefined {
+		const start = this.stream.getPtr();
+		let i = 1;
+		while (i < this.stream.size() - start) {
+			this.readWhile(this.isWhitespace);
+			const nextToken = this.readNext();
+			if (nextToken?.kind === kind && (value === undefined || value === nextToken.value)) {
+				this.stream.setPtr(start);
+				return [nextToken, i];
+			}
+			i++;
+		}
+
+		this.stream.setPtr(start);
+		return undefined;
+	}
+
+	// public findTokenAheadLimited(tokensToLookAt: number, kind: ZrTokenType, value?: string) {
+	// 	const tokens = this.lookAhead(tokensToLookAt);
+	// 	return tokens.find(f => f[0].kind === kind && (value === undefined || f[0].value === value));
+	// }
+
+	/**
 	 * Gets the next token
 	 */
-	private readNext(): Token | undefined {
+	private readNext(): ZrToken | undefined {
 		const { options } = this;
 
 		// skip whitespace
@@ -387,7 +475,7 @@ export default class ZrLexer {
 		if (code > 126) {
 			this.stream.next();
 			return identity<SpecialToken>({
-				kind: ZrTokenKind.Special,
+				kind: ZrTokenType.Special,
 				startPos,
 				endPos: startPos,
 				flags: ZrTokenFlag.None,
@@ -395,22 +483,34 @@ export default class ZrLexer {
 			});
 		}
 
-		if (options.SyntaxHighlighterLexer && this.isWhitespace(char)) {
+		if (char === "\n") {
 			this.stream.next();
-			return identity<WhitespaceToken>({
-				kind: ZrTokenKind.Whitespace,
-				value: char,
-				flags: ZrTokenFlag.None,
-				startPos: startPos,
-				endPos: startPos,
-			});
+			return this.readNext();
 		}
 
-		if (char === TokenCharacter.Hash || (char === TokenCharacter.Slash && this.stream.peek(1) === TokenCharacter.Slash)) {
+		if (this.isWhitespace(char)) {
+			this.stream.next();
+
+			if (options.SyntaxHighlighterLexer) {
+				return identity<WhitespaceToken>({
+					kind: ZrTokenType.Whitespace,
+					value: char,
+					flags: ZrTokenFlag.None,
+					startPos: startPos,
+					endPos: startPos,
+				});
+			}
+			return this.next();
+		}
+
+		if (
+			char === TokenCharacter.Hash ||
+			(char === TokenCharacter.Slash && this.stream.peek(1) === TokenCharacter.Slash)
+		) {
 			const value = this.readComment();
 			if (options.SyntaxHighlighterLexer) {
 				return identity<CommentToken>({
-					kind: ZrTokenKind.Comment,
+					kind: ZrTokenType.Comment,
 					value,
 					flags: ZrTokenFlag.None,
 					startPos,
@@ -444,17 +544,17 @@ export default class ZrLexer {
 
 		if (ZrLexer.OPERATORS.includes(char as OperatorTokens)) {
 			return identity<OperatorToken>({
-				kind: ZrTokenKind.Operator,
+				kind: ZrTokenType.Operator,
 				startPos,
 				flags: ZrTokenFlag.None,
 				endPos: startPos + char.size(),
-				value: this.readWhile((c) => ZrLexer.OPERATORS.includes(c as OperatorTokens)),
+				value: this.readWhile(c => ZrLexer.OPERATORS.includes(c as OperatorTokens)),
 			});
 		}
 
 		if (ZrLexer.ENDOFSTATEMENT.includes(char as EndOfStatementTokens)) {
 			return identity<EndOfStatementToken>({
-				kind: ZrTokenKind.EndOfStatement,
+				kind: ZrTokenType.EndOfStatement,
 				startPos,
 				flags: ZrTokenFlag.None,
 				endPos: startPos,
@@ -463,28 +563,27 @@ export default class ZrLexer {
 		}
 
 		if (ZrLexer.SPECIAL.includes(char as PunctuationTokens)) {
-
 			if (char === ":") {
 				const prev = this.prevSkipWhitespace();
 				if (prev) {
 					prev.flags |= ZrTokenFlag.Label;
 				}
-			} 
+			}
 			if (char === ".") {
 				const followedBy = this.stream.peek(1);
 				if (followedBy === ".") {
 					return identity<OperatorToken>({
-						kind: ZrTokenKind.Operator,
+						kind: ZrTokenType.Operator,
 						startPos,
 						endPos: startPos + 1,
 						value: this.stream.next(2).rep(2),
 						flags: 0,
-					})
+					});
 				}
 			}
 
 			return identity<SpecialToken>({
-				kind: ZrTokenKind.Special,
+				kind: ZrTokenType.Special,
 				startPos,
 				endPos: startPos,
 				flags: ZrTokenFlag.None,
@@ -493,7 +592,6 @@ export default class ZrLexer {
 		}
 
 		return this.readLiteralString();
-
 	}
 
 	public readIdentifier(flags: ZrTokenFlag, startPos = this.stream.getPtr()) {
@@ -502,21 +600,31 @@ export default class ZrLexer {
 		// read the id
 		const id = this.readWhile(this.isId);
 
-		// read any property access
-		while (this.stream.hasNext() && this.stream.peek() === ".") {
-			this.stream.next();
-			const id = this.readWhile(this.isId);
-			if (id === "") {
-				flags = ZrTokenFlag.InvalidIdentifier;
-			}
-			properties.push(id);
-		}
+		// // read any property access
+		// while (this.stream.hasNext() && this.stream.peek() === ".") {
+		// 	this.stream.next();
+		// 	const id = this.readWhile(this.isId);
+		// 	if (id === "") {
+		// 		flags = ZrTokenFlag.InvalidIdentifier;
+		// 	}
+		// 	properties.push(id);
+		// }
 
 		const endPos = this.stream.getPtr() - 1;
 
+		if (id === "") {
+			return identity<SpecialToken>({
+				kind: ZrTokenType.Special,
+				value: "$",
+				startPos,
+				endPos,
+				flags,
+			});
+		}
+
 		if (properties.size() > 0) {
 			return identity<PropertyAccessToken>({
-				kind: ZrTokenKind.PropertyAccess,
+				kind: ZrTokenType.PropertyAccess,
 				startPos,
 				endPos,
 				flags,
@@ -525,7 +633,7 @@ export default class ZrLexer {
 			});
 		} else {
 			return identity<IdentifierToken>({
-				kind: ZrTokenKind.Identifier,
+				kind: ZrTokenType.Identifier,
 				startPos,
 				flags,
 				endPos,
@@ -534,11 +642,11 @@ export default class ZrLexer {
 		}
 	}
 
-	public isNextOfKind(kind: ZrTokenKind) {
+	public isNextOfKind(kind: ZrTokenType) {
 		return this.peek()?.kind === kind;
 	}
 
-	public isNextOfAnyKind(...kind: ZrTokenKind[]) {
+	public isNextOfAnyKind(...kind: ZrTokenType[]) {
 		for (const k of kind) {
 			if (this.isNextOfKind(k)) {
 				return true;
@@ -557,8 +665,8 @@ export default class ZrLexer {
 		}
 	}
 
-	private previousTokens = new Array<Token>();
-	private currentToken: Token | undefined;
+	private previousTokens = new Array<ZrToken>();
+	private currentToken: ZrToken | undefined;
 	public peek() {
 		this.currentToken = this.fetchNextToken();
 		return this.currentToken;
@@ -573,7 +681,7 @@ export default class ZrLexer {
 		assert(offset > 0);
 		for (let i = this.previousTokens.size() - offset; i > 0; i--) {
 			const token = this.previousTokens[i];
-			if (token.kind !== ZrTokenKind.Whitespace) {
+			if (token.kind !== ZrTokenType.Whitespace) {
 				return token;
 			}
 		}
@@ -581,7 +689,7 @@ export default class ZrLexer {
 		return undefined;
 	}
 
-	public prevIs(kind: ZrTokenKind, offset?: number) {
+	public prevIs(kind: ZrTokenType, offset?: number) {
 		const prev = this.prev(offset);
 		return prev?.kind === kind;
 	}

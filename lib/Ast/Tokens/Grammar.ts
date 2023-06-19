@@ -1,7 +1,16 @@
+export const enum Precedence {
+	Brackets = 30,
+	Exponents = 25,
+	Division = 21,
+	Multiplication = 20,
+	Addition = 11,
+	Subtraction = 10,
+}
+
 const Grammar = {
 	Operators: ["&", "|", "=", ">", "<", "-", "+", "/", "*", "!", "?", "%", "^", "~"],
-	UnaryOperators: ["!"],
-	EndOfStatement: [";", "\n"],
+	UnaryOperators: ["!", "-", "+"],
+	EndOfStatement: [";"],
 	Punctuation: ["(", ")", ",", "{", "}", "[", "]", ".", ":", "\\", "@", "`"],
 	BooleanLiterals: ["true", "false"],
 	Keywords: [
@@ -11,6 +20,7 @@ const Grammar = {
 		"in",
 		"enum",
 		"declare",
+		"async",
 		"function",
 		"let",
 		"export",
@@ -40,6 +50,7 @@ const Grammar = {
 		"..": 1,
 		"!": 2,
 		"=": 2,
+		"??": 2,
 		"+=": 2,
 		"-=": 2,
 		"|": 3,
@@ -51,13 +62,43 @@ const Grammar = {
 		"<=": 7,
 		"==": 7,
 		"!=": 7,
-		"+": 10,
-		"-": 10,
-		"*": 20,
-		"/": 20,
-		"%": 20,
+
+		"+": Precedence.Addition,
+		"-": Precedence.Subtraction,
+		"*": Precedence.Multiplication,
+		"/": Precedence.Division,
+		"%": Precedence.Division,
+		"**": Precedence.Exponents,
 	}),
+	SpecialTokenId: {
+		BodyBegin: "{",
+		BodyEnd: "}",
+		FunctionParameterBegin: "(",
+		FunctionParameterEnd: ")",
+	},
 } as const;
+
+export const enum OperatorTokenId {
+	UnaryMinus = "-",
+	UnaryPlus = "+",
+	UnaryNot = "!",
+}
+
+export const enum SpecialTokenId {
+	BodyBegin = "{",
+	BodyEnd = "}",
+	FunctionParametersBegin = "(",
+	FunctionParametersEnd = ")",
+	FunctionParametersSeparator = ",",
+	SimpleCallInlineExpressionDelimiter = "$",
+	ArrayBegin = "[",
+	ElementBegin = "[",
+	ElementEnd = "]",
+	ArrayEnd = "]",
+	ObjectBegin = "{",
+	ObjectEnd = "}",
+	Dot = ".",
+}
 
 export type OperatorTokens = typeof Grammar["Operators"][number];
 export type KeywordTokens = typeof Grammar["Keywords"][number];
@@ -72,7 +113,7 @@ function makeKeywordMap<K extends ReadonlyArray<string>>(value: K) {
 	for (const item of value) {
 		items[item.upper()] = item;
 	}
-	return (items as unknown) as KeywordMap<K>;
+	return items as unknown as KeywordMap<K>;
 }
 
 export const Keywords = makeKeywordMap(Grammar.Keywords);

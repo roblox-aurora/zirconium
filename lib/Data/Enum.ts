@@ -1,26 +1,34 @@
 import { ZrEnumItem } from "./EnumItem";
+import { ZrValue } from "./Locals";
+import ZrUndefined from "./Undefined";
+import { ZrUserdata } from "./Userdata";
 
 /**
  * The built-in Enum type in Zirconium
  */
-export class ZrEnum {
-	private items = new Array<ZrEnumItem>();
+export class ZrEnum extends ZrUserdata<Array<ZrEnumItem>> {
+	protected constructor(private name = "[ZrEnum]", private items: Array<ZrEnumItem>) {
+		super(
+			{
+				properties: {},
+				methods: {},
+			},
+			"ZrEnum",
+		);
 
-	/**
-	 * @param items The item labels
-	 * @param name The name of this enum
-	 * @param enumFactory A custom enum item factory
-	 */
-	protected constructor(
-		items: readonly string[],
-		private name = "[ZrEnum]",
-		/**
-		 * Mainly for Zircon to override with a child enum type -
-		 */
-		enumFactory: (value: string, index: number) => ZrEnumItem = (value, index) =>
-			new ZrEnumItem(this, index, value),
-	) {
-		this.items = items.map(enumFactory);
+		// for (const item of items) {
+		// 	this.proto.properties[item.getName()] = {
+		// 		get: () => item,
+		// 	};
+		// }
+	}
+
+	public unwrap(): ZrEnumItem[] {
+		return this.items;
+	}
+
+	public get(index: string): ZrValue | ZrUndefined {
+		return this.items.find(f => f.getName() === index) ?? ZrUndefined;
 	}
 
 	/**
@@ -30,7 +38,8 @@ export class ZrEnum {
 	 * @returns The enum
 	 */
 	public static fromArray(name: string, items: string[]) {
-		return new ZrEnum(items, name);
+		// return new ZrEnum(items, name);
+		return new ZrEnum(name, []); // TODO: Fix
 	}
 
 	public getEnumName() {
@@ -38,11 +47,14 @@ export class ZrEnum {
 	}
 
 	public getItemByName(name: string) {
-		return this.items.find((f) => f.getName() === name);
+		return this.items.find(f => f.getName() === name);
 	}
 
+	/**
+	 * @internal
+	 */
 	public getItemByIndex(idx: number) {
-		return this.items.find((f) => f.getValue() === idx);
+		return this.items.find(f => f.getValue() === idx);
 	}
 
 	public getItems() {

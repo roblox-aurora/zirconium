@@ -73,7 +73,11 @@ export class ZrOutputStream {
 	 * @internal
 	 */
 	public _toStringArray() {
-		return this.output.map((v) => stringify(v));
+		return this.output.map(v => stringify(v));
+	}
+
+	public values(): readonly ZrValue[] {
+		return this.output;
 	}
 
 	/**

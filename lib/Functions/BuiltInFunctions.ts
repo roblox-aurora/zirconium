@@ -1,12 +1,12 @@
 import ZrObject from "../Data/Object";
 import { isArray, isMap } from "../Util";
-import ZrLuauFunction, { ZrLuauArgument } from "../Data/LuauFunction";
+import ZrLuauFunction, { ZrUnknown } from "../Data/LuauFunction";
 import { ZrValue } from "../Data/Locals";
 const runService = game.GetService("RunService");
 
-export const stringify = (value: ZrLuauArgument): string => {
+export const stringify = (value: ZrUnknown): string => {
 	if (isArray(value)) {
-		return "[" + (value.map((v) => stringify(v)).join(", ") || " ") + "]";
+		return "[" + (value.map(v => stringify(v)).join(", ") || " ") + "]";
 	} else if (isMap<ZrValue>(value)) {
 		const values = new Array<string>();
 		for (const [k, v] of value) {
@@ -21,17 +21,7 @@ export const stringify = (value: ZrLuauArgument): string => {
 };
 
 export const ZrPrint = ZrLuauFunction.createDynamic((ctx, ...params) => {
-	const input = ctx.getInput();
-	if (input.isEmpty()) {
-		print(params.map((p) => stringify(p)).join(" "));
-	} else {
-		print(
-			input
-				.toArray()
-				.map((p) => stringify(p))
-				.join(" "),
-		);
-	}
+	print(params.map(p => stringify(p)).join(" "));
 });
 
 export const ZrRange = ZrLuauFunction.createDynamic((ctx, start, stop) => {
@@ -44,7 +34,7 @@ export const ZrRange = ZrLuauFunction.createDynamic((ctx, start, stop) => {
 	}
 });
 
-export const ZrDebug = ZrLuauFunction.createDynamic((ctx) => {
+export const ZrDebug = ZrLuauFunction.createDynamic(ctx => {
 	assert(runService.IsStudio());
 	const locals = ctx.getLocals();
 	locals.print();
