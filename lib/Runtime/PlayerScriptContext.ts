@@ -9,7 +9,7 @@ export default class ZrPlayerScriptContext extends ZrScriptContext {
 		super();
 	}
 
-	public createScript(nodes: SourceFile) {
+	public createScriptFromAst(nodes: SourceFile) {
 		// this.registerGlobal("executor", new ZrInstanceUserdata(this.player));
 		return new ZrScript(nodes, this.getGlobals(), this.player);
 	}

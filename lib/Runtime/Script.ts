@@ -9,13 +9,17 @@ import { Result } from "@rbxts/rust-classes";
 export default class ZrScript {
 	private runtime: ZrRuntime;
 
-	public constructor(source: SourceFile, globalVariables: Map<string, ZrValue>, player?: Player) {
+	public constructor(private readonly source: SourceFile, globalVariables: Map<string, ZrValue>, player?: Player) {
 		const globals = new ZrLocalStack(globalVariables);
 		this.runtime = new ZrRuntime(source, globals, player);
 	}
 
 	public registerFunction(name: string, func: ZrLuauFunction) {
 		this.runtime.getLocals().setGlobal(name, func, true); //?
+	}
+
+	public getSourceAst() {
+		return this.source;
 	}
 
 	public execute(): Result<ZrRuntimeResult, ZrRuntimeError[]> {

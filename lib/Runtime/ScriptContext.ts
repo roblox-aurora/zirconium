@@ -1,6 +1,7 @@
 import { Result } from "@rbxts/rust-classes";
 import { ZrParserV2, ZrParserOptions } from "Ast/ParserV2";
 import { ZrParserError } from "Ast/ParserV2/Diagnostics";
+import { ZrScopedLib } from "std/Globals";
 import { ZrTextStream, ZrLexer } from "../Ast";
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
 import ZrContext from "../Data/Context";
@@ -13,33 +14,41 @@ export enum ZrScriptCreateResult {
 	OK,
 }
 
-interface ZrCreateScriptSuccess {
-	result: ZrScriptCreateResult.OK;
-	current: ZrScript;
-}
-interface ZrCreateScriptError {
+export interface ZrCreateScriptError {
 	result: ZrScriptCreateResult.ParserError;
 	sourceFileWithErrors: SourceFile;
 	errors: readonly ZrParserError[];
 	message: string;
 }
-type ZrCreateScriptResult = ZrCreateScriptError | ZrCreateScriptSuccess;
 
 export type ZrLibrary = Record<string, ZrValue>;
 
 export default class ZrScriptContext {
 	private globals = identity<Record<string, ZrValue>>({});
 
+	public clone(): ZrScriptContext {
+		const newContext = new ZrScriptContext();
+		newContext.globals = table.clone(this.globals);
+		return newContext;
+	}
+
 	public registerGlobal(name: string, value: ZrValue) {
 		this.globals[name] = value;
 	}
 
-	public loadLibrary<TLibrary extends ZrLibrary>(lib: TLibrary, filter?: (keyof TLibrary)[]) {
+	/**
+	 * Loads the given variables into the environment
+	 */
+	public loadEnv<TLibrary extends ZrLibrary>(lib: TLibrary, filter?: (keyof TLibrary)[]) {
 		for (const [name, value] of pairs(lib as ZrLibrary)) {
 			if (filter === undefined || filter.includes(name)) {
 				this.registerGlobal(name, value);
 			}
 		}
+	}
+
+	public loadLibrary(name: string, lib: ZrLibrary) {
+		this.globals[name] = new ZrScopedLib(name, lib);
 	}
 
 	public importGlobals(context: ZrScriptContext) {
@@ -61,18 +70,30 @@ export default class ZrScriptContext {
 	}
 
 	/**
-	 * Creates a script from the specified source
+	 * Creates a script from the specified ast
 	 * @param nodes The source nodes
 	 * @returns The script
 	 */
-	public createScript(nodes: SourceFile) {
+	public createScriptFromAst(nodes: SourceFile) {
 		return new ZrScript(nodes, this.getGlobals());
+	}
+
+	/**
+	 * Creates a script from the given source, with the given source
+	 *
+	 * Will throw errors if the parsing throws errors
+	 * @param source The source of the program
+	 * @param options The options for the parsing
+	 * @returns The result, `Ok(ZrScript)` if successful - otherwise `Err(ZrCreateScriptError)`
+	 */
+	public createScriptFromSource(source: string, options: ZrParserOptions): Result<ZrScript, ZrCreateScriptError> {
+		return this.parseToAst(source, options).map(sourceFile => this.createScriptFromAst(sourceFile));
 	}
 
 	/**
 	 * Creates a source file, and returns a `Result<T, E>` of the result of parsing the file
 	 */
-	public parseSource(source: string, options: ZrParserOptions): Result<SourceFile, ZrCreateScriptError> {
+	public parseToAst(source: string, options: ZrParserOptions): Result<SourceFile, ZrCreateScriptError> {
 		const stream = new ZrTextStream(source);
 		const lexer = new ZrLexer(stream);
 		const parser = new ZrParserV2(lexer, options);

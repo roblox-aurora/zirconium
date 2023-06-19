@@ -1,3 +1,4 @@
+import { ZrValue } from "Data/Locals";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrObject from "Data/Object";
 import { ZrValidation } from "Data/Types";
@@ -17,21 +18,13 @@ function keys(value: object) {
 	return keyValues;
 }
 
-class ZrScopedLib<T extends ZrLibrary> extends ZrObjectUserdata<T> {
+export class ZrScopedLib<T extends ZrLibrary> extends ZrObjectUserdata<T> {
 	public constructor(private name: string, obj: T) {
 		super(obj);
 	}
 
-	public static luaulib(lib: typeof math) {
-		const zrlib = {} as ZrLibrary;
-
-		for (const [k, v] of pairs(lib) as IterableFunction<[string, defined]>) {
-			if (typeIs(v, "function")) {
-				zrlib[k] = new ZrLuauFunction((_, ...args) => void v(...args));
-			}
-		}
-
-		return zrlib;
+	public set(index: string, value: ZrValue | undefined): void {
+		error(`Cannot alter library '${index}' to ${ZrValidation.typeOf(value)} - library is read-only.`);
 	}
 
 	public toString(): string {

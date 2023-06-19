@@ -80,13 +80,13 @@ lex.parseAstWithThrow().match(
 		types.bindSourceFile(source);
 
 		const zr = Zr.createContext();
-		zr.loadLibrary(ZrLibs.stdlib);
-		zr.loadLibrary(ZrLibs.experimentallib);
+		zr.loadEnv(ZrLibs.stdlib);
+		zr.loadEnv(ZrLibs.experimentallib);
 		zr.registerGlobal("Instance", InstanceConstructor);
 
 		const testObject = new ZrInstanceUserdata(new Instance("Part"));
 
-		const zrScript = zr.createScript(source);
+		const zrScript = zr.createScriptFromAst(source);
 		const result = zrScript.executeOrThrow();
 		print("result is", result);
 	},
