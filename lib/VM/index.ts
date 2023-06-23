@@ -2,6 +2,7 @@ import ZrLocalStack, { ZrValue } from "Data/Locals";
 import { ZrVariants } from "Data/Types";
 import { ZrBytecodeTable } from "./Compiler";
 import { ZrInstruction } from "./Instructions";
+import { ZR_A, ZR_B, ZR_C, ZR_D, ZR_E, ZR_OP } from "./Utils";
 
 interface ZrFrame {
 	retAddr: number;
@@ -80,19 +81,32 @@ export class ZrVM {
 				break;
 			}
 
-			let opCode = this.next();
+			let instruction = this.next();
 
-			const instr = this.instructions.find(instr => instr[0] === opCode);
-			assert(instr, `Could not find instruction with op code ${opCode}`);
+			const code = ZR_OP(instruction);
 
-			const [code, _, arity, fn] = instr;
+			const instr = this.instructions.find(instr => instr[0] === code);
+			assert(instr, `Could not find instruction with op code ${code}`);
 
-			let args = new Array<number>();
-			for (let i = 0; i < arity; i++) {
-				args.push(this.next());
+			const [, name, arity, exec] = instr;
+			if (arity === 0) {
+				exec(this, []);
+			} else if (arity === 3) {
+				const a = ZR_A(instruction);
+				const b = ZR_B(instruction);
+				const c = ZR_C(instruction);
+
+				exec(this, [a, b, c]);
+			} else if (arity === 2) {
+				const a = ZR_A(instruction);
+				const d = ZR_D(instruction);
+				exec(this, [a, d]);
+			} else if (arity === 1) {
+				const e = ZR_E(instruction);
+				exec(this, [e]);
+			} else {
+				throw `Invalid arity for '${name}': ${arity}`;
 			}
-
-			fn(this, args);
 		}
 	}
 }

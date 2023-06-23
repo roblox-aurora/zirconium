@@ -2,7 +2,7 @@ import { isNode } from "Ast";
 import { ZrNodeKind } from "Ast/Nodes";
 import { BooleanLiteral, Expression, NumberLiteral, SourceFile, StringLiteral, ZrNode } from "Ast/Nodes/NodeTypes";
 import { ZrBytecodeWriteStream } from "./ByteStream";
-import { ZrBytecodeBuilder as ZrBytecodeBuilder } from "./CodeBuilder";
+import { ZrBytecodeBuilder as ZrBytecodeBuilder, ZrcFunction } from "./CodeBuilder";
 import { ZrInstruction, ZrInstructionTable, ZrOP } from "./Instructions";
 import { Operand } from "./Operand";
 
@@ -32,6 +32,9 @@ export interface ZrBytecodeTable {
 	 * The instructions
 	 */
 	instructions: Array<number>;
+
+	functions: Array<ZrcFunction>;
+	entryPoint: number;
 }
 
 /**
@@ -43,51 +46,51 @@ export class ZrCompiler {
 	private constructor() {}
 
 	public static toPrettyString(compiled: ZrBytecodeTable) {
-		const bytes = compiled.instructions;
-		const labels = compiled.labels;
-		const data = compiled.constants;
+		// const bytes = compiled.instructions;
+		// const labels = compiled.labels;
+		const constants = compiled.constants;
 
 		const strs = new Array<string>();
 
-		for (let ip = 0; ip < bytes.size(); ) {
-			const opCode = bytes[ip];
-			const instr = ZrInstructionTable.find(f => f[0] === opCode);
+		// for (let ip = 0; ip < bytes.size(); ) {
+		// 	const opCode = bytes[ip];
+		// 	const instr = ZrInstructionTable.find(f => f[0] === opCode);
 
-			for (const [labelPtr, label] of labels) {
-				if (labelPtr === ip) {
-					strs.push(`.${label}`);
-				}
-			}
+		// 	for (const [labelPtr, label] of labels) {
+		// 		if (labelPtr === ip) {
+		// 			strs.push(`.${label}`);
+		// 		}
+		// 	}
 
-			assert(instr);
-			const [, name, arity] = instr;
-			let str = [name.upper()];
+		// 	assert(instr);
+		// 	const [, name, arity] = instr;
+		// 	let str = [name.upper()];
 
-			for (let i = 1; i <= arity; i++) {
-				const arg = bytes[ip + i];
-				str.push(tostring(arg));
-			}
+		// 	for (let i = 1; i <= arity; i++) {
+		// 		const arg = bytes[ip + i];
+		// 		str.push(tostring(arg));
+		// 	}
 
-			if (opCode === ZrOP.ADD) {
-				str.push("\t\t; Pops & adds the last two values on the stack, pushes the result");
-			} else if (opCode === ZrOP.CALLK) {
-				str.push(`\t\t; calls '${tostring(data[bytes[ip + 1]])}' with ${bytes[ip + 2]} arguments`);
-			} else if (opCode === ZrOP.LOADK) {
-				const ptr = bytes[ip + 1];
-				str.push(`\t\t; load constant @${ptr} (${tostring(data[ptr])}) onto the stack`);
-			} else if (opCode === ZrOP.SETUPVALUE) {
-				str.push(`\t\t; sets the upvalue ${tostring(data[bytes[ip + 1]])} to the last value in the stack`);
-			} else if (opCode === ZrOP.CLOSURE) {
-				str.push(`\t\t; create closure '${data[bytes[ip + 1]]}'`);
-			}
+		// 	if (opCode === ZrOP.ADD) {
+		// 		str.push("\t\t; Pops & adds the last two values on the stack, pushes the result");
+		// 	} else if (opCode === ZrOP.CALLK) {
+		// 		str.push(`\t\t; calls '${tostring(data[bytes[ip + 1]])}' with ${bytes[ip + 2]} arguments`);
+		// 	} else if (opCode === ZrOP.LOADK) {
+		// 		const ptr = bytes[ip + 1];
+		// 		str.push(`\t\t; load constant @${ptr} (${tostring(data[ptr])}) onto the stack`);
+		// 	} else if (opCode === ZrOP.SETUPVALUE) {
+		// 		str.push(`\t\t; sets the upvalue ${tostring(data[bytes[ip + 1]])} to the last value in the stack`);
+		// 	} else if (opCode === ZrOP.CLOSURE) {
+		// 		str.push(`\t\t; create closure '${data[bytes[ip + 1]]}'`);
+		// 	}
 
-			strs.push(`\t${str.join(" ")}`);
-			ip += arity + 1;
-		}
+		// 	strs.push(`\t${str.join(" ")}`);
+		// 	ip += arity + 1;
+		// }
 
 		strs.push("-- constants --");
 		let i = 0;
-		for (const constant of data) {
+		for (const constant of constants) {
 			strs.push(`\t@${i} = ${tostring(constant)}`);
 			i++;
 		}
@@ -236,6 +239,10 @@ export class ZrCompiler {
 			this.bytecodeBuilder.endFunction();
 			this.bytecodeBuilder.emit(ZrOP.SETUPVALUE, this.bytecodeBuilder.addConstantString(node.name.name));
 		}
+	}
+
+	public dumpEverything() {
+		return this.bytecodeBuilder.dumpEverything();
 	}
 
 	public toBytecodeTable(): ZrBytecodeTable {

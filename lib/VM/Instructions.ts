@@ -5,7 +5,7 @@ import ZrUndefined from "Data/Undefined";
 import { ZrVM } from "VM";
 import { Operand } from "./Operand";
 
-export const enum ZrOP {
+export enum ZrOP {
 	/**
 	 * Load a value onto the stack from a constant
 	 *
@@ -127,13 +127,26 @@ export const enum ZrOP {
 	CLOSURE,
 	EXIT,
 }
-export type ZrInstruction = [code: ZrOP, name: string, arity: number, fn: (vm: ZrVM, args: number[]) => void];
+
+export enum ZrEncoding {
+	ABC = 3,
+	AD = 2,
+	E = 1,
+	AUX = 0,
+}
+
+export type ZrInstruction = [
+	code: ZrOP,
+	name: string,
+	arity: ZrEncoding,
+	fn: (vm: ZrVM, args: readonly number[]) => void,
+];
 
 export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.ADD,
 		"add",
-		0,
+		ZrEncoding.ABC,
 		vm => {
 			let rhs = vm.stackPop();
 			let lhs = vm.stackPop();
@@ -145,7 +158,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.LOADK,
 		"LOADK",
-		1,
+		ZrEncoding.ABC,
 		(vm, [arg]) => {
 			vm.stackPush(vm.getDataAtIndex(arg).value ?? ZrUndefined);
 		},
@@ -153,7 +166,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.CALLK,
 		"CALLK",
-		2,
+		ZrEncoding.ABC,
 		(vm, [id, argc]) => {
 			let label = vm.getDataAtIndex(id).value;
 			assert(label, "no label data at idx " + id);
@@ -189,7 +202,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.RET,
 		"RET",
-		1,
+		ZrEncoding.ABC,
 		vm => {
 			vm.ret();
 		},
@@ -197,7 +210,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.JMPK,
 		"JMPK",
-		1,
+		ZrEncoding.ABC,
 		(vm, [id]) => {
 			let label = vm.getDataAtIndex(id).value;
 			assert(label, `No valid label at id ${id}`);
@@ -207,7 +220,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.JMPIFK,
 		"JMPIFK",
-		1,
+		ZrEncoding.ABC,
 		(vm, [id]) => {
 			const condition = vm.stackPop();
 			assert(typeIs(condition, "number"));
@@ -221,7 +234,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.SETUPVALUE,
 		"setupvalue",
-		1,
+		ZrEncoding.ABC,
 		(vm, [id]) => {
 			const variableName = vm.getDataAtIndex(id).value;
 			const value = vm.stackPop();
@@ -230,14 +243,14 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 			vm.env.setUpValueOrLocal(variableName, value);
 		},
 	],
-	[ZrOP.NEWOBJECT, "newobject", 1, (vm, [size]) => {}],
-	[ZrOP.NEWARRAY, "newarray", 1, (vm, [size]) => {}],
-	[ZrOP.GETINDEX, "getindex", 1, (vm, [idx]) => {}],
-	[ZrOP.GETPROPERTY, "getproperty", 1, (vm, [id]) => {}],
+	[ZrOP.NEWOBJECT, "newobject", ZrEncoding.ABC, (vm, [size]) => {}],
+	[ZrOP.NEWARRAY, "newarray", ZrEncoding.ABC, (vm, [size]) => {}],
+	[ZrOP.GETINDEX, "getindex", ZrEncoding.ABC, (vm, [idx]) => {}],
+	[ZrOP.GETPROPERTY, "getproperty", ZrEncoding.ABC, (vm, [id]) => {}],
 	[
 		ZrOP.LOADNONE,
 		"pushnone",
-		0,
+		ZrEncoding.AUX,
 		vm => {
 			vm.stackPush(ZrUndefined);
 		},
@@ -245,7 +258,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.CLOSURE,
 		"closure",
-		1,
+		ZrEncoding.ABC,
 		(vm, [id]) => {
 			const label = vm.getDataAtIndex(id).value;
 			vm.stackPush(new ZrClosure(tostring(label)));
@@ -254,7 +267,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 	[
 		ZrOP.EXIT,
 		"exit",
-		0,
+		ZrEncoding.AUX,
 		vm => {
 			vm.ret();
 		},

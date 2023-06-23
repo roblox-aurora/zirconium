@@ -10,6 +10,10 @@ import { ZrCompiler } from "VM/Compiler";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
 import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
+import inspect from "@rbxts/inspect";
+import { ZrVM } from "VM";
+import { ZrInstructionTable, ZrOP } from "VM/Instructions";
+import { ZrBytecodeBuilder } from "VM/CodeBuilder";
 
 const globals = Zr.createContext();
 globals.registerGlobal("print", ZrPrint);
@@ -55,6 +59,8 @@ let source = `
 	} else {
 		print "test returned false";
 	}
+
+	let x = undefined;
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -79,17 +85,19 @@ lex.parseAstWithThrow().match(
 		types.bindSourceFile(source);
 
 		const compiler = ZrCompiler.fromAst(source);
-
 		const compiled = compiler.toBytecodeTable();
-		print(compiled);
+		print(inspect(compiled));
 
-		print("Compiled Source\n", ZrCompiler.toPrettyString(compiled));
+		print("Compiled Source\n", compiler.dumpEverything());
 
-		const zr = Zr.createContext();
-		const zrScript = zr.createScript(source);
-		zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
-		const result = zrScript.executeOrThrow();
-		print("result is", result);
+		// const vm = new ZrVM(compiled, ZrInstructionTable);
+		// vm.run();
+
+		// const zr = Zr.createContext();
+		// const zrScript = zr.createScript(source);
+		// zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
+		// const result = zrScript.executeOrThrow();
+		// print("result is", result);
 	},
 	err => {
 		const [source, errs] = err;
