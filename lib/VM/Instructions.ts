@@ -147,7 +147,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"LOADK",
 		1,
 		(vm, [arg]) => {
-			vm.stackPush(vm.getDataAtIndex(arg));
+			vm.stackPush(vm.getDataAtIndex(arg).value ?? ZrUndefined);
 		},
 	],
 	[
@@ -155,7 +155,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"CALLK",
 		2,
 		(vm, [id, argc]) => {
-			let label = vm.getDataAtIndex(id);
+			let label = vm.getDataAtIndex(id).value;
 			assert(label, "no label data at idx " + id);
 
 			let fun = vm.env.getLocalOrUpValue(tostring(label));
@@ -199,7 +199,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"JMPK",
 		1,
 		(vm, [id]) => {
-			let label = vm.getDataAtIndex(id);
+			let label = vm.getDataAtIndex(id).value;
 			assert(label, `No valid label at id ${id}`);
 			vm.jump(tostring(label));
 		},
@@ -212,7 +212,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 			const condition = vm.stackPop();
 			assert(typeIs(condition, "number"));
 			if (condition !== 0) {
-				let label = vm.getDataAtIndex(id);
+				let label = vm.getDataAtIndex(id).value;
 				vm.jump(tostring(label));
 			}
 		},
@@ -223,7 +223,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"setupvalue",
 		1,
 		(vm, [id]) => {
-			const variableName = vm.getDataAtIndex(id);
+			const variableName = vm.getDataAtIndex(id).value;
 			const value = vm.stackPop();
 
 			assert(typeIs(variableName, "string"));
@@ -247,7 +247,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"closure",
 		1,
 		(vm, [id]) => {
-			const label = vm.getDataAtIndex(id);
+			const label = vm.getDataAtIndex(id).value;
 			vm.stackPush(new ZrClosure(tostring(label)));
 		},
 	],

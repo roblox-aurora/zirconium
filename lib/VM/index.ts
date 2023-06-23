@@ -1,6 +1,6 @@
 import ZrLocalStack, { ZrValue } from "Data/Locals";
 import { ZrVariants } from "Data/Types";
-import { ZrChunk } from "./Compiler";
+import { ZrBytecodeTable } from "./Compiler";
 import { ZrInstruction } from "./Instructions";
 
 interface ZrFrame {
@@ -31,7 +31,7 @@ export class ZrVM {
 	private ip = 0;
 	private callStack = new Array<ZrFrame>();
 
-	public constructor(private compiled: ZrChunk, private instructions: readonly ZrInstruction[]) {
+	public constructor(private compiled: ZrBytecodeTable, private instructions: readonly ZrInstruction[]) {
 		let frame = ZrFrame(compiled.instructions.size());
 		this.callStack.push(frame);
 	}

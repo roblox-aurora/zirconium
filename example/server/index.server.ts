@@ -78,9 +78,9 @@ lex.parseAstWithThrow().match(
 		const types = new ZrBinder();
 		types.bindSourceFile(source);
 
-		const compiler = ZrCompiler.loadFile(source);
+		const compiler = ZrCompiler.fromAst(source);
 
-		const compiled = compiler.compile();
+		const compiled = compiler.toBytecodeTable();
 		print(compiled);
 
 		print("Compiled Source\n", ZrCompiler.toPrettyString(compiled));
