@@ -1,4 +1,6 @@
-export function ZR_OP(ins: number) {
+import { ZrOP } from "./Instructions";
+
+export function ZR_OP(ins: number): ZrOP {
 	return ins & 0xff;
 }
 

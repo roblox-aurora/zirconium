@@ -45,6 +45,8 @@ export interface ZrcFunction {
 	 */
 	readonly isVararg: boolean;
 
+	readonly constants: ZrcConstant[];
+
 	/**
 	 * Whether or not this function returns
 	 */
@@ -66,6 +68,7 @@ export class ZrBytecodeBuilder {
 		const main: ZrcFunction = {
 			name: MAIN,
 			data: [],
+			constants: [],
 			locals: new Map(),
 			labels: new Map(),
 			numparams: 0,
@@ -93,6 +96,7 @@ export class ZrBytecodeBuilder {
 			data: arr,
 			locals: new Map(),
 			labels: new Map(),
+			constants: [],
 			isVararg: varargs,
 			numparams: parameters.size(),
 			returns: false,
@@ -120,20 +124,22 @@ export class ZrBytecodeBuilder {
 	}
 
 	private addConstant(value: ZrcConstant) {
+		const constants = this.currentFunction().constants;
+
 		if (value.type === "undefined") {
-			const existing = this.constants.findIndex(f => f.type === "undefined");
+			const existing = constants.findIndex(f => f.type === "undefined");
 			if (existing !== -1) {
 				return existing;
 			}
 
-			return this.constants.push(value) - 1;
+			return constants.push(value) - 1;
 		} else {
 			const existing = this.constants.findIndex(f => value.type === f.type && value.value === f.value);
 			if (existing !== -1) {
 				return existing;
 			}
 
-			return this.constants.push(value) - 1;
+			return constants.push(value) - 1;
 		}
 	}
 
@@ -207,10 +213,10 @@ export class ZrBytecodeBuilder {
 		const [a, b, c, d] = this.decode(instr);
 	}
 
-	public dumpConstant(constantIndex: number) {
-		const constant = this.constants[constantIndex];
+	public dumpFunctionConstant(constantIndex: number, func: ZrcFunction) {
+		const constant = func.constants[constantIndex];
 		if (!constant) {
-			error("Failed to fetch constant at index " + (constantIndex + 1) + ` - size is ${this.constants.size()}`);
+			error("Failed to fetch constant at index " + (constantIndex + 1) + ` - size is ${func.constants.size()}`);
 		}
 
 		switch (constant.type) {
@@ -229,8 +235,6 @@ export class ZrBytecodeBuilder {
 		const func = this.functions[functionIdx];
 		const result = new Array<string>();
 
-		print("constants are", inspect(this.constants));
-
 		if (func) {
 			// Dump instructions
 			const instructions = func.data;
@@ -240,18 +244,17 @@ export class ZrBytecodeBuilder {
 
 				switch (op) {
 					case ZrOP.ADD:
-						result.push(`ADD ; (from stack)`);
+						result.push(`ADD`);
 						break;
 					case ZrOP.CALLK: {
 						const k1 = ZR_A(instruction);
 						const b = ZR_B(instruction);
-						result.push(`CALLK K${k1} ${b} [${this.dumpConstant(k1)}] - ${b} args`);
+						result.push(`CALLK K${k1} ${b} [${this.dumpFunctionConstant(k1, func)}] - ${b} args`);
 						break;
 					}
 					case ZrOP.LOADK: {
 						const k1 = ZR_A(instruction);
-						print("+ LOADK", `K${k1}`, k1 < this.constants.size() ? this.dumpConstant(k1) : "???");
-						result.push(`LOADK K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`LOADK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.RET: {
@@ -261,27 +264,27 @@ export class ZrBytecodeBuilder {
 					}
 					case ZrOP.JMPK: {
 						const k1 = ZR_A(instruction);
-						result.push(`JUMPK K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`JUMPK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.JMPIFK: {
 						const k1 = ZR_A(instruction);
-						result.push(`JUMPIFK K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`JUMPIFK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.CLOSURE: {
 						const k1 = ZR_A(instruction);
-						result.push(`CLOSURE K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`CLOSURE K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.SETUPVALUE: {
 						const k1 = ZR_A(instruction);
-						result.push(`SETUPVALUE K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`SETUPVALUE K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.GETGLOBAL: {
 						const k1 = ZR_A(instruction);
-						result.push(`GETGLOBAL K${k1} [${this.dumpConstant(k1)}]`);
+						result.push(`GETGLOBAL K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.LOADNONE: {
@@ -291,12 +294,6 @@ export class ZrBytecodeBuilder {
 					default:
 						throw `Invalid operation code: ${ZrOP[ZR_OP(instruction)] ?? ZR_OP(instruction)}`;
 				}
-
-				// ip += arity + 1;
-			}
-
-			// dump labels
-			for (const [label, offset] of func.labels) {
 			}
 		}
 
@@ -315,12 +312,12 @@ export class ZrBytecodeBuilder {
 				.forEach(f => {
 					result.push(`\t${f}`);
 				});
-		}
 
-		result.push("-- global constants --");
-		for (let i = 0; i < this.constants.size(); i++) {
-			const constant = this.constants[i];
-			result.push(`\t${i}\t(${constant.type})\t${this.dumpConstant(i)}`);
+			result.push(`\tconstants (${funct.constants.size()})`);
+			for (let i = 0; i < funct.constants.size(); i++) {
+				const constant = funct.constants[i];
+				result.push(`\t\t${i}\t(${constant.type})\t${this.dumpFunctionConstant(i, funct)}`);
+			}
 		}
 
 		return result.join("\n");

@@ -60,7 +60,9 @@ let source = `
 		print "test returned false";
 	}
 
-	let x = undefined;
+	let x = 10;
+	let y = 20;
+	let z = x + y;
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
