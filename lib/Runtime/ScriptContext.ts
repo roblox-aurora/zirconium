@@ -1,6 +1,8 @@
 import { Result } from "@rbxts/rust-classes";
 import { ZrParserV2, ZrParserOptions } from "Ast/ParserV2";
 import { ZrParserError } from "Ast/ParserV2/Diagnostics";
+import { ZrFunction } from "Data/Function";
+import { ZrState } from "VM/State";
 import { ZrTextStream, ZrLexer } from "../Ast";
 import { SourceFile } from "../Ast/Nodes/NodeTypes";
 import ZrContext from "../Data/Context";
@@ -38,8 +40,8 @@ export default class ZrScriptContext {
 		}
 	}
 
-	public registerLuauFunction(name: string, fn: (ctx: ZrContext, ...args: ZrUnknown[]) => ZrValue | undefined) {
-		this.registerGlobal(name, new ZrLuauFunction(fn));
+	public registerLuauFunction(name: string, fn: (state: ZrState, ...args: ZrUnknown[]) => ZrValue | undefined) {
+		this.registerGlobal(name, ZrFunction.createFunction(name, fn));
 	}
 
 	protected getGlobals() {

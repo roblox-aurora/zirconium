@@ -5,6 +5,7 @@ import { ZrBytecodeWriteStream } from "./ByteStream";
 import { ZrBytecodeBuilder as ZrBytecodeBuilder, ZrcFunction } from "./CodeBuilder";
 import { ZrInstruction, ZrInstructionTable, ZrOP } from "./Instructions";
 import { Operand } from "./Operand";
+import { u8, ZR_EMIT_ABC } from "./Utils";
 
 export type ZrCompilerConstant =
 	| { type: "string"; value: string }
@@ -100,24 +101,30 @@ export class ZrCompiler {
 
 	protected pushLiteral(node: StringLiteral | NumberLiteral | BooleanLiteral) {
 		if (node.kind === ZrNodeKind.String) {
-			this.bytecodeBuilder.emit(ZrOP.LOADK, this.bytecodeBuilder.addConstantString(node.text)); // load constant
+			this.bytecodeBuilder.emitABC(ZrOP.PUSHK, this.bytecodeBuilder.addConstantString(node.text)); // load constant
 		} else if (node.kind === ZrNodeKind.Number) {
-			this.bytecodeBuilder.emit(ZrOP.LOADK, this.bytecodeBuilder.addConstantNumber(node.value)); // load constant
+			this.bytecodeBuilder.emitABC(ZrOP.PUSHK, this.bytecodeBuilder.addConstantNumber(node.value)); // load constant
 		} else if (node.kind === ZrNodeKind.Boolean) {
-			this.bytecodeBuilder.emit(ZrOP.LOADK, this.bytecodeBuilder.addConstantNumber(node.value ? 1 : 0)); // load constant
+			this.bytecodeBuilder.emitABC(ZrOP.PUSHK, this.bytecodeBuilder.addConstantBoolean(node.value)); // load constant
 		}
 	}
 
 	private parseExpression(node: Expression, singleExpressions = false) {
-		if ((isNode(node, ZrNodeKind.String) || isNode(node, ZrNodeKind.Number)) && singleExpressions) {
+		if (
+			(isNode(node, ZrNodeKind.String) || isNode(node, ZrNodeKind.Boolean) || isNode(node, ZrNodeKind.Number)) &&
+			singleExpressions
+		) {
 			this.pushLiteral(node);
 		} else if (isNode(node, ZrNodeKind.ElementAccessExpression)) {
 			if (isNode(node.argumentExpression, ZrNodeKind.Number)) {
 				this.parseExpression(node.expression, true);
-				this.bytecodeBuilder.emit(ZrOP.GETINDEX, node.argumentExpression.value);
+				this.bytecodeBuilder.emitABC(
+					ZrOP.GETINDEX,
+					this.bytecodeBuilder.addConstantNumber(node.argumentExpression.value),
+				);
 			} else if (isNode(node.argumentExpression, ZrNodeKind.String)) {
 				this.parseExpression(node.expression, true);
-				this.bytecodeBuilder.emit(
+				this.bytecodeBuilder.emitABC(
 					ZrOP.GETPROPERTY,
 					this.bytecodeBuilder.addConstantString(node.argumentExpression.text),
 				);
@@ -125,18 +132,22 @@ export class ZrCompiler {
 				throw `Not supported index: ${ZrNodeKind[node.argumentExpression.kind]}`;
 			}
 		} else if (isNode(node, ZrNodeKind.UndefinedKeyword)) {
-			this.bytecodeBuilder.emit(ZrOP.LOADNONE);
+			this.bytecodeBuilder.emitAux(ZrOP.LOADNONE);
 		} else if (isNode(node, ZrNodeKind.PropertyAccessExpression)) {
 			this.parseExpression(node.expression, true);
-			this.bytecodeBuilder.emit(ZrOP.GETPROPERTY, this.bytecodeBuilder.addConstantString(node.name.name));
+			this.bytecodeBuilder.emitABC(ZrOP.GETPROPERTY, this.bytecodeBuilder.addConstantString(node.name.name));
 		} else if (isNode(node, ZrNodeKind.Identifier)) {
-			this.bytecodeBuilder.emit(ZrOP.GETGLOBAL, this.bytecodeBuilder.addConstantString(node.name));
+			this.bytecodeBuilder.emitABC(ZrOP.GETGLOBAL, this.bytecodeBuilder.addConstantString(node.name));
 		} else if (isNode(node, ZrNodeKind.ObjectLiteralExpression)) {
-			this.bytecodeBuilder.emit(ZrOP.NEWOBJECT, node.values.size());
+			this.bytecodeBuilder.emitABC(ZrOP.NEWOBJECT, this.bytecodeBuilder.addConstantNumber(node.values.size()));
 		} else if (isNode(node, ZrNodeKind.ArrayLiteralExpression)) {
-			this.bytecodeBuilder.emit(ZrOP.NEWARRAY, node.values.size());
+			this.bytecodeBuilder.emitABC(ZrOP.NEWARRAY, this.bytecodeBuilder.addConstantNumber(node.values.size()));
 		} else if (isNode(node, ZrNodeKind.CallExpression)) {
-			const { expression, arguments: args } = node;
+			const { expression, arguments: args, parent } = node;
+
+			if (parent !== undefined) {
+				print("parent is ", ZrNodeKind[parent.kind]);
+			}
 
 			if (args !== undefined) {
 				for (const arg of args as Expression[]) {
@@ -145,10 +156,10 @@ export class ZrCompiler {
 			}
 
 			if (isNode(expression, ZrNodeKind.Identifier)) {
-				this.bytecodeBuilder.emit(
+				this.bytecodeBuilder.emitABC(
 					ZrOP.CALLK,
 					this.bytecodeBuilder.addConstantString(expression.name),
-					args?.size() ?? 0,
+					(args?.size() ?? 0) as u8,
 				);
 			} else {
 				throw `Invalid expression for call`;
@@ -158,13 +169,13 @@ export class ZrCompiler {
 			this.parseExpression(node.right, true);
 
 			if (node.operator === "+") {
-				this.bytecodeBuilder.emit(ZrOP.ADD);
+				this.bytecodeBuilder.emitABC(ZrOP.ADD);
 			} else if (node.operator === "*") {
-				this.bytecodeBuilder.emit(ZrOP.MUL);
+				this.bytecodeBuilder.emitABC(ZrOP.MUL);
 			} else if (node.operator === "-") {
-				this.bytecodeBuilder.emit(ZrOP.SUB);
+				this.bytecodeBuilder.emitABC(ZrOP.SUB);
 			} else if (node.operator === "/") {
-				this.bytecodeBuilder.emit(ZrOP.DIV);
+				this.bytecodeBuilder.emitABC(ZrOP.DIV);
 			}
 		} else {
 			throw `Expression ${ZrNodeKind[node.kind]} not yet supported by compiler`;
@@ -191,36 +202,80 @@ export class ZrCompiler {
 			this.parseExpression(node.expression);
 		} else if (isNode(node, ZrNodeKind.ReturnStatement)) {
 			this.parseExpression(node.expression, true);
-			this.bytecodeBuilder.emit(ZrOP.RET, 1);
+			this.bytecodeBuilder.emitABC(ZrOP.RET, 1);
 		} else if (isNode(node, ZrNodeKind.VariableDeclaration)) {
 			this.parseExpression(node.expression, true);
 			if (isNode(node.identifier, ZrNodeKind.Identifier)) {
-				this.bytecodeBuilder.emit(
+				this.bytecodeBuilder.emitABC(
 					ZrOP.SETUPVALUE,
 					this.bytecodeBuilder.addConstantString(node.identifier.name),
 				);
 			}
 		} else if (isNode(node, ZrNodeKind.IfStatement)) {
 			if (node.condition) {
-				const ifTrueLabel = this.getUniqueName("if_true");
-				const endLabel = this.getUniqueName("end");
-
-				this.parseExpression(node.condition, true); // push expr
-
 				if (node.thenStatement && node.elseStatement) {
-					// push if_true
-					this.bytecodeBuilder.emit(ZrOP.JMPIFK, this.bytecodeBuilder.addConstantString(ifTrueLabel)); // JMPIF cond
-					this.writeBytecode(node.elseStatement); // false condition
-					this.bytecodeBuilder.emit(ZrOP.JMPK, this.bytecodeBuilder.addConstantString(endLabel)); // JMP end
+					if (isNode(node.condition, ZrNodeKind.BinaryExpression)) {
+						throw `Not yet implemented!`;
+					} else {
+						// IF CONDITION
+						this.parseExpression(node.condition, true);
+						this.bytecodeBuilder.emitABC(ZrOP.TEST, 0, -1);
 
-					// true label
-					this.bytecodeBuilder.label(ifTrueLabel);
-					this.writeBytecode(node.thenStatement);
-					this.bytecodeBuilder.label(endLabel);
+						this.bytecodeBuilder.withJump(() => {
+							this.writeBytecode(node.thenStatement!);
+						});
+
+						// ELSE CONDITION
+						this.parseExpression(node.condition, true); // push expr
+						this.bytecodeBuilder.emitABC(ZrOP.TEST, 1, -1);
+
+						this.bytecodeBuilder.withJump(() => {
+							this.writeBytecode(node.elseStatement!);
+						});
+					}
+
+					// this.bytecodeBuilder.emitABC(ZrOP.JMP, this.bytecodeBuilder.offset() as u8);
+					this.bytecodeBuilder.withJump(() => {
+						this.writeBytecode(node.thenStatement!);
+					});
+				} else if (node.thenStatement) {
+					if (isNode(node.condition, ZrNodeKind.BinaryExpression)) {
+						this.parseExpression(node.condition, true); // push expr
+						if (node.condition.operator === "==") {
+							this.bytecodeBuilder.emitABC(ZrOP.EQ, 0, -2, -1);
+						} else if (node.condition.operator === "!=") {
+							this.bytecodeBuilder.emitABC(ZrOP.EQ, 1, -2, -1);
+						}
+					} else {
+						// TRUE CONDITION
+						this.parseExpression(node.condition, true);
+						this.bytecodeBuilder.emitABC(ZrOP.TEST, 0, -1);
+					}
+
+					// this.bytecodeBuilder.emitABC(ZrOP.JMP, this.bytecodeBuilder.offset() as u8);
+					this.bytecodeBuilder.withJump(() => {
+						this.writeBytecode(node.thenStatement!);
+					});
 				}
+
+				// if (node.thenStatement && node.elseStatement) {
+				// 	// push if_true
+				// 	this.bytecodeBuilder.emitABC(ZrOP.JMPIFK, this.bytecodeBuilder.addConstantString(ifTrueLabel)); // JMPIF cond
+				// 	this.writeBytecode(node.elseStatement); // false condition
+				// 	this.bytecodeBuilder.emitABC(ZrOP.JMPK, this.bytecodeBuilder.addConstantString(endLabel)); // JMP end
+
+				// 	// true label
+				// 	this.bytecodeBuilder.label(ifTrueLabel);
+				// 	this.writeBytecode(node.thenStatement);
+				// 	this.bytecodeBuilder.label(endLabel);
+				// } else if (node.thenStatement) {
+				// 	this.bytecodeBuilder.emitABC(ZrOP.JMPIFK, this.bytecodeBuilder.addConstantString(ifTrueLabel)); // JMPIF cond
+				// 	this.bytecodeBuilder.label(ifTrueLabel);
+				// 	this.writeBytecode(node.thenStatement);
+				// }
 			}
 		} else if (isNode(node, ZrNodeKind.FunctionDeclaration)) {
-			this.bytecodeBuilder.emit(ZrOP.CLOSURE, this.bytecodeBuilder.addConstantString(node.name.name));
+			this.bytecodeBuilder.emitABC(ZrOP.CLOSURE, this.bytecodeBuilder.addConstantString(node.name.name));
 
 			this.bytecodeBuilder.beginFunction(
 				node.name.name,
@@ -233,11 +288,11 @@ export class ZrCompiler {
 				}
 
 				if (!this.bytecodeBuilder.currentFunction().returns) {
-					this.bytecodeBuilder.emit(ZrOP.RET, 0);
+					this.bytecodeBuilder.emitABC(ZrOP.RET, 0);
 				}
 			}
 			this.bytecodeBuilder.endFunction();
-			this.bytecodeBuilder.emit(ZrOP.SETUPVALUE, this.bytecodeBuilder.addConstantString(node.name.name));
+			this.bytecodeBuilder.emitABC(ZrOP.SETGLOBAL, this.bytecodeBuilder.addConstantString(node.name.name));
 		}
 	}
 
@@ -264,7 +319,7 @@ export class ZrCompiler {
 		compiler.writeBytecode(source);
 
 		if (!compiler.bytecodeBuilder.currentFunction().returns) {
-			compiler.bytecodeBuilder.emit(ZrOP.RET, 0);
+			compiler.bytecodeBuilder.emitABC(ZrOP.RET, 0);
 		}
 
 		return compiler;

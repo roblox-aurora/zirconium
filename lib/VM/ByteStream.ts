@@ -41,7 +41,7 @@ export class ZrBytecodeWriteStream {
 
 		// [...BYTES] (sizeof SIZE)
 		for (const n of data) {
-			this.buffer.writeByte(n);
+			this.buffer.writeInt32(n);
 		}
 	}
 
@@ -72,15 +72,20 @@ export class ZrBytecodeWriteStream {
 	 * ```
 	 * 'Zrc' // compiler id
 	 * [VERSION_HEADER]
-	 * [INSTRUCTIONS...]
-	 * [CONSTANTS...]
+	 * [...FUNCTIONS [INSTRUCTIONS...] [CONSTANTS...]]
 	 * ```
 	 * @param bytecodeTable
 	 */
 	public writeBytecodeTable(bytecodeTable: ZrBytecodeTable) {
 		this.writeHeader();
-		this.writeInstructionBytes(bytecodeTable.instructions);
-		this.writeConstants(bytecodeTable.constants);
+
+		this.buffer.writeByte(Header.FUNCTION_HEADER);
+		this.buffer.writeInt32(bytecodeTable.functions.size());
+
+		for (const func of bytecodeTable.functions) {
+			this.writeInstructionBytes(func.data);
+			this.writeConstants(func.constants);
+		}
 	}
 
 	public toHex() {

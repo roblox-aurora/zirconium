@@ -1,22 +1,27 @@
 import { isNode } from "Ast";
 import { ZrNodeKind } from "Ast/Nodes";
 import { FunctionDeclaration, FunctionExpression, ParameterDeclaration, SourceBlock } from "../Ast/Nodes/NodeTypes";
-import { ZrClosure } from "./Closure";
+import { ZrFunction } from "./Function";
 
 /**
  * A function declared by a user
+ * @deprecated
  */
-export default class ZrUserFunction extends ZrClosure {
+export default class ZrUserFunction {
 	private parameters: ParameterDeclaration[];
 	private body: SourceBlock;
+	private label: string = "???";
 
 	constructor(declaration: FunctionDeclaration | FunctionExpression) {
-		super(game.GetService("HttpService").GenerateGUID(false));
 		this.parameters = declaration.parameters;
 		this.body = declaration.body;
 		if (isNode(declaration, ZrNodeKind.FunctionDeclaration)) {
 			this.label = declaration.name.name;
 		}
+	}
+
+	public getLabel() {
+		return this.label;
 	}
 
 	public getParameters() {

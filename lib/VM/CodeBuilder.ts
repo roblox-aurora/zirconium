@@ -3,17 +3,17 @@ import { ZrBytecodeTable, ZrCompilerConstant } from "./Compiler";
 import { ZrEncoding, ZrInstruction, ZrOP } from "./Instructions";
 import { Operand } from "./Operand";
 import { ArrayReader } from "./Ptr";
-import { ZR_A, ZR_B, ZR_OP } from "./Utils";
+import { bit, i8, u8, utoi8, ZR_A, ZR_EMIT_ABC, ZR_B, ZR_C, ZR_OP } from "./Utils";
 import inspect from "@rbxts/inspect";
 
-const MAIN = "@ZrMain";
+const MAIN = "__main__";
 
 /**
  * @internal
  */
 type ZrcConstant = ZrCompilerConstant;
 
-export type ZrEncodedInstruction = readonly [op: number, a: number, b: number, c: number];
+export type ZrEncodedInstruction = readonly [op: u8, a: u8, b: u8, c: u8];
 
 /**
  * @internal
@@ -123,45 +123,62 @@ export class ZrBytecodeBuilder {
 		return this.functionStack[this.stackPtr] ?? this.mainFunction;
 	}
 
-	private addConstant(value: ZrcConstant) {
+	private addConstant(constant: ZrcConstant): u8 {
 		const constants = this.currentFunction().constants;
 
-		if (value.type === "undefined") {
+		if (constant.type === "undefined") {
 			const existing = constants.findIndex(f => f.type === "undefined");
 			if (existing !== -1) {
-				return existing;
+				return existing as u8;
 			}
 
-			return constants.push(value) - 1;
+			return (constants.push(constant) - 1) as u8;
 		} else {
-			const existing = this.constants.findIndex(f => value.type === f.type && value.value === f.value);
+			const existing = constants.findIndex(f => constant.type === f.type && constant.value === f.value);
 			if (existing !== -1) {
-				return existing;
+				return existing as u8;
 			}
 
-			return constants.push(value) - 1;
+			return (constants.push(constant) - 1) as u8;
 		}
 	}
 
-	public addConstantString(value: string): number {
+	public addConstantString(value: string): u8 {
 		return this.addConstant({
 			type: "string",
 			value,
 		});
 	}
 
-	public addConstantNumber(value: number): number {
+	public addConstantNumber(value: number): u8 {
 		return this.addConstant({
 			type: "number",
 			value,
 		});
 	}
 
-	public addConstantBoolean(value: boolean): number {
+	public addConstantBoolean(value: boolean): u8 {
 		return this.addConstant({
 			type: "boolean",
 			value,
 		});
+	}
+
+	private registerIdx = 0;
+	public pushRegister(): number {
+		if (this.registerIdx >= 4) {
+			return this.registerIdx;
+		}
+
+		return this.registerIdx++;
+	}
+
+	public popRegister(): number {
+		if (this.registerIdx === 0) {
+			return this.registerIdx;
+		}
+
+		return this.registerIdx--;
 	}
 
 	public addConstantUndefined(): number {
@@ -172,29 +189,85 @@ export class ZrBytecodeBuilder {
 
 	public decode(instruction: number): ZrEncodedInstruction {
 		return [
-			bit32.extract(instruction, 0, 8),
-			bit32.extract(instruction, 8, 8),
-			bit32.extract(instruction, 16, 8),
-			bit32.extract(instruction, 24, 8),
+			bit32.extract(instruction, 0, 8) as u8,
+			bit32.extract(instruction, 8, 8) as u8,
+			bit32.extract(instruction, 16, 8) as u8,
+			bit32.extract(instruction, 24, 8) as u8,
 		] as const;
 	}
 
-	public emit(code: ZrOP): number;
-	public emit(code: ZrOP, e: number): number;
-	public emit(code: ZrOP, a: number, d: number): number;
-	public emit(code: ZrOP, a: number, b: number, c: number): number;
-	public emit(code: ZrOP, a: number = 0, b: number = 0, c: number = 0) {
+	public offset() {
+		return this.currentFunction().data.size() - 1;
+	}
+
+	public emitABC(code: ZrOP.ADD): number;
+	public emitABC(code: ZrOP.SUB): number;
+	public emitABC(code: ZrOP.MUL): number;
+	public emitABC(code: ZrOP.DIV): number;
+	public emitABC(code: ZrOP.TEST, cond: bit, value: i8): number;
+	public emitABC(code: ZrOP.PUSHK, k: u8): number;
+	public emitABC(code: ZrOP.EQ, cond: bit, lhs: i8, rhs: i8): number;
+	public emitABC(code: ZrOP.GETPROPERTY, kId: u8): number;
+	public emitABC(code: ZrOP.GETINDEX, kId: u8): number;
+	public emitABC(code: ZrOP.GETGLOBAL, kId: u8): number;
+	public emitABC(code: ZrOP.NEWOBJECT, kSize: u8): number;
+	public emitABC(code: ZrOP.NEWARRAY, kSize: u8): number;
+	public emitABC(code: ZrOP.CALLK, kName: u8, nargs: u8): number;
+	public emitABC(code: ZrOP.SETUPVALUE, kName: u8): number;
+	public emitABC(code: ZrOP.RET, count: u8): number;
+	public emitABC(code: ZrOP.JMP, count: u8): number;
+	public emitABC(code: ZrOP.CLOSURE, kLabel: u8): number;
+	public emitABC(code: ZrOP.SETGLOBAL, kLabel: u8): number;
+
+	public emitABC(code: ZrOP, a: number = 0, b: number = 0, c: number = 0) {
 		const chunk = this.currentFunction();
 		const bytes = chunk.data;
 
-		const OP_MASK = 0x00_00_00_ff; // used to ensure byte offset (8 bits)
-		const A1_MASK = 0x00_00_ff_00; // used to ensure byte offset (8 bits)
-		const A2_MASK = 0x00_ff_00_00; // used to ensure byte offset (8 bits)
-		const A3_MASK = 0xff_00_00_00; // used to ensure byte offset (8 bits)
-
-		const result = (code & OP_MASK) | ((a << 8) & A1_MASK) | ((b << 16) & A2_MASK) | ((c << 24) & A3_MASK);
+		const result = ZR_EMIT_ABC(code, a, b, c);
 		bytes.push(result);
 		return result;
+	}
+
+	public emitAD(code: ZrOP, a: u8, d: number) {
+		const chunk = this.currentFunction();
+		const bytes = chunk.data;
+
+		const result = code | (a << 8) | (d << 16);
+		bytes.push(result);
+		return result;
+	}
+
+	public emitE(code: ZrOP, e: number) {
+		const chunk = this.currentFunction();
+		const bytes = chunk.data;
+
+		const result = code | (e << 8);
+		bytes.push(result);
+		return result;
+	}
+
+	public emitAux(code: ZrOP.LOADNONE): number;
+	public emitAux(code: ZrOP) {
+		const chunk = this.currentFunction();
+		const bytes = chunk.data;
+		bytes.push(code);
+		return code;
+	}
+
+	public withJump(fn: () => void): number {
+		const startPtr = this.currentFunction().data.size();
+		fn();
+		const endPtr = this.currentFunction().data.size();
+		this.currentFunction().data.insert(startPtr, ZR_EMIT_ABC(ZrOP.JMP, endPtr - startPtr, 0, 0));
+		return endPtr;
+	}
+
+	public emitRaw(idx: number, value: number) {
+		this.currentFunction().data.insert(idx, value);
+	}
+
+	public jump(pc: number) {
+		this.currentFunction().data.push(ZR_EMIT_ABC(ZrOP.JMP, pc, 0, 0));
 	}
 
 	public labelAt(name: string, at: number) {
@@ -244,51 +317,76 @@ export class ZrBytecodeBuilder {
 
 				switch (op) {
 					case ZrOP.ADD:
-						result.push(`ADD`);
+						result.push(`${ZrOP[op]}`);
 						break;
 					case ZrOP.CALLK: {
 						const k1 = ZR_A(instruction);
 						const b = ZR_B(instruction);
-						result.push(`CALLK K${k1} ${b} [${this.dumpFunctionConstant(k1, func)}] - ${b} args`);
+						result.push(`${ZrOP[op]} K${k1} ${b} [${this.dumpFunctionConstant(k1, func)}] - ${b} args`);
 						break;
 					}
-					case ZrOP.LOADK: {
+					case ZrOP.PUSHK: {
 						const k1 = ZR_A(instruction);
-						result.push(`LOADK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						result.push(`${ZrOP[op]} K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.RET: {
 						const retCount = ZR_A(instruction);
-						result.push(`RET ${retCount}`);
+						result.push(`${ZrOP[op]} ${retCount}`);
 						break;
 					}
-					case ZrOP.JMPK: {
-						const k1 = ZR_A(instruction);
-						result.push(`JUMPK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
-						break;
-					}
-					case ZrOP.JMPIFK: {
-						const k1 = ZR_A(instruction);
-						result.push(`JUMPIFK K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+					case ZrOP.JMP: {
+						const pc = ZR_A(instruction);
+						result.push(
+							`${ZrOP[op]} ${pc} [move ${pc >= 0 ? "forward" : "backward"} ${math.abs(pc)} instructions]`,
+						);
 						break;
 					}
 					case ZrOP.CLOSURE: {
 						const k1 = ZR_A(instruction);
-						result.push(`CLOSURE K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						result.push(`${ZrOP[op]} K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.SETUPVALUE: {
 						const k1 = ZR_A(instruction);
-						result.push(`SETUPVALUE K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						result.push(`${ZrOP[op]} K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
 						break;
 					}
 					case ZrOP.GETGLOBAL: {
 						const k1 = ZR_A(instruction);
-						result.push(`GETGLOBAL K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						result.push(`${ZrOP[op]} K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						break;
+					}
+					case ZrOP.SETGLOBAL: {
+						const k1 = ZR_A(instruction);
+						result.push(`${ZrOP[op]} K${k1} [${this.dumpFunctionConstant(k1, func)}]`);
+						break;
+					}
+					case ZrOP.EQ: {
+						const truthiness = ZR_A(instruction);
+						const lhs = utoi8(ZR_B(instruction));
+						const rhs = utoi8(ZR_C(instruction));
+						result.push(
+							`${ZrOP[op]} ${truthiness} ${lhs} ${rhs} [SKIP NEXT UNLESS (${
+								lhs < 0 ? `[StkTop - ${-lhs}]` : `R(${lhs})`
+							} == ${rhs < 0 ? `[StkTop - ${-rhs}]` : `R(${rhs})`}) is ${
+								truthiness === 1 ? "true" : "false"
+							}]`,
+						);
+						break;
+					}
+					case ZrOP.TEST: {
+						const truthiness = ZR_A(instruction);
+						const lhs = utoi8(ZR_B(instruction));
+						result.push(
+							`${ZrOP[op]} ${truthiness} ${lhs} [SKIP NEXT UNLESS (${
+								lhs < 0 ? `[StkTop - ${-lhs}]` : `R(${lhs})`
+							} is ${truthiness === 1 ? "true" : "false"}]`,
+						);
 						break;
 					}
 					case ZrOP.LOADNONE: {
-						result.push("LOADNONE");
+						result.push(`${ZrOP[op]}`);
 						break;
 					}
 					default:

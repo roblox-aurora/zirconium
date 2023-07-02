@@ -22,7 +22,7 @@
   "devDependencies": {
     "@rbxts/compiler-types": "2.0.4-types.0",
     "@rbxts/roact": "1.4.4-ts.0",
-    "@rbxts/types": "^1.0.642",
+    "@rbxts/types": "^1.0.696",
     "@typescript-eslint/eslint-plugin": "^5.40.0",
     "@typescript-eslint/parser": "^5.40.0",
     "concurrently": "^7.4.0",
@@ -39,6 +39,7 @@
     "yalc": "^1.0.0-pre.53"
   },
   "dependencies": {
+    "@rbxts/inspect": "^1.0.1",
     "@rbxts/log": "^0.6.3",
     "@rbxts/rust-classes": "^0.12.0",
     "@rbxts/variant": "^1.0.2"

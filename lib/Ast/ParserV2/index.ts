@@ -86,6 +86,8 @@ export class ZrParserV2 {
 		this.contextFlags &= ~flag;
 	}
 
+	private nodeList = new Array<ZrNode>();
+
 	/**
 	 * Create the specified node kind
 	 * @param kind The kind of node
@@ -95,6 +97,7 @@ export class ZrParserV2 {
 		const node = factory.createNode(kind) as ZrNode;
 		node.flags |= ZrNodeFlag.IncompleteNode;
 		node.startPos = pos ?? this.lexer.getTokenRange()?.[0] ?? this.lexer.getPosition();
+
 		return node as ZrEditNode<ZrNodeKinds[TNodeKind]>;
 	}
 

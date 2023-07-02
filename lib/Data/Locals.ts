@@ -2,7 +2,7 @@ import { Result, unit, UnitType } from "@rbxts/rust-classes";
 import variantModule, { TypeNames, VariantOf } from "@rbxts/variant";
 import { isNode, ZrNodeKind } from "../Ast/Nodes";
 import { InterpolatedStringExpression } from "../Ast/Nodes/NodeTypes";
-import { ZrClosure } from "./Closure";
+import { ZrFunction } from "./Function";
 import { ZrEnum } from "./Enum";
 import { ZrEnumItem } from "./EnumItem";
 import ZrLuauFunction from "./LuauFunction";
@@ -22,8 +22,8 @@ export type ZrDefined =
 	| ReadonlyArray<ZrValue>
 	| Map<string, ZrValue>
 	| ReadonlyMap<string, ZrValue>
-	| ZrClosure
-	| ZrLuauFunction
+	| ZrFunction
+	| ZrUserFunction
 	| ZrEnum
 	| ZrEnumItem
 	| ZrUserdata<defined>
@@ -49,7 +49,7 @@ export const enum StackValueAssignmentError {
 }
 
 export default class ZrLocalStack {
-	private locals = new Array<Map<string, StackValue>>();
+	private locals = new Array<Map<string, StackValue>>(1, new Map());
 
 	constructor(inject?: ReadonlyMap<string, ZrValue>) {
 		if (inject) {

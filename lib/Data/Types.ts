@@ -10,6 +10,8 @@ import ZrRange from "./Range";
 import ZrUndefined from "./Undefined";
 import { ZrUserdata } from "./Userdata";
 import ZrUserFunction from "./UserFunction";
+import inspect from "@rbxts/inspect";
+import { ZrFunction } from "./Function";
 
 function valueType<T extends ZrValue>() {
 	return (value: T) => ({ value });
@@ -21,7 +23,7 @@ export const ZrVariant = variantModule({
 	boolean: valueType<boolean>(),
 	userdata: valueType<ZrUserdata<any>>(),
 	range: valueType<ZrRange>(),
-	function: valueType<ZrLuauFunction | ZrUserFunction>(),
+	function: valueType<ZrFunction>(),
 	object: valueType<ZrObject>(),
 	array: valueType<ZrValue[]>(),
 	undefined: () => ({ value: undefined }),
@@ -46,7 +48,7 @@ export namespace ZrVariants {
 			return ZrVariant.undefined();
 		} else if (isArray(value)) {
 			return ZrVariant.array(value);
-		} else if (value instanceof ZrLuauFunction || value instanceof ZrUserFunction) {
+		} else if (value instanceof ZrFunction) {
 			return ZrVariant.function(value);
 		} else if (value instanceof ZrRange) {
 			return ZrVariant.range(value);
@@ -57,7 +59,7 @@ export namespace ZrVariants {
 		} else if (value instanceof ZrUserdata) {
 			return ZrVariant.userdata(value);
 		} else {
-			throw `Not implemented`;
+			throw `Not implemented ${inspect(value)}`;
 		}
 	}
 }

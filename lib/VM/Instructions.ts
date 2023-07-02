@@ -1,9 +1,11 @@
-import { ZrClosure } from "Data/Closure";
+import inspect from "@rbxts/inspect";
+import { ZrFunction } from "Data/Function";
 import { ZrValue } from "Data/Locals";
 import ZrLuauFunction from "Data/LuauFunction";
 import ZrUndefined from "Data/Undefined";
-import { ZrVM } from "VM";
+import { ZrVM, ZrVMRegister } from "VM";
 import { Operand } from "./Operand";
+import { u8, utoi8 } from "./Utils";
 
 export enum ZrOP {
 	/**
@@ -11,7 +13,7 @@ export enum ZrOP {
 	 *
 	 * `LOADK [const_idx]`
 	 */
-	LOADK,
+	PUSHK,
 
 	/**
 	 * Attempts to add the two values on top of the stack, and push the result
@@ -43,18 +45,11 @@ export enum ZrOP {
 	RET,
 
 	/**
-	 * Jumps to a given label constant
+	 * Jump forward N instructions
 	 *
-	 * `JUMPK [label_const_idx]`
+	 * `JMP [N]`
 	 */
-	JMPK,
-
-	/**
-	 * Jumps if the value on the top of the stack is _truthy_
-	 *
-	 * `JMPIFK [label_const_idx]`
-	 */
-	JMPIFK,
+	JMP,
 
 	/**
 	 * Loads the given global variable to the stack
@@ -79,20 +74,21 @@ export enum ZrOP {
 	 */
 	SETUPVALUE,
 
+	SETGLOBAL,
+
 	/**
 	 * @deprecated TODO
 	 */
 	LT,
 
 	/**
-	 *  TODO: Change to use registers?
+	 *  Will skip the next instruction if not A
 	 *
-	 * `EQ [invert: 1 | 0] [value: CONST_OR_UPVALUE_ID]`
-	 *
-	 * `EQ 1` (equals false)
-	 * `EQ 0` (equals true)
+	 * `EQ A B C`
 	 */
 	EQ,
+
+	TEST,
 
 	NEWARRAY,
 	NEWOBJECT,
@@ -147,20 +143,77 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		ZrOP.ADD,
 		"add",
 		ZrEncoding.ABC,
-		vm => {
-			let rhs = vm.stackPop();
-			let lhs = vm.stackPop();
+		(vm, [rA, rBK, rCK]) => {
+			let lhs = vm.getRegister(rBK);
+			let rhs = vm.getRegister(rCK);
 
 			assert(typeIs(rhs, "number") && typeIs(lhs, "number"));
-			vm.stackPush(rhs + lhs);
+			vm.setRegister(rA, rhs + lhs);
 		},
 	],
 	[
-		ZrOP.LOADK,
-		"LOADK",
+		ZrOP.PUSHK,
+		"PUSHK",
 		ZrEncoding.ABC,
 		(vm, [arg]) => {
-			vm.stackPush(vm.getDataAtIndex(arg).value ?? ZrUndefined);
+			const value = vm.getConstant(arg).value ?? ZrUndefined;
+
+			vm.push(value);
+			print("push", value, "onto stack", inspect(vm.state.getStack().values()));
+		},
+	],
+	[
+		ZrOP.TEST,
+		"TEST",
+		ZrEncoding.ABC,
+		(vm, [condA, b]) => {
+			const stack = vm.state.getStack();
+
+			let bSigned = utoi8(b as u8);
+
+			let valueB: ZrValue;
+			if (bSigned < 0) {
+				valueB = stack.pop(bSigned);
+			} else {
+				throw `not yet impl`;
+			}
+
+			const conditionRequirement = condA === 1;
+
+			if (!!valueB !== conditionRequirement) {
+				vm.jmpc(1);
+			}
+		},
+	],
+	[
+		ZrOP.EQ,
+		"EQ",
+		ZrEncoding.ABC,
+		(vm, [condA, b, c]) => {
+			let bSigned = utoi8(b as u8);
+			let cSigned = utoi8(c as u8);
+
+			const stack = vm.state.getStack();
+
+			let valueC: ZrValue;
+			if (cSigned < 0) {
+				valueC = stack.pop(cSigned);
+			} else {
+				throw `not yet impl`;
+			}
+
+			let valueB: ZrValue;
+			if (bSigned < 0) {
+				valueB = stack.pop(bSigned);
+			} else {
+				throw `not yet impl`;
+			}
+
+			const conditionRequirement = condA === 1;
+
+			if ((valueC === valueB) !== conditionRequirement) {
+				vm.jmpc(2);
+			}
 		},
 	],
 	[
@@ -168,79 +221,64 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"CALLK",
 		ZrEncoding.ABC,
 		(vm, [id, argc]) => {
-			let label = vm.getDataAtIndex(id).value;
+			let label = vm.getConstant(id).value;
 			assert(label, "no label data at idx " + id);
 
-			let fun = vm.env.getLocalOrUpValue(tostring(label));
-			if (fun !== undefined) {
-				const value = fun.data.value;
-				if (value instanceof ZrLuauFunction) {
-					let args = new Array<ZrValue>();
-
-					for (let i = 0; i < argc; i++) {
-						args.push(vm.stackPop());
-					}
-
-					vm.env.push();
-
-					const result = value.call(undefined! /* TO DO */, args);
-					if (result !== undefined) {
-						vm.stackPush(result);
-					} else {
-						vm.stackPush(ZrUndefined);
-					}
-
-					vm.env.pop();
-				} else if (value instanceof ZrClosure) {
-					return vm.call(value.getLabel(), argc);
-				}
+			let fun = vm.state.getGlobal(tostring(label)).unwrap();
+			if (fun instanceof ZrFunction) {
+				fun.stackcall(vm.state, argc, true);
+			} else {
+				error("Unknown closure: " + label);
 			}
-
-			error("Unknown closure: " + label);
 		},
 	],
 	[
 		ZrOP.RET,
 		"RET",
 		ZrEncoding.ABC,
-		vm => {
-			vm.ret();
+		(vm, [count]) => {
+			vm.ret(count);
 		},
 	],
 	[
-		ZrOP.JMPK,
-		"JMPK",
+		ZrOP.JMP,
+		"JMP",
 		ZrEncoding.ABC,
-		(vm, [id]) => {
-			let label = vm.getDataAtIndex(id).value;
-			assert(label, `No valid label at id ${id}`);
-			vm.jump(tostring(label));
+		(vm, [pc]) => {
+			vm.jmpc(pc);
 		},
 	],
 	[
-		ZrOP.JMPIFK,
-		"JMPIFK",
-		ZrEncoding.ABC,
+		ZrOP.GETGLOBAL,
+		"GETGLOBAL",
+		1,
 		(vm, [id]) => {
-			const condition = vm.stackPop();
-			assert(typeIs(condition, "number"));
-			if (condition !== 0) {
-				let label = vm.getDataAtIndex(id).value;
-				vm.jump(tostring(label));
-			}
+			const value = vm.state.getGlobal(tostring(vm.getConstant(id).value));
+			vm.state.getStack().push(value.expect(`Failed to get global ${id}`));
 		},
 	],
-	[ZrOP.GETGLOBAL, "GETGLOBAL", 1, (vm, [id]) => {}],
 	[
 		ZrOP.SETUPVALUE,
 		"setupvalue",
 		ZrEncoding.ABC,
 		(vm, [id]) => {
-			const variableName = vm.getDataAtIndex(id).value;
-			const value = vm.stackPop();
+			const variableName = vm.getConstant(id).value;
+			const value = vm.pop();
 
 			assert(typeIs(variableName, "string"));
-			vm.env.setUpValueOrLocal(variableName, value);
+			// vm.env.setUpValueOrLocal(variableName, value);
+		},
+	],
+	[
+		ZrOP.SETGLOBAL,
+		"setglobal",
+		ZrEncoding.ABC,
+		(vm, [id]) => {
+			const constant = vm.getConstant(id);
+			assert(constant.type === "string");
+			const top = vm.state.getStack().pop();
+			assert(top);
+			vm.state.setGlobal(constant.value, top);
 		},
 	],
 	[ZrOP.NEWOBJECT, "newobject", ZrEncoding.ABC, (vm, [size]) => {}],
@@ -252,7 +290,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"pushnone",
 		ZrEncoding.AUX,
 		vm => {
-			vm.stackPush(ZrUndefined);
+			vm.push(ZrUndefined);
 		},
 	],
 	[
@@ -260,8 +298,11 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"closure",
 		ZrEncoding.ABC,
 		(vm, [id]) => {
-			const label = vm.getDataAtIndex(id).value;
-			vm.stackPush(new ZrClosure(tostring(label)));
+			const constant = vm.getConstant(id);
+			assert(constant.type === "string");
+			const func = vm.getFunctionNamed(constant.value);
+			assert(func);
+			vm.push(ZrFunction.createUserFunctionFromCompiled(func));
 		},
 	],
 	[
@@ -269,7 +310,7 @@ export const ZrInstructionTable: readonly ZrInstruction[] = [
 		"exit",
 		ZrEncoding.AUX,
 		vm => {
-			vm.ret();
+			vm.ret(0);
 		},
 	],
 ];

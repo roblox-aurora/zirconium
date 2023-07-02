@@ -1,6 +1,8 @@
+import { ZrFunction, ZrFunctionHandle } from "./Function";
 import ZrContext from "./Context";
 import { ZrValue } from "./Locals";
 import ZrUndefined from "./Undefined";
+import { ZrState } from "VM/State";
 
 export type ZrUnknown = ZrValue | ZrUndefined;
 
@@ -8,20 +10,17 @@ export type ZrUnknown = ZrValue | ZrUndefined;
  * A lua-side function.
  *
  * Where the real magic happens.
+ *
+ * @deprecated
  */
-export default class ZrLuauFunction {
-	constructor(private callback: (ctx: ZrContext, ...args: readonly ZrUnknown[]) => ZrUnknown | void) {}
-
-	/**
-	 * Create a dynamic function (one that takes any value per argument)
-	 */
-	public static createDynamic(fn: (context: ZrContext, ...args: readonly ZrUnknown[]) => ZrValue | void) {
-		return new ZrLuauFunction(fn);
-	}
-
-	/** @internal */
-	public call(context: ZrContext, ...args: ZrUnknown[]) {
-		return this.callback(context, ...args);
+export default class ZrLuauFunction extends ZrFunction {
+	constructor(callback: (state: ZrState, ...args: readonly ZrUnknown[]) => ZrUnknown | void) {
+		super(
+			ZrFunctionHandle.LuauFunction({
+				name: "",
+				callback,
+			}),
+		);
 	}
 
 	public toString() {

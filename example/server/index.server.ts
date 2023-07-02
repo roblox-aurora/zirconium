@@ -9,16 +9,15 @@ import { $env } from "rbxts-transform-env";
 import { ZrCompiler } from "VM/Compiler";
 import { ZrValue } from "./Data/Locals";
 import ZrUndefined from "./Data/Undefined";
-import { ZrDebug, ZrPrint, ZrRange } from "./Functions/BuiltInFunctions";
 import inspect from "@rbxts/inspect";
-import { ZrVM } from "VM";
+import { ZrStack, ZrVM } from "VM";
 import { ZrInstructionTable, ZrOP } from "VM/Instructions";
 import { ZrBytecodeBuilder } from "VM/CodeBuilder";
+import { i8, utoi8 } from "VM/Utils";
+import { ZrFunction } from "Data/Function";
+import { ZrState } from "VM/State";
 
 const globals = Zr.createContext();
-globals.registerGlobal("print", ZrPrint);
-globals.registerGlobal("range", ZrRange);
-globals.registerGlobal("debug", ZrDebug);
 globals.registerGlobal("TestEnum", ZrEnum.fromArray("TestEnum", ["A", "B"]));
 globals.registerGlobal(
 	"values",
@@ -37,32 +36,12 @@ globals.registerGlobal(
 );
 
 let source = `
-	function test(value) {
-		if (value) {
-			print "value was true";
-
-			if (1) {
-				print(1);
-			} else {
-				print(2);
-			}
-
-		} else {
-			print "value was false";
-		}
-
-		return value;
+	function innerFunction(arg) {
+		print "hi there I'm an inner function!";
+		return false;
 	}
 
-	if test(1) {
-		print "test returned true";
-	} else {
-		print "test returned false";
-	}
-
-	let x = 10;
-	let y = 20;
-	let z = x + y;
+	print(innerFunction(true), innerFunction);
 `;
 
 function rangeToString(range?: [x: number, y: number]) {
@@ -88,18 +67,14 @@ lex.parseAstWithThrow().match(
 
 		const compiler = ZrCompiler.fromAst(source);
 		const compiled = compiler.toBytecodeTable();
-		print(inspect(compiled));
-
 		print("Compiled Source\n", compiler.dumpEverything());
 
-		// const vm = new ZrVM(compiled, ZrInstructionTable);
-		// vm.run();
-
-		// const zr = Zr.createContext();
-		// const zrScript = zr.createScript(source);
-		// zrScript.registerFunction("print", new ZrLuauFunction((context, ...args) => print(...args)));
-		// const result = zrScript.executeOrThrow();
-		// print("result is", result);
+		const vm = new ZrVM(compiled, ZrInstructionTable);
+		vm.state.setGlobal(
+			"print",
+			ZrFunction.createFunction("print", (_, ...args) => print("[ZrTest]", ...args)),
+		);
+		vm.run();
 	},
 	err => {
 		const [source, errs] = err;

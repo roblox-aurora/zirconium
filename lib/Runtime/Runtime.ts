@@ -541,8 +541,11 @@ export default class ZrRuntime {
 				}
 				i++;
 			}
-			const result = matching.call(context, ...args);
-			return result as ZrValue;
+
+			// TODO: Fix and call new state object
+			// const result = matching.call(context, ...args);
+			// return result as ZrValue;
+			return ZrUndefined;
 		} else {
 			this.runtimeError(
 				this.getFullName(expression) + " is not a function",
