@@ -3,9 +3,8 @@ import { ZrNodeKind } from "Ast/Nodes";
 import { BooleanLiteral, Expression, NumberLiteral, SourceFile, StringLiteral, ZrNode } from "Ast/Nodes/NodeTypes";
 import { ZrBytecodeWriteStream } from "./ByteStream";
 import { ZrBytecodeBuilder as ZrBytecodeBuilder, ZrcFunction } from "./CodeBuilder";
-import { ZrInstruction, ZrInstructionTable, ZrOP } from "./Instructions";
-import { Operand } from "./Operand";
-import { u8, ZR_EMIT_ABC } from "./Utils";
+import { ZrInstructionTable, ZrOP } from "./Instructions";
+import { u8 } from "./Utils";
 
 export type ZrCompilerConstant =
 	| { type: "string"; value: string }

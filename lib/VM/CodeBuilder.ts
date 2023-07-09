@@ -1,10 +1,6 @@
-import { isOfVariant } from "@rbxts/variant";
 import { ZrBytecodeTable, ZrCompilerConstant } from "./Compiler";
-import { ZrEncoding, ZrInstruction, ZrOP } from "./Instructions";
-import { Operand } from "./Operand";
-import { ArrayReader } from "./Ptr";
+import { ZrInstruction, ZrOP } from "./Instructions";
 import { bit, i8, u8, utoi8, ZR_A, ZR_EMIT_ABC, ZR_B, ZR_C, ZR_OP } from "./Utils";
-import inspect from "@rbxts/inspect";
 
 const MAIN = "__main__";
 

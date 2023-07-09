@@ -1,10 +1,8 @@
 import inspect from "@rbxts/inspect";
 import { ZrFunction } from "Data/Function";
 import { ZrValue } from "Data/Locals";
-import ZrLuauFunction from "Data/LuauFunction";
 import ZrUndefined from "Data/Undefined";
-import { ZrVM, ZrVMRegister } from "VM";
-import { Operand } from "./Operand";
+import { ZrVM } from "VM";
 import { u8, utoi8 } from "./Utils";
 
 export enum ZrOP {
